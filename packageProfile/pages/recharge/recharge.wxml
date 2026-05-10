@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="balance-info">
+    <text class="label">当前可用次数</text>
+    <text class="value">{{storeInfo.balance || 0}} 次</text>
+  </view>
+
+  <view class="package-list">
+    <view wx:for="{{packages}}" wx:key="id" class="package-card {{selectedPackage.id === item.id ? 'selected' : ''}}" bindtap="selectPackage" data-pkg="{{item}}">
+      <view class="package-header">
+        <text class="name">{{item.name}}</text>
+        <text class="tag">{{item.tag}}</text>
+      </view>
+      <view class="package-detail">
+        <text class="times">{{item.times}} 人次</text>
+        <text class="price">¥{{item.price}}</text>
+        <text class="original-price">¥{{item.originalPrice}}</text>
+      </view>
+      <view wx:if="{{selectedPackage.id === item.id}}" class="selected-mark">✓</view>
+    </view>
+  </view>
+
+  <view class="summary">
+    <text>应付金额：¥{{selectedPackage ? selectedPackage.price : 0}}</text>
+    <button class="pay-btn" bindtap="confirmRecharge" disabled="{{submitting}}">{{submitting ? '充值中...' : '立即充值'}}</button>
+  </view>
+</view>

@@ -1,0 +1,10 @@
+{
+  "name": "processTasksWorker",
+  "version": "1.0.0",
+  "dependencies": {
+    "wx-server-sdk": "latest",
+    "axios": "^1.4.0",
+    "jimp": "^0.22.7",
+    "tencentcloud-sdk-nodejs": "^4.0.500"
+  }
+}

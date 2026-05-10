@@ -1,0 +1,15 @@
+<view class="container">
+  <view class="date-header">{{date}} {{type === 'checked' ? '已打卡' : '未打卡'}}名单</view>
+  <view wx:if="{{customers.length === 0 && !loading}}" class="empty-tip">暂无客户</view>
+  <view class="customer-list">
+    <view wx:for="{{customers}}" wx:key="_id" class="customer-item">
+      <image class="avatar" src="{{item.avatarUrl || '/assets/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="info">
+        <text class="name">{{item.nickName || '匿名用户'}}</text>
+        <text class="phone">{{item.phone || '未绑定手机'}}</text>
+      </view>
+      <view class="checkin-count">累计打卡 {{item.totalCheckins || 0}} 次</view>
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
+</view>

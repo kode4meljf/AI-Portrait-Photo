@@ -1,0 +1,18 @@
+<view class="container">
+  <view class="image-area">
+    <image src="{{imageUrl}}" mode="aspectFit" class="edit-image"></image>
+  </view>
+
+  <view class="toolbar">
+    <view class="slider-item">
+      <text>亮度</text>
+      <slider min="0" max="200" value="{{brightness}}" bindchange="onBrightnessChange" step="1"/>
+    </view>
+    <view class="slider-item">
+      <text>对比度</text>
+      <slider min="0" max="200" value="{{contrast}}" bindchange="onContrastChange" step="1"/>
+    </view>
+  </view>
+
+  <button class="save-btn" bindtap="saveEdit" disabled="{{isProcessing}}">保存编辑</button>
+</view>

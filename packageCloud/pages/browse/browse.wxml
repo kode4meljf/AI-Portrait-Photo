@@ -1,0 +1,68 @@
+<!--packageCloud/pages/browse/browse.wxml-->
+<view class="browse-container">
+  <!-- 顶部大图区（使用swiper支持滑动） -->
+  <view class="preview-area">
+    <swiper class="preview-swiper" current="{{currentIndex}}" bindchange="onSwiperChange" circular="{{true}}">
+      <block wx:for="{{photos}}" wx:key="_id">
+        <swiper-item>
+          <image src="{{item.aiUrl || item.originalUrl}}" mode="aspectFit" class="preview-image" bindlongpress="onImageLongPress"></image>
+          <!-- 多选模式下的复选框 -->
+          <view wx:if="{{isSelectionMode}}" class="preview-checkbox" data-id="{{item._id}}" catchtap="onSelectPhoto">
+            <view class="checkbox {{selectedIds.indexOf(item._id) !== -1 ? 'checked' : ''}}">
+              <text wx:if="{{selectedIds.indexOf(item._id) !== -1}}" class="checkmark">✓</text>
+            </view>
+          </view>
+        </swiper-item>
+      </block>
+    </swiper>
+    <view class="image-counter">{{currentIndex+1}}/{{photos.length}}</view>
+  </view>
+
+  <!-- 中部：风格标题 + 缩略图滚动 -->
+  <view class="mid-area" wx:if="{{thumbnails.length > 0}}">
+    <view class="style-title">
+      <text class="style-name">{{currentStyleName || '天使装'}}</text>
+      <text class="style-tip">（随图变化）</text>
+    </view>
+    <scroll-view class="thumb-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="thumb-list">
+        <view wx:for="{{thumbnails}}" wx:key="id" class="thumb-item {{currentIndex === index ? 'active' : ''}}" bindtap="onThumbTap" data-index="{{index}}" bindlongpress="onImageLongPress">
+          <image src="{{item.url}}" mode="aspectFill" class="thumb-img"></image>
+          <!-- 状态徽章 -->
+          <view wx:if="{{item.statusClass === 'processing'}}" class="thumb-badge processing">生成中</view>
+          <view wx:elif="{{item.statusClass === 'completed'}}" class="thumb-badge completed">已完成</view>
+          <view wx:elif="{{item.statusClass === 'failed'}}" class="thumb-badge failed">失败</view>
+          <view wx:elif="{{!item.isGenerated}}" class="thumb-badge pending">未生成</view>
+          <!-- 多选模式下的复选框（缩略图） -->
+          <view wx:if="{{isSelectionMode}}" class="thumb-checkbox" data-id="{{item.id}}" catchtap="onSelectPhoto">
+            <view class="checkbox {{selectedIds.indexOf(item.id) !== -1 ? 'checked' : ''}}">
+              <text wx:if="{{selectedIds.indexOf(item.id) !== -1}}" class="checkmark">✓</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 底部操作栏（普通模式） -->
+  <view class="action-bar" wx:if="{{!isSelectionMode}}">
+    <button class="action-btn generate-btn" bindtap="generateAI">✨ AI生成</button>
+    <button class="action-btn frame-btn" bindtap="createFrameOrder">🖼️ 生成相框</button>
+  </view>
+
+  <!-- 多选模式操作栏 -->
+  <view class="selection-bar" wx:if="{{isSelectionMode}}">
+    <view class="selection-info">已选择 {{selectedIds.length}} 张</view>
+    <view class="selection-actions">
+      <button class="selection-btn" bindtap="toggleFavorite">❤️ 收藏</button>
+      <button class="selection-btn" bindtap="generateAI">✨ AI生成</button>
+      <button class="selection-btn" bindtap="createFrameOrder">🖼️ 相框</button>
+      <button class="selection-btn" bindtap="exitSelectionMode">取消</button>
+    </view>
+  </view>
+
+  <!-- 生成中提示（全局） -->
+  <view wx:if="{{batchStatus === 'generating'}}" class="status-tip">
+    <text>AI生成中，请稍后...</text>
+  </view>
+</view>

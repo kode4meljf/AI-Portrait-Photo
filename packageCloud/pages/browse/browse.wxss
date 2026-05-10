@@ -1,0 +1,242 @@
+/* packageCloud/pages/browse/browse.wxss */
+.browse-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+/* 顶部大图区 */
+.preview-area {
+  flex: 7;
+  position: relative;
+  background: #000;
+}
+.preview-swiper {
+  width: 100%;
+  height: 100%;
+}
+.preview-image {
+  width: 100%;
+  height: 100%;
+}
+.image-counter {
+  position: absolute;
+  bottom: 20rpx;
+  right: 30rpx;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 24rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 40rpx;
+  backdrop-filter: blur(10px);
+}
+.preview-checkbox {
+  position: absolute;
+  top: 20rpx;
+  left: 20rpx;
+  z-index: 10;
+}
+.checkbox {
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0,0,0,0.5);
+  border: 2rpx solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.checkbox.checked {
+  background: #07c160;
+  border-color: #07c160;
+}
+.checkmark {
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+/* 中部区域 */
+.mid-area {
+  flex: 2;
+  background: #1a1a1a;
+  padding: 20rpx 0 30rpx;
+}
+.style-title {
+  padding: 0 30rpx 20rpx;
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
+.style-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.style-tip {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.6);
+}
+.thumb-scroll {
+  white-space: nowrap;
+}
+.thumb-list {
+  display: inline-flex;
+  padding: 0 20rpx;
+  gap: 16rpx;
+}
+.thumb-item {
+  display: inline-block;
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  position: relative;
+  border: 4rpx solid transparent;
+  transition: all 0.2s;
+}
+.thumb-item.active {
+  border-color: #ff69b4;
+  transform: scale(1.05);
+}
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  background: #333;
+}
+.thumb-badge {
+  position: absolute;
+  bottom: 8rpx;
+  left: 8rpx;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  backdrop-filter: blur(4px);
+}
+.thumb-badge.processing {
+  background: #ff9800;
+}
+.thumb-badge.completed {
+  background: #4caf50;
+}
+.thumb-badge.failed {
+  background: #f44336;
+}
+.thumb-badge.pending {
+  background: rgba(0,0,0,0.6);
+}
+.thumb-checkbox {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  z-index: 10;
+}
+.thumb-checkbox .checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(0,0,0,0.5);
+  border: 2rpx solid #fff;
+}
+.thumb-checkbox .checkbox.checked {
+  background: #07c160;
+  border-color: #07c160;
+}
+.thumb-checkbox .checkmark {
+  font-size: 24rpx;
+}
+
+/* 底部操作栏 */
+.action-bar {
+  height: 120rpx;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 40rpx;
+  gap: 30rpx;
+  border-top: 1rpx solid rgba(0,0,0,0.05);
+}
+.action-btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 60rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: none;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.1);
+}
+.generate-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+.frame-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: #fff;
+}
+.action-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* 多选模式工具栏 */
+.selection-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(20px);
+  padding: 20rpx 30rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.selection-info {
+  color: #fff;
+  text-align: center;
+  font-size: 28rpx;
+}
+.selection-actions {
+  display: flex;
+  justify-content: space-around;
+  gap: 16rpx;
+}
+.selection-btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 26rpx;
+  border: 1rpx solid rgba(255,255,255,0.3);
+  border-radius: 60rpx;
+  padding: 0 24rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  flex: 1;
+  text-align: center;
+}
+.selection-btn:active {
+  background: rgba(255,255,255,0.3);
+}
+
+/* 全局提示 */
+.status-tip {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  padding: 20rpx 40rpx;
+  border-radius: 60rpx;
+  font-size: 28rpx;
+  z-index: 100;
+}

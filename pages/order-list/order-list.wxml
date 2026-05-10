@@ -1,0 +1,118 @@
+<!--packageOrder/pages/order-list/order-list.wxml-->
+<view class="order-container">
+  <!-- 可滚动内容区 -->
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{refreshing}}">
+
+    <!-- 统计概览（动态数据） -->
+    <view class="stats-overview">
+      <view class="stats-label">本月累计下单金额</view>
+      <view class="stats-amount">
+        <text class="yuan">¥</text>
+        <text>{{monthTotalAmount}}</text>
+      </view>
+      <view class="stats-trend" wx:if="{{monthCompare}}">
+        <text>{{monthCompare}}</text>
+      </view>
+
+      <view class="category-grid">
+        <view class="cat-cell">
+          <view class="cat-icon">🖼️</view>
+          <view class="cat-num">{{categoryCount.frame}}</view>
+          <view class="cat-name">写真摆台</view>
+        </view>
+        <view class="cat-cell">
+          <view class="cat-icon">📔</view>
+          <view class="cat-num">{{categoryCount.album}}</view>
+          <view class="cat-name">写真集</view>
+        </view>
+        <view class="cat-cell">
+          <view class="cat-icon">📷</view>
+          <view class="cat-num">{{categoryCount.photo}}</view>
+          <view class="cat-name">精修照片</view>
+        </view>
+        <view class="cat-cell">
+          <view class="cat-icon">🎁</view>
+          <view class="cat-num">{{categoryCount.other}}</view>
+          <view class="cat-name">其他商品</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 订单Tab -->
+    <view class="order-tabs">
+      <view wx:for="{{tabs}}" wx:key="status" class="tab-item {{currentTab === item.status ? 'active' : ''}}" data-status="{{item.status}}" bindtap="switchTab">
+        {{item.name}}<text class="tab-count" wx:if="{{item.count > 0}}">{{item.count}}</text>
+      </view>
+    </view>
+
+    <!-- 订单列表（按月份分组） -->
+    <view class="order-list" wx:if="{{orderGroups.length > 0}}">
+      <block wx:for="{{orderGroups}}" wx:key="month">
+        <!-- 月份分隔 + 月度汇总 -->
+        <view class="month-divider">
+          <text class="month-label">{{item.month}}</text>
+          <view class="month-line"></view>
+        </view>
+        <view class="month-summary">
+          <text class="ms-label">{{item.month}}累计订单</text>
+          <view style="text-align:right">
+            <text class="ms-amount">¥{{item.totalAmount}}</text>
+            <!-- 可选同比，暂不显示 -->
+          </view>
+        </view>
+
+        <!-- 该月份下的订单卡片 -->
+        <view wx:for="{{item.orders}}" wx:for-item="order" wx:key="_id" class="order-card">
+          <view class="order-header">
+            <view class="order-customer">
+              <view class="customer-avatar">
+                <image src="{{order.customerInfo.avatarUrl || 'https://picsum.photos/72/72?random=1'}}" mode="aspectFill"></image>
+              </view>
+              <view>
+                <view class="customer-name">{{order.customerInfo.nickName || '匿名客户'}}</view>
+                <view class="customer-time">{{order.createTimeStr}}</view>
+              </view>
+            </view>
+            <view class="order-status {{order.statusClass}}">{{order.statusText}}</view>
+          </view>
+          <view class="order-body">
+            <view class="order-products">
+              <!-- 展示订单中的商品（目前每个订单只有一个相框，但保留多个的扩展） -->
+              <block wx:for="{{order.items}}" wx:for-item="item" wx:key="index">
+                <view class="order-product">
+                  <view class="product-thumb">
+                    <image src="{{item.thumb || 'https://picsum.photos/96/96?random=2'}}" mode="aspectFill"></image>
+                  </view>
+                  <view class="product-info">
+                    <view class="product-name">{{item.name}}</view>
+                    <view class="product-spec">{{item.spec}}</view>
+                  </view>
+                  <view class="product-price">¥{{item.price}}</view>
+                </view>
+              </block>
+            </view>
+          </view>
+          <view class="order-footer">
+            <view class="order-total">合计¥<text class="total-price">{{order.totalPrice}}</text></view>
+            <view class="order-actions">
+              <button class="action-btn secondary" data-order="{{order}}" bindtap="onOrderDetail">详情</button>
+              <button wx:if="{{order.status === 'pending'}}" class="action-btn primary" data-order="{{order}}" bindtap="onConfirmProduction">确认制作</button>
+              <button wx:if="{{order.status === 'producing'}}" class="action-btn secondary" data-order="{{order}}" bindtap="onViewLogistics">📦 查看物流</button>
+              <button wx:if="{{order.status === 'shipped'}}" class="action-btn secondary" data-order="{{order}}" bindtap="onConfirmReceipt">✅ 确认签收</button>
+              <!-- 已完成订单只显示详情 -->
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{!loading && orderGroups.length === 0}}" class="empty-tip">
+      <text>暂无订单</text>
+    </view>
+
+    <!-- 加载更多 -->
+    <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
+    <view wx:if="{{!hasMore && orderGroups.length > 0}}" class="no-more">没有更多了</view>
+  </scroll-view>
+</view>

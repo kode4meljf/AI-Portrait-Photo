@@ -1,0 +1,16 @@
+{
+  "name": "ai-portrait-miniprogram_v2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app - 副本.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@babel/runtime": "^7.29.2"
+  }
+}

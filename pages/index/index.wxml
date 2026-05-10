@@ -1,0 +1,129 @@
+<!--pages/index/index.wxml-->
+<view class="phone-container">
+  <!-- 可滚动内容区 -->
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <!-- 头部：门店信息 + 快捷数据 -->
+    <view class="home-header">
+      <view class="header-row">
+        <view class="store-avatar">🏪</view>
+        <view>
+          <view class="store-name">{{storeInfo.name || '光影时代写真馆'}}</view>
+          <view class="store-sub">欢迎使用 AI 写真服务</view>
+        </view>
+      </view>
+      <view class="quick-stats">
+        <view class="stat-chip">今日服务 <text class="val">{{todayServiceCount}}</text> 人</view>
+        <view class="stat-chip">剩余额度 <text class="val">{{storeInfo.balance || 0}}</text> 次</view>
+      </view>
+    </view>
+
+    <!-- 拍摄主卡片 -->
+    <view class="shoot-section">
+      <view class="shoot-card">
+        <view class="camera-wrap" bindtap="showShootModal">
+          <text class="camera-icon">📷</text>
+        </view>
+        <view class="shoot-title">立即拍摄写真</view>
+        <view class="shoot-sub">为顾客拍摄一张正面照，AI 智能生成 9 张风格写真</view>
+        <view class="shoot-btn" bindtap="showShootModal">
+          <text>▶</text>
+          <text>开始拍摄</text>
+        </view>
+        <view class="shoot-tip">
+          <text>📷 相机拍摄</text>
+          <text>🖼 相册选择</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 客户打卡与权益卡片（保留原有功能） -->
+    <view class="customer-card">
+      <view class="customer-header">
+        <text class="customer-title">当前客户</text>
+        <view class="customer-actions">
+          <button wx:if="{{!selectedCustomer}}" class="btn-select" bindtap="onSelectCustomer">选择客户</button>
+          <button wx:if="{{selectedCustomer}}" class="btn-cancel" bindtap="onCancelSelect">取消选择</button>
+        </view>
+      </view>
+      <view wx:if="{{!selectedCustomer}}" class="customer-placeholder">请选择客户</view>
+      <view wx:else class="customer-info">
+        <image class="customer-avatar" src="{{selectedCustomer.avatarUrl}}" mode="aspectFill"></image>
+        <view class="customer-detail">
+          <text class="customer-name">{{selectedCustomer.nickName}}</text>
+          <view class="customer-equity">
+            <text>相册剩余 {{equityAlbum}} 次</text>
+            <text>相框剩余 {{equityFrame}} 次</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 最近服务（静态示例，可后续对接数据） -->
+    <view class="section-header">
+      <view class="s-title">最近服务</view>
+      <view class="s-more" bindtap="onViewAllCustomers">全部客户 ›</view>
+    </view>
+    <view class="recent-list">
+      <block wx:for="{{recentCustomers}}" wx:key="index">
+        <view class="recent-card">
+          <view class="recent-avatar">
+            <image src="{{item.avatar}}" mode="aspectFill"></image>
+          </view>
+          <view class="recent-info">
+            <view class="recent-name">{{item.name}}</view>
+            <view class="recent-meta">
+              <text>{{item.time}}</text>
+              <text class="recent-tag {{item.tagClass}}">{{item.tagText}}</text>
+            </view>
+          </view>
+          <view class="recent-action" data-id="{{item.id}}" bindtap="onRecentItemTap">去处理 ›</view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 风格样板展示（保留原有模板数据） -->
+    <view class="showcase-section">
+      <view class="section-header" style="padding: 0 0 10rpx;">
+        <view class="s-title">风格样板展示</view>
+        <view class="s-more" bindtap="onMoreTemplates">更多 ›</view>
+      </view>
+      <view class="showcase-grid">
+        <block wx:for="{{templates}}" wx:key="id">
+          <view class="showcase-item" bindtap="previewTemplate" data-index="{{index}}">
+            <image src="{{item.thumb}}" mode="aspectFill"></image>
+            <view class="showcase-label">{{item.name}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <view style="height: 20rpx;"></view>
+  </scroll-view>
+
+  <!-- 拍摄来源选择弹窗 -->
+  <view class="modal-overlay" wx:if="{{showModal}}" bindtap="hideShootModal">
+    <view class="modal-sheet" catchtap="stopPropagation">
+      <view class="modal-handle"></view>
+      <view class="modal-title">选择图片来源</view>
+      <view class="modal-sub">请选择拍摄方式或从相册选择照片</view>
+      <view class="modal-options">
+        <view class="modal-option" bindtap="takePhotoFromCamera">
+          <text class="opt-icon">📷</text>
+          <view>
+            <view class="opt-text">相机拍摄</view>
+            <view class="opt-sub">使用手机相机拍摄正面照</view>
+          </view>
+        </view>
+        <view class="modal-option" bindtap="choosePhotoFromAlbum">
+          <text class="opt-icon">🖼️</text>
+          <view>
+            <view class="opt-text">相册选择</view>
+            <view class="opt-sub">从已有照片中选择正面照</view>
+          </view>
+        </view>
+      </view>
+      <view class="modal-cancel" bindtap="hideShootModal">取消</view>
+    </view>
+  </view>
+</view>
