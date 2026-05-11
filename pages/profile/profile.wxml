@@ -18,6 +18,7 @@
           </view>
         </view>
         <view class="edit-btn" bindtap="onEditStore">编辑</view>
+        <view class="init-btn" bindtap="onInitTestData">初始化数据</view>
       </view>
       <view class="store-address">
         <text class="addr-icon">📍</text>

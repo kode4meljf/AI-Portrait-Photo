@@ -177,8 +177,31 @@ Page({
     wx.previewImage({ current: url, urls: [url] });
   },
 
+  // 初始化测试客户数据（开发调试用）
+  async onInitTestData() {
+    wx.showLoading({ title: '插入中...' });
+    try {
+      const res = await wx.cloud.callFunction({ name: 'initTestData' });
+      wx.hideLoading();
+      if (res.result.success) {
+        wx.showToast({ title: `成功${res.result.message}`, icon: 'none' });
+      } else {
+        wx.showToast({ title: res.result.message || '失败', icon: 'none' });
+      }
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: '云函数未部署', icon: 'none' });
+    }
+  },
+
   onEditStore() {
-    wx.navigateTo({ url: "/packageProfile/pages/edit-store/edit-store" });
+    wx.navigateTo({
+      url: "/packageProfile/pages/edit-store/edit-store",
+      fail: (err) => {
+        console.error("导航到编辑页面失败:", err);
+        wx.showToast({ title: "页面加载失败", icon: "none" });
+      }
+    });
   },
 
   // 充值/升级会员
