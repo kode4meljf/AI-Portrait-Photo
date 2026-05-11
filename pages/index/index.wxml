@@ -21,7 +21,7 @@
     <!-- 拍摄主卡片 -->
     <view class="shoot-section">
       <view class="shoot-card">
-        <view class="camera-wrap">
+        <view class="camera-wrap" bindtap="chooseMedia">
           <text class="camera-icon">📷</text>
         </view>
         <view class="shoot-title">立即拍摄写真</view>
