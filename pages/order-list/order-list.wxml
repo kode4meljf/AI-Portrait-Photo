@@ -3,37 +3,38 @@
   <!-- 可滚动内容区 -->
   <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{refreshing}}">
 
-    <!-- 统计概览（动态数据） -->
+    <!-- 统计概览（5个状态横向卡片） -->
     <view class="stats-overview">
-      <view class="stats-label">本月累计下单金额</view>
-      <view class="stats-amount">
-        <text class="yuan">¥</text>
-        <text>{{monthTotalAmount}}</text>
-      </view>
-      <view class="stats-trend" wx:if="{{monthCompare}}">
-        <text>{{monthCompare}}</text>
-      </view>
-
-      <view class="category-grid">
-        <view class="cat-cell">
-          <view class="cat-icon">🖼️</view>
-          <view class="cat-num">{{categoryCount.frame}}</view>
-          <view class="cat-name">写真摆台</view>
+      <view class="status-cards">
+        <view class="status-card" bindtap="switchTab" data-status="all">
+          <view class="status-name">全部</view>
+          <view class="status-count-bg orange">
+            <text class="status-count">{{orderStats.all}}</text>
+          </view>
         </view>
-        <view class="cat-cell">
-          <view class="cat-icon">📔</view>
-          <view class="cat-num">{{categoryCount.album}}</view>
-          <view class="cat-name">写真集</view>
+        <view class="status-card" bindtap="switchTab" data-status="pending">
+          <view class="status-name">待处理</view>
+          <view class="status-count-bg orange">
+            <text class="status-count">{{orderStats.pending}}</text>
+          </view>
         </view>
-        <view class="cat-cell">
-          <view class="cat-icon">📷</view>
-          <view class="cat-num">{{categoryCount.photo}}</view>
-          <view class="cat-name">精修照片</view>
+        <view class="status-card" bindtap="switchTab" data-status="producing">
+          <view class="status-name">制作中</view>
+          <view class="status-count-bg blue">
+            <text class="status-count">{{orderStats.producing}}</text>
+          </view>
         </view>
-        <view class="cat-cell">
-          <view class="cat-icon">🎁</view>
-          <view class="cat-num">{{categoryCount.other}}</view>
-          <view class="cat-name">其他商品</view>
+        <view class="status-card" bindtap="switchTab" data-status="shipped">
+          <view class="status-name">已发货</view>
+          <view class="status-count-bg green">
+            <text class="status-count">{{orderStats.shipped}}</text>
+          </view>
+        </view>
+        <view class="status-card" bindtap="switchTab" data-status="done">
+          <view class="status-name">已完成</view>
+          <view class="status-count-bg gray">
+            <text class="status-count">{{orderStats.done}}</text>
+          </view>
         </view>
       </view>
     </view>
