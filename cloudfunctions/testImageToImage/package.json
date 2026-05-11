@@ -1,9 +1,0 @@
-{
-  "name": "testImageToImage",
-  "version": "1.0.0",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3",
-    "axios": "0.27.2",
-    "tencentcloud-sdk-nodejs": "^4.0.3"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "name": "processAIReplaceBg",
-  "version": "1.0.0",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3",
-    "axios": "^1.6.0",
-    "jimp": "^0.22.0"
-  }
-}
