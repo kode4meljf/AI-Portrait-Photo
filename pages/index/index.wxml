@@ -13,7 +13,7 @@
         </view>
       </view>
       <view class="quick-stats">
-        <view class="stat-chip">今日服务 <text class="val">{{todayServiceCount}}</text> 人</view>
+        <view class="stat-chip">今日服务 <text class="val">{{todayServiceCount || 0}}</text> 人</view>
         <view class="stat-chip">剩余额度 <text class="val">{{storeInfo.balance || 0}}</text> 次</view>
       </view>
     </view>
