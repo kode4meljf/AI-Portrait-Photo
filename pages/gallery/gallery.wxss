@@ -6,19 +6,6 @@
   flex-direction: column;
 }
 
-/* 顶部导航栏 */
-.nav-bar {
-  background: #fff;
-  padding: 24rpx 0 16rpx;
-  text-align: center;
-  border-bottom: 2rpx solid #f0f0f0;
-}
-.nav-title {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #1a1a2e;
-}
-
 /* Tab栏 */
 .tabs {
   display: flex;

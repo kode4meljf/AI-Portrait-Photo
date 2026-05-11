@@ -1,10 +1,5 @@
 <!--pages/gallery/gallery.wxml-->
 <view class="gallery-container">
-  <!-- 顶部导航栏 -->
-  <view class="nav-bar">
-    <text class="nav-title">云相册</text>
-  </view>
-
   <!-- Tab栏 -->
   <view class="tabs">
     <view class="tab {{activeTab === 'time' ? 'active' : ''}}" bindtap="switchTab" data-tab="time">

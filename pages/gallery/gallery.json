@@ -1,6 +1,6 @@
 {
-  "navigationStyle": "custom",
+  "navigationBarTitleText": "云相册",
   "usingComponents": {},
-  "enablePullDownRefresh": false,
+  "enablePullDownRefresh": true,
   "onReachBottomDistance": 100
 }
