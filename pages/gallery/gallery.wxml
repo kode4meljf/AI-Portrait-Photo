@@ -1,51 +1,99 @@
 <!--pages/gallery/gallery.wxml-->
 <view class="gallery-container">
-  <!-- Tab栏 -->
+  <!-- Tab栏（fixed，内容区独立滑动切换） -->
   <view class="tabs">
-    <view class="tab {{activeTab === 'time' ? 'active' : ''}}" bindtap="switchTab" data-tab="time">
-      按时间
-    </view>
-    <view class="tab {{activeTab === 'fav' ? 'active' : ''}}" bindtap="switchTab" data-tab="fav">
-      按收藏
-    </view>
+    <view class="tab {{activeTabIndex === 0 ? 'active' : ''}}" bindtap="switchTab" data-index="0">按时间</view>
+    <view class="tab {{activeTabIndex === 1 ? 'active' : ''}}" bindtap="switchTab" data-index="1">按收藏</view>
   </view>
 
-  <!-- 内容区域 -->
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{refreshing}}">
-    <view wx:if="{{batchGroups.length === 0 && !loading}}" class="empty-tip">暂无照片</view>
-
-    <block wx:for="{{batchGroups}}" wx:key="month">
-      <!-- 月份标题 -->
-      <view class="month-group">
-        <view class="month-title">{{item.month}}月</view>
-      </view>
-
-      <!-- 批次列表 -->
-      <view class="batch-list">
-        <view wx:for="{{item.batches}}" wx:key="_id" class="batch-card" bindtap="onBatchTap" data-batch="{{item}}">
-          <!-- 批次头部：日期 + 状态 + 下载按钮 -->
-          <view class="batch-header">
-            <view class="batch-date">{{item.createTimeStr}}</view>
-            <view class="batch-status {{item.status}}">
-              <text wx:if="{{item.status === 'completed'}}">已完成</text>
-              <text wx:elif="{{item.status === 'generating'}}">生成中 {{item.generatedCount}}/{{item.photoCount}}</text>
-              <text wx:else>待生成</text>
-            </view>
-            <view class="download-btn" catchtap="onDownloadBatch" data-batch="{{item}}">下载</view>
+  <!-- 内容区：swiper 左右滑动切换 -->
+  <swiper class="content-swiper" current="{{activeTabIndex}}" bindchange="onSwiperChange" duration="300">
+    <!-- 按时间 -->
+    <swiper-item>
+      <scroll-view
+        class="scroll-area"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        refresher-enabled="{{true}}"
+        bindrefresherrefresh="onRefresh"
+        refresher-triggered="{{timeRefreshing}}"
+        bindscrolltolower="onScrollLower"
+        lower-threshold="100"
+      >
+        <view wx:if="{{timeGroups.length === 0 && !timeLoading}}" class="empty-tip">暂无照片</view>
+        <block wx:for="{{timeGroups}}" wx:key="month">
+          <view class="month-group">
+            <view class="month-title">{{item.month}}</view>
           </view>
-          <!-- 缩略图网格（最多8张） -->
-          <view class="batch-thumbs">
-            <block wx:for="{{item.thumbnails}}" wx:key="index">
-              <view class="thumb-item">
-                <image src="{{item}}" mode="aspectFill" class="thumb-img"></image>
+          <view class="batch-list">
+            <view wx:for="{{item.batches}}" wx:key="_id" class="batch-card" bindtap="onBatchTap" data-batch="{{item}}">
+              <view class="batch-header">
+                <view class="batch-date">{{item.createTimeStr}}</view>
+                <view class="batch-status {{item.status}}">
+                  <text wx:if="{{item.status === 'completed'}}">已完成</text>
+                  <text wx:elif="{{item.status === 'generating'}}">生成中 {{item.generatedCount}}/{{item.photoCount}}</text>
+                  <text wx:else>待生成</text>
+                </view>
+                <view class="download-btn" catchtap="onDownloadBatch" data-batch="{{item}}">下载</view>
               </view>
-            </block>
+              <view class="batch-thumbs">
+                <block wx:for="{{item.thumbnails}}" wx:key="index">
+                  <view class="thumb-item">
+                    <image src="{{item}}" mode="aspectFill" class="thumb-img"></image>
+                  </view>
+                </block>
+              </view>
+            </view>
           </view>
-        </view>
-      </view>
-    </block>
+        </block>
+        <view wx:if="{{timeLoading}}" class="loading-tip">加载中...</view>
+        <view wx:if="{{!timeHasMore && timeGroups.length > 0}}" class="no-more">没有更多了</view>
+      </scroll-view>
+    </swiper-item>
 
-    <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
-    <view wx:if="{{!hasMore && batchGroups.length > 0}}" class="no-more">没有更多了</view>
-  </scroll-view>
+    <!-- 按收藏 -->
+    <swiper-item>
+      <scroll-view
+        class="scroll-area"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        refresher-enabled="{{true}}"
+        bindrefresherrefresh="onRefresh"
+        refresher-triggered="{{favRefreshing}}"
+        bindscrolltolower="onScrollLower"
+        lower-threshold="100"
+      >
+        <view wx:if="{{favGroups.length === 0 && !favLoading}}" class="empty-tip">暂无收藏照片</view>
+        <block wx:for="{{favGroups}}" wx:key="month">
+          <view class="month-group">
+            <view class="month-title">{{item.month}}</view>
+          </view>
+          <view class="batch-list">
+            <view wx:for="{{item.batches}}" wx:key="_id" class="batch-card" bindtap="onBatchTap" data-batch="{{item}}">
+              <view class="batch-header">
+                <view class="batch-date">{{item.createTimeStr}}</view>
+                <view class="batch-status {{item.status}}">
+                  <text wx:if="{{item.status === 'completed'}}">已完成</text>
+                  <text wx:elif="{{item.status === 'generating'}}">生成中 {{item.generatedCount}}/{{item.photoCount}}</text>
+                  <text wx:else>待生成</text>
+                </view>
+                <view class="download-btn" catchtap="onDownloadBatch" data-batch="{{item}}">下载</view>
+              </view>
+              <view class="batch-thumbs">
+                <block wx:for="{{item.thumbnails}}" wx:key="index">
+                  <view class="thumb-item">
+                    <image src="{{item}}" mode="aspectFill" class="thumb-img"></image>
+                  </view>
+                </block>
+              </view>
+            </view>
+          </view>
+        </block>
+        <view wx:if="{{favLoading}}" class="loading-tip">加载中...</view>
+        <view wx:if="{{!favHasMore && favGroups.length > 0}}" class="no-more">没有更多了</view>
+      </scroll-view>
+    </swiper-item>
+  </swiper>
 </view>

@@ -36,9 +36,20 @@
   border-radius: 2rpx;
 }
 
+/* 内容区（swiper） */
+.content-swiper {
+  flex: 1;
+  height: 0;
+}
+
+/* 每个 swiper-item 填满 */
+.content-swiper swiper-item {
+  height: 100%;
+}
+
 /* 滚动区域 */
 .scroll-area {
-  flex: 1;
+  height: 100%;
   overflow-y: auto;
   padding: 20rpx 32rpx 40rpx;
 }
