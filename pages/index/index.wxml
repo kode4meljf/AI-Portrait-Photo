@@ -21,19 +21,15 @@
     <!-- 拍摄主卡片 -->
     <view class="shoot-section">
       <view class="shoot-card">
-        <view class="camera-wrap" bindtap="showShootModal">
+        <view class="camera-wrap">
           <text class="camera-icon">📷</text>
         </view>
         <view class="shoot-title">立即拍摄写真</view>
         <view class="shoot-sub">为顾客拍摄一张正面照，AI 智能生成 9 张风格写真</view>
-        <view class="shoot-btn" bindtap="showShootModal">
+        <button class="shoot-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
           <text>▶</text>
           <text>开始拍摄</text>
-        </view>
-        <view class="shoot-tip">
-          <text>📷 相机拍摄</text>
-          <text>🖼 相册选择</text>
-        </view>
+        </button>
       </view>
     </view>
 
@@ -101,29 +97,3 @@
     <view style="height: 20rpx;"></view>
   </scroll-view>
 
-  <!-- 拍摄来源选择弹窗 -->
-  <view class="modal-overlay" wx:if="{{showModal}}" bindtap="hideShootModal">
-    <view class="modal-sheet" catchtap="stopPropagation">
-      <view class="modal-handle"></view>
-      <view class="modal-title">选择图片来源</view>
-      <view class="modal-sub">请选择拍摄方式或从相册选择照片</view>
-      <view class="modal-options">
-        <view class="modal-option" bindtap="takePhotoFromCamera">
-          <text class="opt-icon">📷</text>
-          <view>
-            <view class="opt-text">相机拍摄</view>
-            <view class="opt-sub">使用手机相机拍摄正面照</view>
-          </view>
-        </view>
-        <view class="modal-option" bindtap="choosePhotoFromAlbum">
-          <text class="opt-icon">🖼️</text>
-          <view>
-            <view class="opt-text">相册选择</view>
-            <view class="opt-sub">从已有照片中选择正面照</view>
-          </view>
-        </view>
-      </view>
-      <view class="modal-cancel" bindtap="hideShootModal">取消</view>
-    </view>
-  </view>
-</view>

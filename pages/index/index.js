@@ -17,8 +17,6 @@ Page({
     templates: [],
     // 门店信息
     storeInfo: null,
-    // 弹窗控制
-    showModal: false,
     // 加载状态
     loading: false
   },
@@ -138,59 +136,56 @@ Page({
   },
 
   // ==================== 拍照/相册上传 ====================
-  showShootModal() {
-    this.setData({ showModal: true });
+  // 微信原生 chooseAvatar 回调（单张）
+  onChooseAvatar(e) {
+    const { avatarUrl } = e.detail;
+    if (!avatarUrl) return;
+    wx.showLoading({ title: '处理中...' });
+    this.chooseMedia('album', [avatarUrl]);
   },
 
-  hideShootModal() {
-    this.setData({ showModal: false });
-  },
+  // 通用选择媒体方法（适配单张和多张）
+  chooseMedia(sourceType, filePaths) {
+    const doUpload = async (files) => {
+      try {
+        const batchId = await this.createBatch();
+        let successCount = 0;
+        for (const file of files) {
+          const filePath = typeof file === 'string' ? file : file.tempFilePath;
+          const ok = await this.uploadAndSavePhoto(filePath, batchId);
+          if (ok) successCount++;
+        }
+        wx.hideLoading();
+        if (successCount > 0) {
+          wx.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
+          const pages = getCurrentPages();
+          const galleryPage = pages.find(p => p.route === 'pages/gallery/gallery');
+          if (galleryPage && galleryPage.refreshData) {
+            galleryPage.refreshData();
+          }
+        } else {
+          wx.showToast({ title: '上传失败，请重试', icon: 'error' });
+        }
+      } catch (err) {
+        console.error('上传过程出错', err);
+        wx.hideLoading();
+        wx.showToast({ title: '上传失败', icon: 'error' });
+      }
+    };
 
-  stopPropagation() {},
+    // 如果外部已传入 filePaths（如 chooseAvatar），直接上传
+    if (filePaths && filePaths.length > 0) {
+      return doUpload(filePaths);
+    }
 
-  takePhotoFromCamera() {
-    this.hideShootModal();
-    this.chooseMedia('camera');
-  },
-
-  choosePhotoFromAlbum() {
-    this.hideShootModal();
-    this.chooseMedia('album');
-  },
-
-  chooseMedia(sourceType) {
+    // 否则调用 wx.chooseMedia（多张场景，如未来扩展）
     wx.chooseMedia({
       count: 9,
       mediaType: ['image'],
       sourceType: [sourceType],
       success: async (res) => {
         wx.showLoading({ title: '处理中...' });
-        try {
-          // 1. 先创建一个批次
-          const batchId = await this.createBatch();
-          let successCount = 0;
-          // 2. 循环上传每张图片
-          for (const file of res.tempFiles) {
-            const ok = await this.uploadAndSavePhoto(file.tempFilePath, batchId);
-            if (ok) successCount++;
-          }
-          wx.hideLoading();
-          if (successCount > 0) {
-            wx.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
-            // 刷新云相册页面（如果已打开）
-            const pages = getCurrentPages();
-            const galleryPage = pages.find(p => p.route === 'pages/gallery/gallery');
-            if (galleryPage && galleryPage.refreshData) {
-              galleryPage.refreshData();
-            }
-          } else {
-            wx.showToast({ title: '上传失败，请重试', icon: 'error' });
-          }
-        } catch (err) {
-          console.error('上传过程出错', err);
-          wx.hideLoading();
-          wx.showToast({ title: '上传失败', icon: 'error' });
-        }
+        doUpload(res.tempFiles);
       },
       fail: (err) => {
         console.error('选择图片失败', err);

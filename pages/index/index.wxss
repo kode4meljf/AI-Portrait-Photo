@@ -153,9 +153,14 @@
   gap: 16rpx;
   box-shadow: 0 8rpx 32rpx rgba(232,184,109,0.4);
   letter-spacing: 2rpx;
+  border: none;
+  outline: none;
+  padding: 0;
+  line-height: 1;
 }
 .shoot-btn:active {
   transform: scale(0.97);
+  opacity: 0.9;
 }
 .shoot-tip {
   display: flex;
@@ -170,6 +175,7 @@
   align-items: center;
   gap: 6rpx;
 }
+
 
 /* 客户卡片 */
 .customer-card {
@@ -365,78 +371,3 @@
   text-align: center;
 }
 
-/* 弹窗 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: flex-end;
-  z-index: 1000;
-}
-.modal-sheet {
-  background: #fff;
-  border-radius: 40rpx 40rpx 0 0;
-  padding: 48rpx 40rpx 80rpx;
-  width: 100%;
-  animation: slideUp 0.3s ease;
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-.modal-handle {
-  width: 72rpx;
-  height: 8rpx;
-  background: #e2e4ea;
-  border-radius: 4rpx;
-  margin: 0 auto 40rpx;
-}
-.modal-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 12rpx;
-}
-.modal-sub {
-  font-size: 24rpx;
-  color: #999;
-  text-align: center;
-  margin-bottom: 48rpx;
-}
-.modal-options {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-.modal-option {
-  display: flex;
-  align-items: center;
-  gap: 28rpx;
-  padding: 32rpx;
-  background: #f8f8f8;
-  border-radius: 28rpx;
-}
-.opt-icon {
-  font-size: 56rpx;
-}
-.opt-text {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1a2e;
-}
-.opt-sub {
-  font-size: 22rpx;
-  color: #999;
-  margin-top: 4rpx;
-}
-.modal-cancel {
-  margin-top: 24rpx;
-  text-align: center;
-  font-size: 28rpx;
-  color: #999;
-  padding: 24rpx;
-}
