@@ -3,10 +3,7 @@
     "pages/index/index",
     "pages/gallery/gallery",
     "pages/order-list/order-list",
-    "pages/profile/profile",
-    "cloudfunctions/createOrder/package.json",
-    "cloudfunctions/processAIReplaceBg/1",
-    "cloudfunctions/lib/signature"
+    "pages/profile/profile"
   ],
   "subpackages": [
     {
