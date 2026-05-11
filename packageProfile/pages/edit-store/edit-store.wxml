@@ -1,6 +1,9 @@
 <view class="container">
   <view class="avatar-section" bindtap="chooseAvatar">
-    <image class="avatar" src="{{form.avatarUrl || '/assets/images/default-store.png'}}" mode="aspectFill"></image>
+    <view wx:if="{{form.avatarUrl}}" class="avatar">
+      <image class="avatar-img" src="{{form.avatarUrl}}" mode="aspectFill"></image>
+    </view>
+    <view wx:else class="avatar avatar-emoji">🏪</view>
     <text class="avatar-tip">点击更换头像</text>
   </view>
 

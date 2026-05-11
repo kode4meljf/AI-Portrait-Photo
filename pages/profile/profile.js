@@ -171,6 +171,12 @@ Page({
   },
 
   // 编辑门店信息
+  previewStoreAvatar() {
+    const url = this.data.storeInfo?.avatarUrl;
+    if (!url) return;
+    wx.previewImage({ current: url, urls: [url] });
+  },
+
   onEditStore() {
     wx.navigateTo({ url: "/packageProfile/pages/edit-store/edit-store" });
   },

@@ -5,7 +5,10 @@
     <!-- 门店信息头部 -->
     <view class="store-header">
       <view class="store-top">
-        <view class="store-avatar">🏪</view>
+        <view wx:if="{{storeInfo.avatarUrl}}" class="store-avatar" bindtap="previewStoreAvatar">
+          <image class="store-avatar-img" src="{{storeInfo.avatarUrl}}" mode="aspectFill"></image>
+        </view>
+        <view wx:else class="store-avatar store-avatar-emoji">🏪</view>
         <view class="store-info">
           <view class="store-name">{{storeInfo.name || 'AI写真馆'}}</view>
           <view class="store-contact">
