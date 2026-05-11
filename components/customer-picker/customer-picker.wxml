@@ -1,0 +1,64 @@
+<view class="picker-overlay {{visible ? 'active' : ''}}" bindtap="onOverlayTap">
+  <view class="picker-sheet {{visible ? 'active' : ''}}" catchtap="stopPropagation">
+    <!-- 顶部栏 -->
+    <view class="picker-header">
+      <text class="picker-title">选择客户</text>
+      <view class="close-btn" bindtap="onClose">×</view>
+    </view>
+    <view class="header-line"></view>
+
+    <!-- 搜索栏 -->
+    <view class="search-bar-wrap">
+      <view class="search-bar">
+        <text class="search-icon">🔍</text>
+        <input
+          class="search-input"
+          placeholder="搜索客户姓名或手机号"
+          value="{{searchKeyword}}"
+          bindinput="onSearchInput"
+          bindconfirm="onSearchInput"
+          focus="{{visible}}"
+        />
+        <text wx:if="{{searchKeyword}}" class="clear-icon" bindtap="onClearSearch">×</text>
+      </view>
+    </view>
+
+    <!-- 客户列表 -->
+    <scroll-view
+      class="customer-scroll"
+      scroll-y
+      enable-back-to-top
+      bindscrolltolower="onReachBottom"
+      refresher-enabled
+      bindrefresherrefresh="onPullDownRefresh"
+      refresher-triggered="{{refreshing}}"
+    >
+      <view wx:if="{{filteredCustomers.length === 0 && !loading}}" class="empty-tip">
+        <text wx:if="{{searchKeyword}}">未找到匹配的客户</text>
+        <text wx:else>暂无客户</text>
+      </view>
+
+      <view wx:for="{{filteredCustomers}}" wx:key="_id" class="customer-item {{item._id === selectedId ? 'selected' : ''}}" bindtap="onCustomerTap" data-customer="{{item}}">
+        <image class="customer-avatar" src="{{item.avatarUrl || '/assets/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <view class="customer-info">
+          <text class="customer-name">{{item.nickName || '匿名用户'}}</text>
+          <text class="customer-phone">{{item.phone || '未绑定手机'}}</text>
+        </view>
+        <view class="customer-right">
+          <view class="checkin-badge" wx:if="{{item.totalCheckins > 0}}">
+            <text>打卡 {{item.totalCheckins}} 次</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+      </view>
+
+      <view wx:if="{{loading && filteredCustomers.length > 0}}" class="loading-tip">加载中...</view>
+      <view wx:if="{{!hasMore && filteredCustomers.length > 0}}" class="no-more">没有更多了</view>
+    </scroll-view>
+
+    <!-- 底部统计栏 -->
+    <view class="stats-bar">
+      <text>累计客户 {{totalCustomers}} 人 / 共打卡 {{totalCheckins}} 次</text>
+    </view>
+  </view>
+</view>

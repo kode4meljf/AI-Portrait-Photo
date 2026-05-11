@@ -11,6 +11,7 @@ Page({
     // 客户相关
     selectedCustomer: null,
     showCancelBtn: false,
+    pickerVisible: false,
     checkinDays: 0,
     equityAlbum: 0,
     equityFrame: 0,
@@ -114,7 +115,19 @@ Page({
   },
 
   onSelectCustomer() {
-    wx.navigateTo({ url: '/packageProfile/pages/customer-list/customer-list?selectMode=true' });
+    this.setData({ pickerVisible: true });
+  },
+
+  // 客户选择器回调
+  onPickerSelect(e) {
+    const { customer } = e.detail;
+    this.setData({ pickerVisible: false, selectedCustomer: customer });
+    this.refreshCustomerInfo();
+  },
+
+  // 客户选择器关闭
+  onPickerClose() {
+    this.setData({ pickerVisible: false });
   },
 
   onCancelSelect() {
@@ -160,14 +173,5 @@ Page({
   // ==================== 其他功能 ====================
   onMoreTemplates() {
     wx.showToast({ title: '更多风格即将上线', icon: 'none' });
-  },
-
-  onViewAllCustomers() {
-    wx.navigateTo({ url: '/packageProfile/pages/customer-list/customer-list?selectMode=false' });
-  },
-
-  onRecentItemTap(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showToast({ title: `查看详情 ${id}`, icon: 'none' });
   }
 });

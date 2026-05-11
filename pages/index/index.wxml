@@ -55,29 +55,6 @@
       </view>
     </view>
 
-    <!-- 最近服务（静态示例，可后续对接数据） -->
-    <view class="section-header">
-      <view class="s-title">最近服务</view>
-      <view class="s-more" bindtap="onViewAllCustomers">全部客户 ›</view>
-    </view>
-    <view class="recent-list">
-      <block wx:for="{{recentCustomers}}" wx:key="index">
-        <view class="recent-card">
-          <view class="recent-avatar">
-            <image src="{{item.avatar}}" mode="aspectFill"></image>
-          </view>
-          <view class="recent-info">
-            <view class="recent-name">{{item.name}}</view>
-            <view class="recent-meta">
-              <text>{{item.time}}</text>
-              <text class="recent-tag {{item.tagClass}}">{{item.tagText}}</text>
-            </view>
-          </view>
-          <view class="recent-action" data-id="{{item.id}}" bindtap="onRecentItemTap">去处理 ›</view>
-        </view>
-      </block>
-    </view>
-
     <!-- 风格样板展示（保留原有模板数据） -->
     <view class="showcase-section">
       <view class="section-header" style="padding: 0 0 10rpx;">
@@ -98,5 +75,13 @@
   </scroll-view>
 
 
+
+  <!-- 客户选择底部弹窗 -->
+  <customer-picker
+    visible="{{pickerVisible}}"
+    selectedId="{{selectedCustomer?._id || ''}}"
+    bind:select="onPickerSelect"
+    bind:close="onPickerClose"
+  />
 
 </view>
