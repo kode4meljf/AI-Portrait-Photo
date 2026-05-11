@@ -18,7 +18,6 @@
           </view>
         </view>
         <view class="edit-btn" bindtap="onEditStore">编辑</view>
-        <view class="init-btn" bindtap="onInitTestData">初始化数据</view>
       </view>
       <view class="store-address">
         <text class="addr-icon">📍</text>
@@ -56,7 +55,7 @@
         </view>
       </view>
 
-      <view class="recharge-btn" bindtap="onRecharge">
+      <view class="recharge-btn" bindtap="onInitTestData">
         <text>⚡ 充值套餐 · 升级会员</text>
       </view>
     </view>
