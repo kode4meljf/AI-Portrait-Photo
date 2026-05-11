@@ -11,43 +11,75 @@
   overflow-y: auto;
 }
 
-/* 统计概览 — 5个状态横向卡片 */
+/* 统计概览 */
 .stats-overview {
   background: linear-gradient(135deg, #1a1a2e, #16213e 50%, #0f3460 100%);
-  padding: 32rpx 32rpx 48rpx;
+  padding: 40rpx 40rpx 56rpx;
+  position: relative;
+  overflow: hidden;
 }
-.status-cards {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-.status-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12rpx;
-  flex: 1;
-}
-.status-name {
-  font-size: 24rpx;
-  color: rgba(255,255,255,0.7);
-}
-.status-count-bg {
-  width: 72rpx;
-  height: 72rpx;
+.stats-overview::before {
+  content: '';
+  position: absolute;
+  top: -60rpx;
+  right: -60rpx;
+  width: 240rpx;
+  height: 240rpx;
+  background: rgba(255,255,255,0.04);
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.status-count-bg.orange { background: #FF9500; }
-.status-count-bg.blue   { background: #007AFF; }
-.status-count-bg.green  { background: #34C759; }
-.status-count-bg.gray  { background: rgba(255,255,255,0.2); }
-.status-count {
-  font-size: 32rpx;
+.stats-label {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 8rpx;
+  letter-spacing: 2rpx;
+}
+.stats-amount {
+  font-size: 72rpx;
   font-weight: 700;
   color: #fff;
+  margin-bottom: 8rpx;
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+}
+.stats-amount .yuan {
+  font-size: 32rpx;
+  color: rgba(255,255,255,0.6);
+}
+.stats-trend {
+  font-size: 24rpx;
+  color: #4ade80;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 40rpx;
+}
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+}
+.cat-cell {
+  background: rgba(255,255,255,0.08);
+  border-radius: 20rpx;
+  padding: 20rpx 12rpx;
+  text-align: center;
+}
+.cat-cell .cat-icon {
+  font-size: 40rpx;
+  margin-bottom: 10rpx;
+}
+.cat-cell .cat-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+.cat-cell .cat-name {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.5);
+  margin-top: 6rpx;
 }
 
 /* 订单Tab */
@@ -77,12 +109,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36rpx;
+  min-width: 36rpx;
   height: 36rpx;
   background: #f0f0f0;
-  border-radius: 50%;
+  border-radius: 18rpx;
   font-size: 20rpx;
   color: #666;
+  padding: 0 10rpx;
   margin-left: 8rpx;
 }
 .tab-item.active .tab-count {

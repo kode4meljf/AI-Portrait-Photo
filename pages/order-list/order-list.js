@@ -36,14 +36,15 @@ Page({
     pageSize: 20,
     currentPage: 0,
     refreshing: false,
-    // 统计概览数据（5状态横向卡片）
-    orderStats: {
-      all: 0,
-      pending: 0,
-      producing: 0,
-      shipped: 0,
-      done: 0
-    },
+    // 统计概览数据
+    monthTotalAmount: 0,
+    monthCompare: "",
+    categoryCount: {
+      frame: 0,
+      album: 0,
+      photo: 0,
+      other: 0
+    }
   },
 
   onLoad() {
@@ -137,16 +138,7 @@ Page({
         if (tab.status === "done") return { ...tab, count: doneCount.total };
         return tab;
       });
-      this.setData({
-        tabs,
-        orderStats: {
-          all: allCount,
-          pending: pendingCount.total,
-          producing: producingCount.total,
-          shipped: shippedCount.total,
-          done: doneCount.total
-        }
-      });
+      this.setData({ tabs });
     } catch (err) {
       console.error("更新Tab计数失败", err);
     }
