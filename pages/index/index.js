@@ -150,6 +150,13 @@ Page({
       .catch(err => console.error('选择失败', err));
   },
 
+  // 头像点击放大预览
+  previewAvatar() {
+    const url = this.data.selectedCustomer?.avatarUrl;
+    if (!url) return;
+    wx.previewImage({ current: url, urls: [url] });
+  },
+
   // ==================== 其他功能 ====================
   onMoreTemplates() {
     wx.showToast({ title: '更多风格即将上线', icon: 'none' });

@@ -44,7 +44,7 @@
       </view>
       <view wx:if="{{!selectedCustomer}}" class="customer-placeholder">请选择客户</view>
       <view wx:else class="customer-info">
-        <image class="customer-avatar" src="{{selectedCustomer.avatarUrl}}" mode="aspectFill"></image>
+        <image class="customer-avatar" src="{{selectedCustomer.avatarUrl}}" mode="aspectFill" bindtap="previewAvatar"></image>
         <view class="customer-detail">
           <text class="customer-name">{{selectedCustomer.nickName}}</text>
           <view class="customer-equity">
