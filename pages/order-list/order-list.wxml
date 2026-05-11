@@ -41,7 +41,7 @@
     <!-- 订单Tab -->
     <view class="order-tabs">
       <view wx:for="{{tabs}}" wx:key="status" class="tab-item {{currentTab === item.status ? 'active' : ''}}" data-status="{{item.status}}" bindtap="switchTab">
-        {{item.name}}<text class="tab-count" wx:if="{{item.count > 0}}">{{item.count}}</text>
+        {{item.name}}<text class="tab-count">{{item.count}}</text>
       </view>
     </view>
 
