@@ -12,6 +12,7 @@ Page({
     selectedCustomer: null,
     showCancelBtn: false,
     pickerVisible: false,
+    pickerSelectedId: '',
     checkinDays: 0,
     equityAlbum: 0,
     equityFrame: 0,
@@ -92,6 +93,7 @@ Page({
       this.setData({
         selectedCustomer: null,
         showCancelBtn: false,
+        pickerSelectedId: '',
         checkinDays: 0,
         equityAlbum: 0,
         equityFrame: 0
@@ -105,6 +107,7 @@ Page({
       this.setData({
         selectedCustomer: customer,
         showCancelBtn: true,
+        pickerSelectedId: customer._id || '',
         checkinDays: customer.totalCheckins || 0,
         equityAlbum: customer.equityAlbum || 0,
         equityFrame: customer.equityFrame || 0
@@ -121,8 +124,15 @@ Page({
   // 客户选择器回调
   onPickerSelect(e) {
     const { customer } = e.detail;
-    this.setData({ pickerVisible: false, selectedCustomer: customer });
-    this.refreshCustomerInfo();
+    this.setData({
+      pickerVisible: false,
+      selectedCustomer: customer,
+      pickerSelectedId: customer._id || '',
+      checkinDays: customer.totalCheckins || 0,
+      equityAlbum: customer.equityAlbum || 0,
+      equityFrame: customer.equityFrame || 0,
+      showCancelBtn: true,
+    });
   },
 
   // 客户选择器关闭

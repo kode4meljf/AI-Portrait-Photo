@@ -79,7 +79,7 @@
   <!-- 客户选择底部弹窗 -->
   <customer-picker
     visible="{{pickerVisible}}"
-    selectedId="{{selectedCustomer?._id || ''}}"
+    selectedId="{{pickerSelectedId}}"
     bind:select="onPickerSelect"
     bind:close="onPickerClose"
   />
