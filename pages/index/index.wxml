@@ -26,10 +26,10 @@
         </view>
         <view class="shoot-title">立即拍摄写真</view>
         <view class="shoot-sub">为顾客拍摄一张正面照，AI 智能生成 9 张风格写真</view>
-        <button class="shoot-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <view class="shoot-btn" bindtap="chooseMedia">
           <text>▶</text>
           <text>开始拍摄</text>
-        </button>
+        </view>
       </view>
     </view>
 

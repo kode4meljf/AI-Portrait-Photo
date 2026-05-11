@@ -4,6 +4,7 @@
  */
 
 const app = getApp();
+const { chooseAndUpload, uploadSingle } = require('../../utils/media.js');
 
 Page({
   data: {
@@ -140,130 +141,13 @@ Page({
   onChooseAvatar(e) {
     const { avatarUrl } = e.detail;
     if (!avatarUrl) return;
-    wx.showLoading({ title: '处理中...' });
-    this.chooseMedia('album', [avatarUrl]);
+    uploadSingle(avatarUrl).catch(err => console.error('上传失败', err));
   },
 
-  // 通用选择媒体方法（适配单张和多张）
-  chooseMedia(sourceType, filePaths) {
-    const doUpload = async (files) => {
-      try {
-        const batchId = await this.createBatch();
-        let successCount = 0;
-        for (const file of files) {
-          const filePath = typeof file === 'string' ? file : file.tempFilePath;
-          const ok = await this.uploadAndSavePhoto(filePath, batchId);
-          if (ok) successCount++;
-        }
-        wx.hideLoading();
-        if (successCount > 0) {
-          wx.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
-          const pages = getCurrentPages();
-          const galleryPage = pages.find(p => p.route === 'pages/gallery/gallery');
-          if (galleryPage && galleryPage.refreshData) {
-            galleryPage.refreshData();
-          }
-        } else {
-          wx.showToast({ title: '上传失败，请重试', icon: 'error' });
-        }
-      } catch (err) {
-        console.error('上传过程出错', err);
-        wx.hideLoading();
-        wx.showToast({ title: '上传失败', icon: 'error' });
-      }
-    };
-
-    // 如果外部已传入 filePaths（如 chooseAvatar），直接上传
-    if (filePaths && filePaths.length > 0) {
-      return doUpload(filePaths);
-    }
-
-    // 否则调用 wx.chooseMedia（多张场景，如未来扩展）
-    wx.chooseMedia({
-      count: 9,
-      mediaType: ['image'],
-      sourceType: [sourceType],
-      success: async (res) => {
-        wx.showLoading({ title: '处理中...' });
-        doUpload(res.tempFiles);
-      },
-      fail: (err) => {
-        console.error('选择图片失败', err);
-      }
-    });
-  },
-
-  async createBatch() {
-    const db = wx.cloud.database();
-    const storeId = app.globalData.storeId;
-    if (!storeId || storeId === 'mock_store_id') {
-      throw new Error('门店ID无效');
-    }
-    const res = await db.collection('batches').add({
-      data: {
-        storeId: storeId,
-        customerId: app.globalData.selectedCustomerId || null,
-        status: 'pending',
-        photoIds: [],
-        createTime: db.serverDate()
-      }
-    });
-    return res._id;
-  },
-
-  async uploadAndSavePhoto(tempFilePath, batchId) {
-    const storeId = app.globalData.storeId;
-    if (!storeId || storeId === 'mock_store_id') {
-      console.error('storeId无效');
-      return false;
-    }
-    try {
-      // 压缩
-      const compressedPath = await this.compressImage(tempFilePath);
-      // 上传云存储
-      const cloudPath = `photos/${Date.now()}_${Math.random().toString(36).substr(2, 8)}.jpg`;
-      const uploadRes = await wx.cloud.uploadFile({
-        cloudPath,
-        filePath: compressedPath
-      });
-      console.log('上传fileID:', uploadRes.fileID);
-      const db = wx.cloud.database();
-      // 添加照片记录
-      await db.collection('photos').add({
-        data: {
-          batchId: batchId,
-          storeId: storeId,
-          customerId: app.globalData.selectedCustomerId || null,
-          originalUrl: uploadRes.fileID,
-          aiUrl: null,
-          isGenerated: false,
-          isFavorite: false,
-          createTime: db.serverDate()
-        }
-      });
-      // 更新 batch 中的 photoIds 数组
-      await db.collection('batches').doc(batchId).update({
-        data: {
-          photoIds: db.command.push([uploadRes.fileID])
-        }
-      });
-      return true;
-    } catch (err) {
-      console.error('单张上传失败', err);
-      return false;
-    }
-  },
-
-  compressImage(src) {
-    return new Promise((resolve, reject) => {
-      wx.compressImage({
-        src,
-        quality: 80,
-        compressedWidth: 1080,
-        success: (res) => resolve(res.tempFilePath),
-        fail: reject
-      });
-    });
+  // 选择媒体并上传（支持多张）
+  chooseMedia() {
+    chooseAndUpload({ sourceType: ['camera', 'album'], count: 9 })
+      .catch(err => console.error('选择失败', err));
   },
 
   // ==================== 其他功能 ====================
