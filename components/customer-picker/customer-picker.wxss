@@ -24,6 +24,8 @@
   bottom: 0;
   height: 72vh;
   max-height: 72vh;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: #fff;
   border-radius: 32rpx 32rpx 0 0;
   box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.12);
@@ -62,9 +64,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
+  flex-shrink: 0;
+  padding: 0;
+  box-sizing: border-box;
+  line-height: 0;
+}
+
+.close-btn-x {
+  font-size: 40rpx;
   color: #999;
-  line-height: 1;
+  font-weight: 300;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  text-align: center;
+  display: block;
 }
 
 .close-btn:active {
@@ -115,6 +129,8 @@
 .customer-scroll {
   flex: 1;
   height: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 24rpx;
   -webkit-overflow-scrolling: touch;
 }
@@ -128,10 +144,12 @@
 
 .customer-item {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
   padding: 22rpx 0;
   border-bottom: 1rpx solid #f0f0f0;
-  gap: 14rpx;
+  gap: 12rpx;
 }
 
 .customer-item:last-child {
@@ -150,13 +168,44 @@
   width: 74rpx;
   height: 74rpx;
   border-radius: 50%;
-  background: #eee;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.customer-avatar--image {
+  background: #eee;
+}
+
+.customer-avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.customer-avatar--initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-avatar,
+.customer-avatar--image,
+.customer-avatar--initial {
+  align-self: center;
+}
+
+.avatar-initial-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
 }
 
 .customer-info {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
+  align-self: center;
 }
 
 .customer-name {
@@ -164,27 +213,29 @@
   font-size: 28rpx;
   font-weight: 500;
   color: #1a1a1a;
-  margin-bottom: 6rpx;
+  margin-bottom: 12rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .customer-phone {
   display: block;
   font-size: 22rpx;
   color: #999;
+  line-height: 1.4;
 }
 
 .customer-right {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-end;
-  gap: 6rpx;
-  flex: 0 0 auto;
-  min-width: 0;
-  max-width: 54%;
+  flex: 0 1 auto;
+  max-width: 52%;
   margin-left: auto;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .right-status-col {
@@ -192,51 +243,63 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
+  align-self: center;
+  gap: 6rpx;
   min-width: 0;
-  max-width: 100%;
   flex: 1;
-}
-
-.right-status-col.has-checkin {
-  gap: 4rpx;
-}
-
-.right-status-col.only-checkins {
-  min-height: 52rpx;
+  text-align: right;
+  padding: 8rpx 0;
 }
 
 .right-checkins {
+  display: block;
   color: #b5b5b5;
-  font-size: 19rpx;
-  white-space: normal;
+  font-size: 20rpx;
   text-align: right;
+  line-height: 1.3;
+  white-space: normal;
   word-break: break-word;
-  line-height: 1.2;
 }
 
 .right-checkins-num {
-  font-size: 30rpx;
+  font-size: 22rpx;
   color: #6f6f6f;
   font-weight: 600;
 }
 
 .right-tag {
-  font-size: 19rpx;
+  display: block;
+  font-size: 20rpx;
   color: #ef4444;
-  white-space: nowrap;
   max-width: 100%;
   text-align: right;
+  line-height: 1.25;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+}
+
+.edit-hit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: stretch;
+  margin-left: 16rpx;
+  padding: 0 8rpx 0 32rpx;
+  min-width: 88rpx;
+  box-sizing: border-box;
+}
+
+.edit-hit--active {
+  opacity: 0.55;
 }
 
 .arrow-icon {
-  font-size: 32rpx;
-  color: #ccc;
+  font-size: 44rpx;
+  color: #b0b0b0;
   font-weight: 300;
-  flex-shrink: 0;
-  margin-left: 2rpx;
+  line-height: 1;
 }
 
 .loading-tip,
@@ -251,7 +314,7 @@
 .stats-bar {
   flex-shrink: 0;
   background: #f7f7f7;
-  padding: 24rpx 32rpx;
+  padding: 28rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid #f0f0f0;
   text-align: center;
 }

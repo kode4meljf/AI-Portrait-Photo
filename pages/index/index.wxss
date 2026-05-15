@@ -9,6 +9,8 @@
 .scroll-area {
   flex: 1;
   overflow-y: auto;
+  box-sizing: border-box;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
 /* 头部 */
@@ -229,7 +231,7 @@
   background: #fafafa;
   padding: 20rpx;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 18rpx;
 }
 .customer-avatar {

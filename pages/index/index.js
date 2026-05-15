@@ -11,6 +11,15 @@ function formatNow() {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
+/** 原生 TabBar 层级高于普通 view，弹层期间隐藏 TabBar，关闭后恢复 */
+function hideTabBarForOverlay() {
+  wx.hideTabBar({ animation: true, fail: () => {} });
+}
+
+function showTabBarAfterOverlay() {
+  wx.showTabBar({ animation: true, fail: () => {} });
+}
+
 Page({
   data: {
     selectedCustomer: null,
@@ -34,6 +43,9 @@ Page({
   },
 
   onShow() {
+    if (!this.data.pickerVisible) {
+      showTabBarAfterOverlay();
+    }
     if (app.globalData.selectedCustomerId !== this.data.selectedCustomer?._id) {
       this.refreshCustomerInfo();
     }
@@ -43,6 +55,16 @@ Page({
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer);
       this.pollingTimer = null;
+    }
+    if (this.data.pickerVisible) {
+      showTabBarAfterOverlay();
+      this.setData({ pickerVisible: false });
+    }
+  },
+
+  onUnload() {
+    if (this.data.pickerVisible) {
+      showTabBarAfterOverlay();
     }
   },
 
@@ -114,6 +136,7 @@ Page({
   },
 
   onSelectCustomer() {
+    hideTabBarForOverlay();
     this.setData({ pickerVisible: true });
   },
 
@@ -127,10 +150,12 @@ Page({
       equityAlbum: customer.equityAlbum || 0,
       equityFrame: customer.equityFrame || 0
     });
+    showTabBarAfterOverlay();
   },
 
   onPickerClose() {
     this.setData({ pickerVisible: false });
+    showTabBarAfterOverlay();
   },
 
   onCancelSelect() {

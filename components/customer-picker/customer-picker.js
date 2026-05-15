@@ -12,6 +12,21 @@ function isToday(timestamp) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
 }
 
+const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
+
+function pickAvatarTint(key) {
+  const s = String(key || '')
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return AVATAR_BG[h % AVATAR_BG.length]
+}
+
+function initialFromName(name) {
+  const t = (name || '').trim()
+  if (!t) return '客'
+  return t.slice(0, 1)
+}
+
 Component({
   properties: {
     visible: {
@@ -127,11 +142,16 @@ Component({
           .limit(this.data.pageSize)
           .get()
 
-        const customers = res.data.map(c => ({
-          ...c,
-          todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
-          createTimeStr: c.createTime ? this.formatDate(c.createTime) : ''
-        }))
+        const customers = res.data.map(c => {
+          const nick = c.nickName || '匿名用户'
+          return {
+            ...c,
+            todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
+            createTimeStr: c.createTime ? this.formatDate(c.createTime) : '',
+            avatarInitial: initialFromName(c.nickName),
+            avatarTint: pickAvatarTint(c._id || nick)
+          }
+        })
 
         const allCustomers = isLoadMore ? [...this.data.customers, ...customers] : customers
 
@@ -192,6 +212,8 @@ Component({
     onEditCustomer(e) {
       const id = e.currentTarget.dataset.id
       if (!id) return
+      wx.hideKeyboard()
+      this.triggerEvent('close')
       wx.navigateTo({
         url: `/pages/profile/customer-edit/customer-edit?id=${id}`
       })
