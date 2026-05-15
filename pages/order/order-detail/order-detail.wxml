@@ -19,7 +19,7 @@
   </view>
 
   <view class="frame-info">
-    <image class="frame-img" src="{{order.frameThumb || '/assets/images/frame-default.png'}}" mode="aspectFill"></image>
+    <image class="frame-img" src="{{order.frameThumb || '/assets/icons/album-placeholder.png'}}" mode="aspectFill"></image>
     <view class="frame-desc">
       <text class="frame-name">{{order.frameName}}</text>
       <text class="frame-spec">{{order.size}} / {{order.material}}</text>

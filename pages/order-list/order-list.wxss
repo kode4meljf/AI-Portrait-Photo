@@ -85,23 +85,35 @@
 /* 订单Tab */
 .order-tabs {
   background: #fff;
-  padding: 24rpx 40rpx 0;
+  padding: 24rpx 16rpx 0;
   display: flex;
   gap: 0;
-  justify-content: space-between; 
+  justify-content: space-between;
   border-bottom: 2rpx solid #f0f0f0;
 }
 .tab-item {
-  font-size: 24rpx;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 26rpx;
   color: #999;
-  padding: 16rpx 32rpx;
+  padding: 16rpx 8rpx;
   position: relative;
-  transition: all 0.2s;
+  transition: color 0.2s, font-weight 0.2s, border-color 0.2s;
   border-bottom: 4rpx solid transparent;
   margin-bottom: -2rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+.tab-label {
+  white-space: nowrap;
+  word-break: keep-all;
 }
 .tab-item.active {
-  font-size: 30rpx;
+  font-size: 26rpx;
   color: #111;
   font-weight: 700;
   border-bottom-color: #1a1a2e;
@@ -110,18 +122,99 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36rpx;
-  height: 36rpx;
+  min-width: 32rpx;
+  height: 32rpx;
   background: #f0f0f0;
-  border-radius: 18rpx;
-  font-size: 20rpx;
+  border-radius: 16rpx;
+  font-size: 18rpx;
   color: #666;
-  padding: 0 10rpx;
-  margin-left: 8rpx;
+  padding: 0 8rpx;
+  margin-top: 6rpx;
 }
 .tab-item.active .tab-count {
   background: #1a1a2e;
   color: #fff;
+}
+
+@media (max-width: 360px) {
+  .stats-overview {
+    padding: 30rpx 28rpx 42rpx;
+  }
+  .stats-amount {
+    font-size: 60rpx;
+  }
+  .stats-amount .yuan {
+    font-size: 28rpx;
+  }
+  .stats-label,
+  .stats-trend {
+    font-size: 22rpx;
+  }
+  .category-grid {
+    gap: 12rpx;
+  }
+  .cat-cell {
+    border-radius: 16rpx;
+    padding: 16rpx 8rpx;
+  }
+  .cat-cell .cat-icon {
+    font-size: 34rpx;
+  }
+  .cat-cell .cat-num {
+    font-size: 30rpx;
+  }
+  .cat-cell .cat-name {
+    font-size: 18rpx;
+  }
+  .order-tabs {
+    padding: 18rpx 10rpx 0;
+  }
+  .tab-item {
+    font-size: 24rpx;
+    padding: 12rpx 6rpx;
+  }
+  .tab-item.active {
+    font-size: 24rpx;
+  }
+  .tab-item .tab-count {
+    min-width: 28rpx;
+    height: 28rpx;
+    font-size: 16rpx;
+    margin-top: 4rpx;
+  }
+  .order-list {
+    padding: 18rpx 20rpx 36rpx;
+    gap: 18rpx;
+  }
+  .order-card {
+    border-radius: 24rpx;
+  }
+  .order-header {
+    padding: 22rpx 24rpx 18rpx;
+  }
+  .customer-avatar {
+    width: 64rpx;
+    height: 64rpx;
+  }
+  .customer-name {
+    font-size: 26rpx;
+  }
+  .customer-time,
+  .order-status {
+    font-size: 20rpx;
+  }
+  .order-body,
+  .order-footer {
+    padding-left: 24rpx;
+    padding-right: 24rpx;
+  }
+  .order-product {
+    gap: 12rpx;
+  }
+  .product-thumb {
+    width: 90rpx;
+    height: 90rpx;
+  }
 }
 
 /* 订单列表区域 */

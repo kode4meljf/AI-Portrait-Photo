@@ -15,15 +15,33 @@ App({
       return;
     }
     wx.cloud.init({
-      env: "net-cloud1-d6gv1m63z0a7c8c65", 
+      env: "ai-photo-0g22lzk94d0b6846", 
       traceUser: true,
     });
 
     try {
-      // 调用 login 云函数获取 openId
-      const { result } = await wx.cloud.callFunction({ name: "login" });
-      const openId = result.openid;
-      if (!openId) throw new Error("获取openId失败");
+      await new Promise((resolve, reject) => {
+        wx.login({ success: resolve, fail: reject });
+      });
+      const cloudRes = await wx.cloud.callFunction({ name: "login" });
+      if (cloudRes.errMsg && cloudRes.errMsg !== "cloud.callFunction:ok") {
+        throw new Error(cloudRes.errMsg || "login 云函数调用失败");
+      }
+      const result = cloudRes.result || {};
+      const payload = result.data && typeof result.data === "object" ? result.data : result;
+      const openId =
+        payload.openid ||
+        payload.openId ||
+        payload.OPENID ||
+        result.openid ||
+        result.OPENID;
+      if (!openId) {
+        console.error(
+          "login 返回无 openid，请检查云函数返回字段（支持 result.openid 或 result.data.openid）",
+          result
+        );
+        throw new Error("获取openId失败");
+      }
 
       this.globalData.openId = openId;
       this.globalData.storeId = openId; 

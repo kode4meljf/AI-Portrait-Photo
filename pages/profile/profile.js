@@ -27,7 +27,7 @@ const getCurrentDate = () => {
 
 Page({
   data: {
-    storeInfo: null,
+    storeInfo: {},
     dateRange: {
       startDate: getCurrentMonthStart(),
       endDate: getCurrentDate()
@@ -146,21 +146,21 @@ Page({
   // 查看昨日未打卡名单
   onViewUncheckedYesterday() {
     wx.navigateTo({
-      url: `/packageProfile/pages/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&type=yesterday`
+      url: `/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&type=yesterday`
     });
   },
 
   // 查看今日已打卡名单
   onViewCheckedToday() {
     wx.navigateTo({
-      url: `/packageProfile/pages/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=checked`
+      url: `/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=checked`
     });
   },
 
   // 查看今日未打卡名单
   onViewUncheckedToday() {
     wx.navigateTo({
-      url: `/packageProfile/pages/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=unchecked`
+      url: `/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=unchecked`
     });
   },
 
@@ -183,35 +183,38 @@ Page({
     try {
       const res = await wx.cloud.callFunction({ name: 'initTestData' });
       wx.hideLoading();
-      if (res.result.success) {
-        wx.showToast({ title: `成功${res.result.message}`, icon: 'none' });
+      console.log('[initTestData] result:', res);
+      if (res.result && res.result.success) {
+        wx.showToast({ title: res.result.message, icon: 'none' });
       } else {
-        wx.showToast({ title: res.result.message || '失败', icon: 'none' });
+        wx.showToast({ title: res.result?.message || res.errMsg || '失败', icon: 'none', duration: 3000 });
       }
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '云函数未部署', icon: 'none' });
+      console.error('[initTestData] error:', err);
+      wx.showToast({ title: err.message || err.errMsg || '云函数调用失败', icon: 'none', duration: 3000 });
     }
   },
 
   onEditStore() {
     wx.navigateTo({
-      url: "/packageProfile/pages/edit-store/edit-store",
+      url: "/pages/profile/edit-store/edit-store",
       fail: (err) => {
         console.error("导航到编辑页面失败:", err);
-        wx.showToast({ title: "页面加载失败", icon: "none" });
-      }
+        const msg = (err && (err.errMsg || err.message)) ? String(err.errMsg || err.message) : "未知错误";
+        wx.showToast({ title: msg.length > 20 ? "页面打开失败" : msg, icon: "none", duration: 3000 });
+      },
     });
   },
 
   // 充值/升级会员
   onRecharge() {
-    wx.navigateTo({ url: "/packageProfile/pages/recharge/recharge" });
+    wx.navigateTo({ url: "/pages/profile/recharge/recharge" });
   },
 
   // 查看全部客户（打卡详情页）
   onViewAllCustomers() {
-    wx.navigateTo({ url: "/packageProfile/pages/customer-list/customer-list?selectMode=false" });
+    wx.navigateTo({ url: "/pages/profile/customer-list/customer-list?selectMode=false" });
   },
 
   // 下拉刷新

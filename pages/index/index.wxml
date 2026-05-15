@@ -1,7 +1,8 @@
 <!--pages/index/index.wxml-->
+<page-meta page-style="{{pickerVisible ? 'overflow: hidden; height: 100vh;' : ''}}" />
 <view class="phone-container">
   <!-- 可滚动内容区 -->
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="scroll-area" scroll-y="{{!pickerVisible}}" enhanced show-scrollbar="{{false}}">
 
     <!-- 头部：门店信息 + 快捷数据 -->
     <view class="home-header">
@@ -33,23 +34,27 @@
       </view>
     </view>
 
-    <!-- 客户打卡与权益卡片（保留原有功能） -->
     <view class="customer-card">
       <view class="customer-header">
-        <text class="customer-title">当前客户</text>
-        <view class="customer-actions">
-          <button wx:if="{{!selectedCustomer}}" class="btn-select" bindtap="onSelectCustomer">选择客户</button>
-          <button wx:if="{{selectedCustomer}}" class="btn-cancel" bindtap="onCancelSelect">取消选择</button>
-        </view>
+        <text class="customer-title">客户打卡与服务</text>
       </view>
-      <view wx:if="{{!selectedCustomer}}" class="customer-placeholder">请选择客户</view>
-      <view wx:else class="customer-info">
-        <image class="customer-avatar" src="{{selectedCustomer.avatarUrl}}" mode="aspectFill" bindtap="previewAvatar"></image>
+
+      <view class="checkin-actions">
+        <button class="btn-checkin" bindtap="onCheckinTap">{{hasCheckedInOnce ? '继续打卡' : '打卡（扫码）'}}</button>
+        <button class="btn-select" bindtap="onSelectCustomer">选择客户列表</button>
+      </view>
+
+      <view wx:if="{{!checkinResult}}" class="customer-placeholder">请点击“打卡（扫码）”扫描客户二维码</view>
+
+      <view wx:if="{{checkinResult}}" class="checkin-result-card">
+        <image class="customer-avatar" src="{{checkinResult.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill" bindtap="previewAvatar"></image>
         <view class="customer-detail">
-          <text class="customer-name">{{selectedCustomer.nickName}}</text>
-          <view class="customer-equity">
-            <text>相册剩余 {{equityAlbum}} 次</text>
-            <text>相框剩余 {{equityFrame}} 次</text>
+          <text class="customer-name">{{checkinResult.nickName || '匿名用户'}}</text>
+          <text class="customer-phone">{{checkinResult.phone || '未绑定手机'}}</text>
+          <view class="checkin-meta-row">{{checkinResult.timeText}}</view>
+          <view class="checkin-status-col">
+            <text class="checkin-done">✅ 今日已打卡</text>
+            <text class="checkin-count">累计打卡 <text class="count-num">{{checkinResult.totalCheckins || 0}}</text> 次</text>
           </view>
         </view>
       </view>

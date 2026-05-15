@@ -33,7 +33,9 @@ exports.main = async (event, context) => {
     // 插入测试数据
     const inserted = []
     for (const customer of TEST_CUSTOMERS) {
-      const res = await db.collection('customers').add({ data: customer })
+      const res = await db.collection('customers').add({ 
+        data: { ...customer, storeId: openid }
+      })
       inserted.push(res._id)
     }
 

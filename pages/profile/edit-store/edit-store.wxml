@@ -1,0 +1,78 @@
+<!--packageProfile/pages/edit-store/edit-store.wxml-->
+<view class="page-container">
+  <scroll-view class="scroll-area" scroll-y>
+    <!-- 头像区域 -->
+    <view class="avatar-section" bindtap="chooseAvatar">
+      <view class="avatar-wrap">
+        <image wx:if="{{form.avatarUrl}}" class="avatar-img" src="{{form.avatarUrl}}" mode="aspectFill"></image>
+        <view wx:else class="avatar-img avatar-placeholder">店</view>
+        <view class="avatar-edit-badge">换</view>
+      </view>
+      <text class="avatar-tip">点击更换头像</text>
+    </view>
+
+    <!-- 门店信息 -->
+    <view class="section-card">
+      <view class="section-header">
+        <text class="section-title">门店信息</text>
+      </view>
+
+      <view class="info-row">
+        <text class="info-label">门店名称</text>
+        <input class="info-input" placeholder="请输入门店名称" value="{{form.name}}" bindinput="onInputChange" data-field="name"/>
+      </view>
+    </view>
+
+    <!-- 联系方式 -->
+    <view class="section-card">
+      <view class="section-header">
+        <text class="section-title">联系方式</text>
+      </view>
+
+      <view class="info-row">
+        <text class="info-label">联系人</text>
+        <input class="info-input" placeholder="请输入联系人" value="{{form.contactName}}" bindinput="onInputChange" data-field="contactName"/>
+      </view>
+
+      <view class="info-divider"></view>
+
+      <view class="info-row">
+        <text class="info-label">联系电话</text>
+        <input class="info-input" type="number" placeholder="请输入电话" value="{{form.contactPhone}}" bindinput="onInputChange" data-field="contactPhone"/>
+      </view>
+    </view>
+
+    <view class="section-card address-section-card">
+      <view class="section-header section-header-no-border">
+        <text class="section-title">门店地址</text>
+      </view>
+
+      <view class="address-panel" bindtap="chooseAddressOnMap">
+        <text class="address-side-label">地址</text>
+        <view class="address-main">
+          <text wx:if="{{form.address}}" class="address-title">{{form.addressName || form.address}}</text>
+          <text wx:else class="address-title">选择门店地址</text>
+          <text wx:if="{{form.address && form.addressDetail && form.distanceText}}" class="address-sub">{{form.distanceText}} | {{form.addressDetail}}</text>
+          <text wx:elif="{{form.address && form.addressDetail}}" class="address-sub">{{form.addressDetail}}</text>
+        </view>
+        <text class="address-arrow">‹</text>
+      </view>
+
+      <view class="info-divider"></view>
+
+      <view class="info-row info-row-address">
+        <text class="info-label">门牌号</text>
+        <view class="address-field">
+          <input class="info-input info-input-address" placeholder="请输入详细地址" value="{{form.houseNumber}}" bindinput="onInputChange" data-field="houseNumber"/>
+        </view>
+      </view>
+    </view>
+
+    <!-- 保存按钮 -->
+    <view class="btn-wrap">
+      <button class="save-btn" bindtap="save" disabled="{{!isChanged}}">保存修改</button>
+    </view>
+
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+</view>

@@ -271,7 +271,7 @@ Page({
       return photo.aiUrl || photo.originalUrl;
     });
     wx.navigateTo({
-      url: `/packageOrder/pages/frame-template/frame-template?photoUrls=${encodeURIComponent(JSON.stringify(selectedUrls))}`
+      url: `/pages/order/frame-template/frame-template?photoUrls=${encodeURIComponent(JSON.stringify(selectedUrls))}`
     });
   },
 

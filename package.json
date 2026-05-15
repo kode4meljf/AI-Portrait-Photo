@@ -4,12 +4,17 @@
   "description": "",
   "main": "app - 副本.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "TZ=UTC jest",
+    "test:watch": "TZ=UTC jest --watch",
+    "test:coverage": "TZ=UTC jest --coverage"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
   "dependencies": {
     "@babel/runtime": "^7.29.2"
   }

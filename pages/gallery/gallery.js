@@ -212,7 +212,7 @@ Page({
 
   onBatchTap(e) {
     const batch = e.currentTarget.dataset.batch;
-    wx.navigateTo({ url: `/packageCloud/pages/browse/browse?batchId=${batch._id}` });
+    wx.navigateTo({ url: `/pages/cloud/browse/browse?batchId=${batch._id}` });
   },
 
   async onDownloadBatch(e) {

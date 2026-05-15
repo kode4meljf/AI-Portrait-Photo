@@ -3,7 +3,7 @@
   <view wx:if="{{customers.length === 0 && !loading}}" class="empty-tip">暂无客户</view>
   <view class="customer-list">
     <view wx:for="{{customers}}" wx:key="_id" class="customer-item">
-      <image class="avatar" src="{{item.avatarUrl || '/assets/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <image class="avatar" src="{{item.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill"></image>
       <view class="info">
         <text class="name">{{item.nickName || '匿名用户'}}</text>
         <text class="phone">{{item.phone || '未绑定手机'}}</text>

@@ -27,6 +27,7 @@
   height: 320rpx;
   background: rgba(255,255,255,0.04);
   border-radius: 50%;
+  pointer-events: none;
 }
 .store-header::after {
   content: '';
@@ -37,6 +38,7 @@
   height: 200rpx;
   background: rgba(255,255,255,0.03);
   border-radius: 50%;
+  pointer-events: none;
 }
 .store-top {
   display: flex;
@@ -137,17 +139,24 @@
   color: #999;
   margin-bottom: 8rpx;
 }
-.balance-left .amount {
+.balance-left .amount-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 10rpx;
+  line-height: 1.15;
+}
+.balance-left .amount-prefix,
+.balance-left .amount-suffix {
+  font-size: 26rpx;
+  font-weight: 400;
+  color: #999;
+}
+.balance-left .amount-num {
   font-size: 56rpx;
   font-weight: 700;
   color: #1a1a2e;
   line-height: 1;
-}
-.balance-left .amount .unit {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #666;
-  margin-left: 4rpx;
 }
 .level-badge {
   background: linear-gradient(135deg, #e8b86d, #c9922a);

@@ -1,32 +1,35 @@
 /**
  * @file 首页
- * @description 拍照/相册选择、客户选择、权益展示、风格模板展示（从云数据库加载）
  */
 
 const app = getApp();
-const { chooseAndUpload, uploadSingle } = require('../../utils/media.js');
+const { uploadSingle } = require('../../utils/media.js');
+
+function formatNow() {
+  const d = new Date();
+  const p = (n) => `${n}`.padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
 
 Page({
   data: {
-    // 客户相关
     selectedCustomer: null,
-    showCancelBtn: false,
     pickerVisible: false,
     pickerSelectedId: '',
     checkinDays: 0,
     equityAlbum: 0,
     equityFrame: 0,
-    // 风格模板（从数据库加载）
     templates: [],
-    // 门店信息
     storeInfo: null,
-    // 加载状态
-    loading: false
+    loading: false,
+    checkinResult: null,
+    hasCheckedInOnce: false,
+    todayServiceCount: 0
   },
 
   onLoad() {
     this.loadStoreInfo();
-    this.loadTemplates();      // 从云数据库加载模板
+    this.loadTemplates();
     this.refreshCustomerInfo();
   },
 
@@ -43,7 +46,6 @@ Page({
     }
   },
 
-  // ==================== 门店信息 ====================
   async loadStoreInfo() {
     const storeId = app.globalData.storeId;
     if (storeId && storeId !== 'mock_store_id') {
@@ -57,17 +59,14 @@ Page({
     }
   },
 
-  // ==================== 风格模板（从云数据库加载） ====================
   async loadTemplates() {
     try {
       const db = wx.cloud.database();
       const res = await db.collection('templates').get();
       if (res.data && res.data.length > 0) {
-        // 按 id 升序排列
         const templates = res.data.sort((a, b) => Number(a.id) - Number(b.id));
         this.setData({ templates });
       } else {
-        // 降级：使用本地默认模板
         this.setDefaultTemplates();
       }
     } catch (err) {
@@ -78,21 +77,19 @@ Page({
 
   setDefaultTemplates() {
     const templates = [
-      { id: "1", name: "油画质感", thumb: "https://picsum.photos/400/400?random=61", prompt: "" },
-      { id: "2", name: "杂志封面", thumb: "https://picsum.photos/400/400?random=62", prompt: "" },
-      { id: "3", name: "古风唯美", thumb: "https://picsum.photos/400/400?random=63", prompt: "" },
-      { id: "4", name: "法式浪漫", thumb: "https://picsum.photos/400/400?random=64", prompt: "" }
+      { id: '1', name: '油画质感', thumb: 'https://picsum.photos/400/400?random=61', prompt: '' },
+      { id: '2', name: '杂志封面', thumb: 'https://picsum.photos/400/400?random=62', prompt: '' },
+      { id: '3', name: '古风唯美', thumb: 'https://picsum.photos/400/400?random=63', prompt: '' },
+      { id: '4', name: '法式浪漫', thumb: 'https://picsum.photos/400/400?random=64', prompt: '' }
     ];
     this.setData({ templates });
   },
 
-  // ==================== 客户相关 ====================
   async refreshCustomerInfo() {
     const customerId = app.globalData.selectedCustomerId;
     if (!customerId) {
       this.setData({
         selectedCustomer: null,
-        showCancelBtn: false,
         pickerSelectedId: '',
         checkinDays: 0,
         equityAlbum: 0,
@@ -106,7 +103,6 @@ Page({
       const customer = res.data;
       this.setData({
         selectedCustomer: customer,
-        showCancelBtn: true,
         pickerSelectedId: customer._id || '',
         checkinDays: customer.totalCheckins || 0,
         equityAlbum: customer.equityAlbum || 0,
@@ -121,7 +117,6 @@ Page({
     this.setData({ pickerVisible: true });
   },
 
-  // 客户选择器回调
   onPickerSelect(e) {
     const { customer } = e.detail;
     this.setData({
@@ -130,12 +125,10 @@ Page({
       pickerSelectedId: customer._id || '',
       checkinDays: customer.totalCheckins || 0,
       equityAlbum: customer.equityAlbum || 0,
-      equityFrame: customer.equityFrame || 0,
-      showCancelBtn: true,
+      equityFrame: customer.equityFrame || 0
     });
   },
 
-  // 客户选择器关闭
   onPickerClose() {
     this.setData({ pickerVisible: false });
   },
@@ -144,10 +137,102 @@ Page({
     app.globalData.selectedCustomerId = null;
     wx.removeStorageSync('selectedCustomerId');
     this.refreshCustomerInfo();
-    const pages = getCurrentPages();
-    pages.forEach(page => {
-      if (page.refreshData) page.refreshData();
-    });
+  },
+
+  async onCheckinTap() {
+    try {
+      const scanRes = await new Promise((resolve, reject) => {
+        wx.scanCode({
+          onlyFromCamera: true,
+          scanType: ['qrCode'],
+          success: resolve,
+          fail: reject
+        });
+      });
+
+      const payload = this.parseCheckinPayload(scanRes.result);
+      if (!payload || !payload.customerId) {
+        wx.showToast({ title: '二维码无效', icon: 'none' });
+        return;
+      }
+
+      const customer = await this.upsertCustomerAndCheckin(payload);
+      this.setData({
+        checkinResult: {
+          ...customer,
+          timeText: `打卡时间 ${formatNow()}`,
+          totalCheckins: customer.totalCheckins || 0
+        },
+        hasCheckedInOnce: true,
+        selectedCustomer: customer,
+        pickerSelectedId: customer._id || ''
+      });
+
+      app.globalData.selectedCustomerId = customer._id;
+      app.globalData.selectedCustomer = customer;
+      wx.setStorageSync('selectedCustomerId', customer._id);
+
+      wx.showToast({ title: '今日已打卡', icon: 'success' });
+    } catch (e) {
+      if (e && (e.errMsg || '').includes('cancel')) return;
+      console.error('扫码打卡失败', e);
+      wx.showToast({ title: '扫码失败', icon: 'none' });
+    }
+  },
+
+  parseCheckinPayload(raw) {
+    if (!raw) return null;
+    try {
+      const obj = JSON.parse(raw);
+      if (obj && obj.type === 'customer_checkin') return obj;
+      return obj;
+    } catch (e) {
+      const id = `${raw}`.trim();
+      if (!id) return null;
+      return { customerId: id };
+    }
+  },
+
+  async upsertCustomerAndCheckin(payload) {
+    const db = wx.cloud.database();
+    const _ = db.command;
+    const now = Date.now();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStamp = today.getTime();
+
+    let customer = null;
+    const byId = await db.collection('customers').where({ customerId: payload.customerId }).limit(1).get();
+    if (byId.data.length > 0) {
+      customer = byId.data[0];
+      await db.collection('customers').doc(customer._id).update({
+        data: {
+          totalCheckins: _.inc(1),
+          lastCheckinTime: now,
+          lastCheckinDate: todayStamp,
+          updateTime: now
+        }
+      });
+      const latest = await db.collection('customers').doc(customer._id).get();
+      customer = latest.data;
+    } else {
+      const createData = {
+        customerId: payload.customerId,
+        nickName: payload.name || '新客户',
+        phone: payload.phone || '',
+        avatarUrl: payload.avatarUrl || '/assets/icons/album-placeholder.png',
+        totalCheckins: 1,
+        lastCheckinTime: now,
+        lastCheckinDate: todayStamp,
+        createTime: now,
+        updateTime: now
+      };
+      const addRes = await db.collection('customers').add({ data: createData });
+      const latest = await db.collection('customers').doc(addRes._id).get();
+      customer = latest.data;
+    }
+
+    return customer;
   },
 
   previewTemplate(e) {
@@ -159,28 +244,39 @@ Page({
     }
   },
 
-  // ==================== 拍照/相册上传 ====================
-  // 微信原生 chooseAvatar 回调（单张）
   onChooseAvatar(e) {
     const { avatarUrl } = e.detail;
     if (!avatarUrl) return;
     uploadSingle(avatarUrl).catch(err => console.error('上传失败', err));
   },
 
-  // 选择媒体并上传（支持多张）
   chooseMedia() {
-    chooseAndUpload({ sourceType: ['camera', 'album'], count: 9 })
-      .catch(err => console.error('选择失败', err));
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['camera', 'album'],
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file || !file.tempFilePath) {
+          wx.showToast({ title: '未获取到图片', icon: 'none' });
+          return;
+        }
+        const url = encodeURIComponent(file.tempFilePath);
+        wx.navigateTo({ url: `/pages/cloud/style-selector/style-selector?originalUrl=${url}` });
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.includes('cancel')) return;
+        wx.showToast({ title: '选择失败', icon: 'none' });
+      }
+    });
   },
 
-  // 头像点击放大预览
   previewAvatar() {
-    const url = this.data.selectedCustomer?.avatarUrl;
+    const url = this.data.checkinResult?.avatarUrl || this.data.selectedCustomer?.avatarUrl;
     if (!url) return;
     wx.previewImage({ current: url, urls: [url] });
   },
 
-  // ==================== 其他功能 ====================
   onMoreTemplates() {
     wx.showToast({ title: '更多风格即将上线', icon: 'none' });
   }

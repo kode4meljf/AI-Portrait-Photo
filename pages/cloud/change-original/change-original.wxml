@@ -1,0 +1,44 @@
+<view class="change-page">
+  <view class="subtitle-wrap">
+    <view class="subtitle">点击选择清晰的形象</view>
+    <view class="count-text">数量选择：{{count}}</view>
+  </view>
+
+  <view class="preview-box" bindtap="onTapPreviewBox">
+    <image class="preview-image" src="{{originalUrl}}" mode="aspectFit"></image>
+    <view class="preview-overlay">
+      <view class="preview-main-tip">点击更换原图</view>
+      <view class="preview-sub-tip">支持拍摄或从相册选择</view>
+    </view>
+  </view>
+
+  <view class="sample-card">
+    <view class="tips-title">照片样例</view>
+    <view class="sample-grid">
+      <view class="sample-item bad">
+        <view class="sample-thumb bad-bg"></view>
+        <view class="sample-tag bad">侧脸</view>
+      </view>
+      <view class="sample-item bad">
+        <view class="sample-thumb bad-bg"></view>
+        <view class="sample-tag bad">遮挡</view>
+      </view>
+      <view class="sample-item bad">
+        <view class="sample-thumb bad-bg"></view>
+        <view class="sample-tag bad">模糊</view>
+      </view>
+      <view class="sample-item good">
+        <view class="sample-thumb good-bg"></view>
+        <view class="sample-tag good">正脸</view>
+      </view>
+      <view class="sample-item good">
+        <view class="sample-thumb good-bg"></view>
+        <view class="sample-tag good">清晰</view>
+      </view>
+      <view class="sample-item good">
+        <view class="sample-thumb good-bg"></view>
+        <view class="sample-tag good">无遮挡</view>
+      </view>
+    </view>
+  </view>
+</view>

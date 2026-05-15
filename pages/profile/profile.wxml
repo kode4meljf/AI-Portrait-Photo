@@ -30,7 +30,11 @@
       <view class="balance-top">
         <view class="balance-left">
           <view class="label">门店可用余额（人次）</view>
-          <view class="amount">剩余{{storeInfo.balance || 0}}<text class="unit">人次</text></view>
+          <view class="amount-row">
+            <text class="amount-prefix">剩余</text>
+            <text class="amount-num">{{storeInfo.balance || 0}}</text>
+            <text class="amount-suffix">人次</text>
+          </view>
         </view>
         <view class="level-badge">
           <text class="crown">👑</text>

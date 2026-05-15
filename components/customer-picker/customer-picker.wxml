@@ -1,4 +1,4 @@
-<view class="picker-overlay {{visible ? 'active' : ''}}" bindtap="onOverlayTap">
+<view class="picker-overlay {{visible ? 'active' : ''}}" bindtap="onOverlayTap" catchtouchmove="stopTouchMove">
   <view class="picker-sheet {{visible ? 'active' : ''}}" catchtap="stopPropagation">
     <!-- 顶部栏 -->
     <view class="picker-header">
@@ -17,7 +17,6 @@
           value="{{searchKeyword}}"
           bindinput="onSearchInput"
           bindconfirm="onSearchInput"
-          focus="{{visible}}"
         />
         <text wx:if="{{searchKeyword}}" class="clear-icon" bindtap="onClearSearch">×</text>
       </view>
@@ -27,6 +26,10 @@
     <scroll-view
       class="customer-scroll"
       scroll-y
+      enhanced="{{true}}"
+      show-scrollbar="{{false}}"
+      bounces="{{true}}"
+      fast-deceleration="{{true}}"
       enable-back-to-top
       bindscrolltolower="onReachBottom"
       refresher-enabled
@@ -39,14 +42,15 @@
       </view>
 
       <view wx:for="{{filteredCustomers}}" wx:key="_id" class="customer-item {{item._id === selectedId ? 'selected' : ''}}" bindtap="onCustomerTap" data-customer="{{item}}">
-        <image class="customer-avatar" src="{{item.avatarUrl || '/assets/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <image class="customer-avatar" src="{{item.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill"></image>
         <view class="customer-info">
           <text class="customer-name">{{item.nickName || '匿名用户'}}</text>
           <text class="customer-phone">{{item.phone || '未绑定手机'}}</text>
         </view>
-        <view class="customer-right">
-          <view class="checkin-badge" wx:if="{{item.totalCheckins > 0}}">
-            <text>打卡 {{item.totalCheckins}} 次</text>
+        <view class="customer-right" bindtap="onEditCustomer" data-id="{{item._id}}" catchtap="onEditCustomer">
+          <view class="right-status-col {{item.todayCheckedIn ? 'has-checkin' : 'only-checkins'}}">
+            <text wx:if="{{item.todayCheckedIn}}" class="right-tag">今日已打卡</text>
+            <text class="right-checkins">累计打卡 <text class="right-checkins-num">{{item.totalCheckins || 0}}</text> 次</text>
           </view>
           <text class="arrow-icon">›</text>
         </view>

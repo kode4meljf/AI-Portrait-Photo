@@ -5,6 +5,13 @@
 
 const app = getApp()
 
+function isToday(timestamp) {
+  if (!timestamp) return false
+  const d = new Date(timestamp)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+}
+
 Component({
   properties: {
     visible: {
@@ -51,13 +58,20 @@ Component({
     // 阻止点击穿透
     stopPropagation() {},
 
+    // 阻止触摸滚动穿透
+    stopTouchMove() {
+      return false
+    },
+
     // 遮罩层点击关闭
     onOverlayTap() {
+      wx.hideKeyboard()
       this.triggerEvent('close')
     },
 
     // 关闭按钮
     onClose() {
+      wx.hideKeyboard()
       this.triggerEvent('close')
     },
 
@@ -115,6 +129,7 @@ Component({
 
         const customers = res.data.map(c => ({
           ...c,
+          todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
           createTimeStr: c.createTime ? this.formatDate(c.createTime) : ''
         }))
 
@@ -162,19 +177,24 @@ Component({
     onCustomerTap(e) {
       const customer = e.currentTarget.dataset.customer
 
-      // 存储到全局
       app.globalData.selectedCustomerId = customer._id
       app.globalData.selectedCustomer = customer
       wx.setStorageSync('selectedCustomerId', customer._id)
 
-      // 选中高亮
       this.setData({ selectedId: customer._id })
 
-      // 短暂延迟，让用户看到选中效果
       setTimeout(() => {
         this.triggerEvent('select', { customer })
         this.triggerEvent('close')
       }, 150)
+    },
+
+    onEditCustomer(e) {
+      const id = e.currentTarget.dataset.id
+      if (!id) return
+      wx.navigateTo({
+        url: `/pages/profile/customer-edit/customer-edit?id=${id}`
+      })
     }
   }
 })

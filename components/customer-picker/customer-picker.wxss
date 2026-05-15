@@ -22,7 +22,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 70vh;
+  height: 72vh;
+  max-height: 72vh;
   background: #fff;
   border-radius: 32rpx 32rpx 0 0;
   box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.12);
@@ -31,6 +32,7 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .picker-sheet.active {
@@ -112,7 +114,9 @@
 /* 客户列表 */
 .customer-scroll {
   flex: 1;
-  padding: 0 32rpx;
+  height: 0;
+  padding: 0 24rpx;
+  -webkit-overflow-scrolling: touch;
 }
 
 .empty-tip {
@@ -125,9 +129,9 @@
 .customer-item {
   display: flex;
   align-items: center;
-  padding: 24rpx 0;
+  padding: 22rpx 0;
   border-bottom: 1rpx solid #f0f0f0;
-  gap: 20rpx;
+  gap: 14rpx;
 }
 
 .customer-item:last-child {
@@ -137,14 +141,14 @@
 .customer-item.selected {
   background: rgba(59, 130, 246, 0.04);
   border-radius: 16rpx;
-  margin: 0 -8rpx;
-  padding: 24rpx 8rpx;
+  margin: 0;
+  padding: 22rpx 0;
   border-bottom: none;
 }
 
 .customer-avatar {
-  width: 80rpx;
-  height: 80rpx;
+  width: 74rpx;
+  height: 74rpx;
   border-radius: 50%;
   background: #eee;
   flex-shrink: 0;
@@ -157,7 +161,7 @@
 
 .customer-name {
   display: block;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 500;
   color: #1a1a1a;
   margin-bottom: 6rpx;
@@ -168,30 +172,71 @@
 
 .customer-phone {
   display: block;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #999;
 }
 
 .customer-right {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: 6rpx;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 54%;
+  margin-left: auto;
 }
 
-.checkin-badge {
-  background: #e8f0fe;
-  color: #3b82f6;
-  font-size: 22rpx;
-  padding: 6rpx 14rpx;
-  border-radius: 20rpx;
+.right-status-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1;
+}
+
+.right-status-col.has-checkin {
+  gap: 4rpx;
+}
+
+.right-status-col.only-checkins {
+  min-height: 52rpx;
+}
+
+.right-checkins {
+  color: #b5b5b5;
+  font-size: 19rpx;
+  white-space: normal;
+  text-align: right;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.right-checkins-num {
+  font-size: 30rpx;
+  color: #6f6f6f;
+  font-weight: 600;
+}
+
+.right-tag {
+  font-size: 19rpx;
+  color: #ef4444;
   white-space: nowrap;
+  max-width: 100%;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .arrow-icon {
-  font-size: 36rpx;
+  font-size: 32rpx;
   color: #ccc;
   font-weight: 300;
+  flex-shrink: 0;
+  margin-left: 2rpx;
 }
 
 .loading-tip,

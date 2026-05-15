@@ -1,0 +1,49 @@
+.container {
+  min-height: 100vh;
+  background: #f6f6f6;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 12rpx 24rpx;
+}
+
+.field {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.label {
+  display: block;
+  font-size: 24rpx;
+  color: #888;
+  margin-bottom: 10rpx;
+}
+
+.input {
+  font-size: 30rpx;
+  color: #222;
+}
+
+.save-btn {
+  margin-top: 24rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 16rpx;
+  border: none;
+  background: #111827;
+  color: #fff;
+  font-size: 30rpx;
+}
+
+.save-btn[disabled] {
+  background: #d1d5db;
+  color: #fff;
+}
