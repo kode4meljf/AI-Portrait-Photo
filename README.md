@@ -1,50 +1,40 @@
-# AI写真馆 - 页面清单
+# AI写真馆（AI-Portrait）
 
-## 主包页面
+单仓三端结构，职责分离，便于阅读与维护。
 
-| 页面路径 | 中文名称 | 说明 |
-|---------|---------|------|
-| `/pages/index/index` | 首页 | 入口页面，拍照入口 |
-| `/pages/gallery/gallery` | 云相册 | 用户AI生成照片展示 |
-| `/pages/order-list/order-list` | 订单列表 | 订单管理 |
-| `/pages/profile/profile` | 我的 | 用户中心 |
+## 目录说明
 
-## 云功能页面 (cloud)
+| 目录 | 说明 |
+|------|------|
+| `miniprogram/` | 微信小程序（页面、组件、静态资源） |
+| `cloudfunctions/` | 微信云开发云函数（含 `adminApi` 后台接口） |
+| `admin-web/` | 网页管理后台（Vue3 + Element Plus） |
 
-| 页面路径 | 中文名称 | 说明 |
-|---------|---------|------|
-| `/pages/cloud/browse/browse` | 浏览风格 | 浏览AI生成风格模板 |
-| `/pages/cloud/photo-edit/photo-edit` | 编辑照片 | 照片编辑功能 |
-| `/pages/cloud/style-selector/style-selector` | 选择风格 | 选择AI生成风格 |
-| `/pages/cloud/change-original/change-original` | 更换原图 | 更换原始照片 |
+## 开发方式
 
-## 订单页面 (order)
+### 小程序
 
-| 页面路径 | 中文名称 | 说明 |
-|---------|---------|------|
-| `/pages/order/order-detail/order-detail` | 订单详情 | 查看订单详细信息 |
-| `/pages/order/frame-template/frame-template` | 相框模板 | 选择相框模板下单 |
+1. 用**微信开发者工具**打开目录：`miniprogram/`（不是仓库根目录）
+2. 云函数根目录已配置为上一级的 `../cloudfunctions/`，可在工具内直接上传部署云函数
 
-## 门店/客户页面 (profile)
+### 管理后台
 
-| 页面路径 | 中文名称 | 说明 |
-|---------|---------|------|
-| `/pages/profile/customer-list/customer-list` | 客户列表 | 客户管理列表 |
-| `/pages/profile/recharge/recharge` | 充值 | 用户充值页面 |
-| `/pages/profile/unchecked-list/unchecked-list` | 未审核列表 | 待审核订单列表 |
-| `/pages/profile/edit-store/edit-store` | 编辑门店 | 门店信息编辑 |
-| `/pages/profile/customer-edit/customer-edit` | 编辑客户 | 客户信息编辑 |
+```bash
+# 在仓库根目录
+npm run dev:admin
 
----
+# 或进入 admin-web
+cd admin-web && npm install && npm run dev
+```
 
-## 组件
+默认开发配置见 `admin-web/.env.development`（Mock 模式可用 `admin` / `admin123`）。
 
-| 组件路径 | 说明 |
-|---------|------|
-| `/components/customer-picker/customer-picker` | 客户选择器 |
+### 云函数
 
----
+进入各云函数目录执行 `npm install` 后，在微信开发者工具中部署。
 
-## 更新日志
+`adminApi` 需在云控制台配置环境变量：`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_JWT_SECRET`。
 
-- 2026-05-15: 重构项目结构，取消分包机制，所有页面迁移至 pages/ 目录
+## 云环境
+
+小程序 `miniprogram/app.js` 中的云开发 `env` 需与微信云控制台环境一致。

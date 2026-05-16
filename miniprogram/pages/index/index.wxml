@@ -1,0 +1,92 @@
+<!--pages/index/index.wxml-->
+<page-meta page-style="{{pickerVisible ? 'overflow: hidden;' : ''}}" />
+<view class="phone-container">
+  <!-- 可滚动内容区 -->
+  <scroll-view class="scroll-area" scroll-y="{{!pickerVisible}}" show-scrollbar="{{false}}">
+    <view class="scroll-inner">
+    <!-- 头部：门店信息 + 快捷数据 -->
+    <view class="home-header">
+      <view class="header-row">
+        <view class="store-avatar">🏪</view>
+        <view>
+          <view class="store-name">{{storeInfo.name || '光影时代写真馆'}}</view>
+          <view class="store-sub">欢迎使用 AI 写真服务</view>
+        </view>
+      </view>
+      <view class="quick-stats">
+        <view class="stat-chip">今日服务 <text class="val">{{todayServiceCount || 0}}</text> 人</view>
+        <view class="stat-chip">剩余额度 <text class="val">{{storeInfo.balance || 0}}</text> 次</view>
+      </view>
+    </view>
+
+    <!-- 拍摄主卡片 -->
+    <view class="shoot-section">
+      <view class="shoot-card">
+        <view class="camera-wrap" bindtap="chooseMedia">
+          <text class="camera-icon">📷</text>
+        </view>
+        <view class="shoot-title">立即拍摄写真</view>
+        <view class="shoot-sub">为顾客拍摄一张正面照，AI 智能生成 9 张风格写真</view>
+        <view class="shoot-btn" bindtap="chooseMedia">
+          <text>▶</text>
+          <text>开始拍摄</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="customer-card">
+      <view class="customer-header">
+        <text class="customer-title">客户打卡与服务</text>
+      </view>
+
+      <view class="checkin-actions">
+        <button class="btn-checkin" bindtap="onCheckinTap">{{hasCheckedInOnce ? '继续打卡' : '打卡（扫码）'}}</button>
+        <button class="btn-select" bindtap="onSelectCustomer">选择客户列表</button>
+      </view>
+
+      <view wx:if="{{!checkinResult}}" class="customer-placeholder">请点击“打卡（扫码）”扫描客户二维码</view>
+
+      <view wx:if="{{checkinResult}}" class="checkin-result-card">
+        <image class="customer-avatar" src="{{checkinResult.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill" bindtap="previewAvatar"></image>
+        <view class="customer-detail">
+          <text class="customer-name">{{checkinResult.nickName || '匿名用户'}}</text>
+          <text class="customer-phone">{{checkinResult.phone || '未绑定手机'}}</text>
+          <view class="checkin-meta-row">{{checkinResult.timeText}}</view>
+          <view class="checkin-status-col">
+            <text class="checkin-done">✅ 今日已打卡</text>
+            <text class="checkin-count">累计打卡 <text class="count-num">{{checkinResult.totalCheckins || 0}}</text> 次</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 风格样板展示（保留原有模板数据） -->
+    <view class="showcase-section">
+      <view class="section-header" style="padding: 0 0 10rpx;">
+        <view class="s-title">风格样板展示</view>
+        <view class="s-more" bindtap="onMoreTemplates">更多 ›</view>
+      </view>
+      <view class="showcase-grid">
+        <block wx:for="{{templates}}" wx:key="id">
+          <view class="showcase-item" bindtap="previewTemplate" data-index="{{index}}">
+            <image src="{{item.thumb}}" mode="aspectFill"></image>
+            <view class="showcase-label">{{item.name}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+    </view>
+  </scroll-view>
+
+
+
+  <!-- 客户选择底部弹窗 -->
+  <customer-picker
+    visible="{{pickerVisible}}"
+    selectedId="{{pickerSelectedId}}"
+    bind:select="onPickerSelect"
+    bind:close="onPickerClose"
+    bind:customerUpdated="onPickerCustomerUpdated"
+  />
+
+</view>

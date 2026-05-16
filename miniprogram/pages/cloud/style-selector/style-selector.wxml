@@ -1,0 +1,47 @@
+<view class="style-page">
+  <view class="style-body">
+  <swiper class="preview-swiper" current="{{currentIndex}}" bindchange="onSwiperChange" duration="260">
+    <swiper-item wx:for="{{styles}}" wx:key="id">
+      <view class="preview-card">
+        <image class="preview-image" src="{{item.cover}}" mode="aspectFill"></image>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <view class="list-title">{{count}}种风格列表</view>
+  <scroll-view class="thumb-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="thumb-row">
+      <view
+        wx:for="{{styles}}"
+        wx:key="id"
+        class="thumb-item {{index === currentIndex ? 'active' : ''}}"
+        data-index="{{index}}"
+        bindtap="onThumbTap"
+      >
+        <image class="thumb-image" src="{{item.cover}}" mode="aspectFill"></image>
+        <text class="thumb-name">{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="bottom-bar">
+    <view class="origin-box" bindtap="onChangeOriginal">
+      <image class="origin-thumb" src="{{originalUrl}}" mode="aspectFill"></image>
+      <text class="swap-icon">⇄</text>
+      <text class="origin-text">更换原图</text>
+    </view>
+
+    <view class="count-switch">
+      <text class="count-label">数量选择</text>
+      <view class="count-btn-group">
+        <view class="count-btn {{count === 3 ? 'active' : ''}}" data-count="3" bindtap="switchCount">3</view>
+        <view class="count-btn {{count === 9 ? 'active' : ''}}" data-count="9" bindtap="switchCount">9</view>
+      </view>
+    </view>
+  </view>
+  </view>
+
+  <view class="submit-wrap">
+    <view class="submit-btn" hover-class="submit-btn-hover" bindtap="onStartGenerate">开始生成</view>
+  </view>
+</view>

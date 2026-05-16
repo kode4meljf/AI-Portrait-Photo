@@ -1,0 +1,139 @@
+<view class="result-page">
+  <view wx:if="{{phase === 'loading'}}" class="loading-body">
+    <view class="spinner"></view>
+    <text class="loading-title">AI 正在生成写真</text>
+    <text class="loading-desc">预计 8–15 秒，请勿离开页面</text>
+    <view class="loading-preview">
+      <image wx:if="{{originalUrl}}" src="{{originalUrl}}" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="page-body">
+      <view class="image-zone">
+        <view class="hero-toolbar">
+          <view
+            class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"
+            bindtap="onToggleOrigin"
+          >{{showOriginFloat ? '隐藏原图' : '显示原图'}}</view>
+        </view>
+
+        <view class="hero-stage">
+          <view class="hero-frame" style="height: {{swiperHeight}}px;">
+            <swiper
+              class="result-swiper"
+              style="height: {{swiperHeight}}px;"
+              current="{{currentIndex}}"
+              bindchange="onSwiperChange"
+              bindtransition="onSwiperTransition"
+              bindanimationfinish="onSwiperAnimationFinish"
+              duration="280"
+              easing-function="easeOutCubic"
+              circular="{{results.length > 1}}"
+              skip-hidden-item-layout
+            >
+              <swiper-item wx:for="{{results}}" wx:key="id">
+                <view
+                  class="swiper-item-inner"
+                  bindtap="onPreviewImage"
+                  data-index="{{index}}"
+                >
+                  <image
+                    id="hero-img-{{index}}"
+                    class="result-image"
+                    src="{{item.url}}"
+                    mode="aspectFit"
+                    bindload="onResultImageLoad"
+                    data-index="{{index}}"
+                  ></image>
+                </view>
+              </swiper-item>
+            </swiper>
+
+            <view class="frame-overlay">
+              <view
+                wx:if="{{showProgressBadge && results.length > 1}}"
+                class="progress-badge"
+              >{{progressText}}</view>
+              <view class="origin-float {{showOriginFloat ? '' : 'is-hidden'}}">
+                <image src="{{originalUrl}}" mode="aspectFill"></image>
+                <text class="mini-label">原图</text>
+              </view>
+              <view wx:if="{{showSwipeToast}}" class="swipe-toast">在预览区内左右滑动切换生成图</view>
+            </view>
+          </view>
+
+          <view wx:if="{{results.length > 1}}" class="progress-track">
+            <view
+              wx:for="{{results}}"
+              wx:key="id"
+              class="progress-segment {{index === currentIndex ? 'active' : ''}}"
+            ></view>
+          </view>
+
+          <text class="hero-tip">* 默认以当前展示写真制作实物摆台</text>
+        </view>
+      </view>
+
+      <view class="footer">
+        <view class="action-row">
+          <button class="btn btn-outline" bindtap="onMakeAlbum">制作影集</button>
+          <button class="btn btn-primary" bindtap="onMakeFrame">制作摆台</button>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 全屏预览（共享元素动画） -->
+  <view
+    wx:if="{{previewVisible}}"
+    class="preview-layer {{previewExpanded ? 'is-expanded' : ''}}"
+    catchtouchmove="preventMove"
+  >
+    <view class="preview-dim" bindtap="onClosePreview"></view>
+
+    <view
+      class="preview-fly {{previewAnimating ? 'is-animating' : ''}} {{previewExpanded ? 'is-expanded' : ''}}"
+      style="{{previewFlyStyle}}"
+    >
+      <image
+        class="preview-fly-img"
+        src="{{previewCurrentUrl}}"
+        mode="aspectFit"
+      ></image>
+    </view>
+
+    <view class="preview-ui {{previewExpanded ? 'is-visible' : ''}}">
+      <swiper
+        class="preview-swiper"
+        current="{{previewIndex}}"
+        bindchange="onPreviewSwiperChange"
+        duration="280"
+        circular="{{results.length > 1}}"
+      >
+        <swiper-item wx:for="{{results}}" wx:key="id">
+          <view class="preview-slide">
+            <image class="preview-slide-img" src="{{item.url}}" mode="aspectFit"></image>
+          </view>
+        </swiper-item>
+      </swiper>
+
+      <view wx:if="{{results.length > 1}}" class="preview-progress-track">
+        <view
+          wx:for="{{results}}"
+          wx:key="id"
+          class="preview-segment {{index === previewIndex ? 'active' : ''}}"
+        ></view>
+      </view>
+
+      <view class="preview-actions">
+        <view class="preview-action-btn" bindtap="onClosePreview">
+          <text class="preview-action-icon">×</text>
+        </view>
+        <view class="preview-action-btn" bindtap="onDownloadPreview">
+          <text class="preview-action-icon preview-action-icon--down">↓</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,447 @@
+/* pages/index/index.wxss */
+page {
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #f5f5f5;
+}
+
+.phone-container {
+  background-color: #f5f5f5;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.scroll-area {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #f5f5f5;
+}
+
+.scroll-inner {
+  background-color: #f5f5f5;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+/* 头部 */
+.home-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 32rpx 40rpx 40rpx;
+  position: relative;
+  overflow: hidden;
+}
+.home-header::before {
+  content: '';
+  position: absolute;
+  top: -60rpx;
+  right: -60rpx;
+  width: 240rpx;
+  height: 240rpx;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+}
+.home-header::after {
+  content: '';
+  position: absolute;
+  bottom: -20rpx;
+  left: -20rpx;
+  width: 160rpx;
+  height: 160rpx;
+  background: rgba(255,255,255,0.03);
+  border-radius: 50%;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-bottom: 28rpx;
+}
+.store-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #e8b86d, #c9922a);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  box-shadow: 0 6rpx 20rpx rgba(232,184,109,0.35);
+}
+.store-name {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
+.store-sub {
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.55);
+  margin-top: 4rpx;
+}
+
+.quick-stats {
+  display: flex;
+  gap: 20rpx;
+}
+.stat-chip {
+  background: rgba(255,255,255,0.1);
+  border: 1rpx solid rgba(255,255,255,0.12);
+  border-radius: 40rpx;
+  padding: 8rpx 24rpx;
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.8);
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.stat-chip .val {
+  color: #e8b86d;
+  font-weight: 700;
+}
+
+/* 拍摄卡片 */
+.shoot-section {
+  padding: 40rpx 40rpx 0;
+  margin-top: -40rpx;
+  position: relative;
+  z-index: 2;
+}
+.shoot-card {
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 48rpx 40rpx 40rpx;
+  box-shadow: 0 12rpx 48rpx rgba(0,0,0,0.08);
+  text-align: center;
+}
+.camera-wrap {
+  width: 200rpx;
+  height: 200rpx;
+  background: linear-gradient(135deg, #1a1a2e, #0f3460);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 32rpx;
+  box-shadow: 0 16rpx 48rpx rgba(26,26,46,0.3);
+  position: relative;
+}
+.camera-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 8rpx;
+  border: 4rpx dashed rgba(232,184,109,0.6);
+  border-radius: 50%;
+  animation: rotate 12s linear infinite;
+}
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.camera-icon {
+  font-size: 80rpx;
+}
+.shoot-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 12rpx;
+}
+.shoot-sub {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 36rpx;
+}
+.shoot-btn {
+  width: 100%;
+  height: 100rpx;
+  background: linear-gradient(135deg, #e8b86d, #c9922a);
+  border-radius: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 32rpx rgba(232,184,109,0.4);
+  letter-spacing: 2rpx;
+  border: none;
+  outline: none;
+  padding: 0;
+  line-height: 1;
+}
+.shoot-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+.shoot-tip {
+  display: flex;
+  justify-content: center;
+  gap: 40rpx;
+  margin-top: 28rpx;
+}
+.shoot-tip text {
+  font-size: 22rpx;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+
+/* 客户卡片 */
+.customer-card {
+  background: #fff;
+  margin: 40rpx 40rpx 20rpx;
+  border-radius: 28rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+}
+.customer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.customer-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.checkin-actions {
+  display: flex;
+  gap: 16rpx;
+}
+.btn-checkin, .btn-select {
+  flex: 1;
+  font-size: 26rpx;
+  border-radius: 24rpx;
+  border: none;
+  line-height: 88rpx;
+  height: 88rpx;
+  padding: 0;
+}
+.btn-checkin {
+  background: #1a1a2e;
+  color: #fff;
+}
+.btn-select {
+  background: #f2f2f2;
+  color: #333;
+}
+.customer-placeholder {
+  text-align: center;
+  padding: 30rpx 0 12rpx;
+  color: #999;
+  font-size: 24rpx;
+}
+.checkin-result-card {
+  margin-top: 20rpx;
+  border-radius: 20rpx;
+  background: #fafafa;
+  padding: 20rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 18rpx;
+}
+.customer-avatar {
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  background: #f0f0f0;
+}
+.customer-detail {
+  flex: 1;
+  min-width: 0;
+}
+.customer-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.customer-phone {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+.checkin-meta-row {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+.checkin-status-col {
+  margin-top: 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4rpx;
+}
+.checkin-count {
+  color: #b5b5b5;
+  font-size: 22rpx;
+  line-height: 1.2;
+}
+.count-num {
+  font-size: 30rpx;
+  color: #6f6f6f;
+  font-weight: 600;
+}
+.checkin-done {
+  color: #ef4444;
+  font-size: 22rpx;
+  line-height: 1.2;
+}
+
+/* 最近服务 */
+.section-header {
+  padding: 40rpx 40rpx 20rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.s-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.s-title::before {
+  content: '';
+  width: 6rpx;
+  height: 30rpx;
+  background: linear-gradient(180deg, #e8b86d, #c9922a);
+  border-radius: 3rpx;
+}
+.s-more {
+  font-size: 24rpx;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+/* 样板展示 */
+.showcase-section {
+  padding: 20rpx 40rpx 40rpx;
+}
+.showcase-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+}
+.showcase-item {
+  border-radius: 28rpx;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  background: #f0f0f0;
+}
+
+.showcase-item image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.showcase-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  background: linear-gradient(transparent, rgba(0,0,0,0.5));
+  padding: 40rpx 20rpx 16rpx;
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 500;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .home-header {
+    padding: 24rpx 28rpx 30rpx;
+  }
+  .shoot-section {
+    padding: 28rpx 28rpx 0;
+    margin-top: -28rpx;
+  }
+  .shoot-card {
+    border-radius: 28rpx;
+    padding: 34rpx 28rpx 30rpx;
+  }
+  .camera-wrap {
+    width: 168rpx;
+    height: 168rpx;
+    margin-bottom: 24rpx;
+  }
+  .camera-icon {
+    font-size: 64rpx;
+  }
+  .shoot-title {
+    font-size: 30rpx;
+  }
+  .shoot-sub,
+  .shoot-tip text,
+  .store-sub,
+  .customer-placeholder {
+    font-size: 22rpx;
+  }
+  .shoot-btn {
+    height: 86rpx;
+    border-radius: 43rpx;
+    font-size: 28rpx;
+  }
+  .customer-card {
+    margin: 28rpx 28rpx 16rpx;
+    border-radius: 22rpx;
+    padding: 22rpx;
+  }
+  .btn-checkin,
+  .btn-select {
+    height: 80rpx;
+    line-height: 80rpx;
+    border-radius: 20rpx;
+    font-size: 24rpx;
+  }
+  .checkin-result-card {
+    padding: 16rpx;
+  }
+  .customer-avatar {
+    width: 82rpx;
+    height: 82rpx;
+  }
+  .customer-name {
+    font-size: 27rpx;
+  }
+  .customer-phone,
+  .checkin-meta-row,
+  .checkin-count,
+  .checkin-done,
+  .s-more,
+  .showcase-label {
+    font-size: 20rpx;
+  }
+  .count-num {
+    font-size: 27rpx;
+  }
+  .section-header {
+    padding: 30rpx 28rpx 16rpx;
+  }
+  .showcase-section {
+    padding: 14rpx 28rpx 28rpx;
+  }
+}
+

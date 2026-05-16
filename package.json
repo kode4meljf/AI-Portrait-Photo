@@ -1,21 +1,10 @@
 {
-  "name": "ai-portrait-miniprogram_v2",
+  "name": "ai-portrait",
   "version": "1.0.0",
-  "description": "",
-  "main": "app - 副本.js",
+  "private": true,
+  "description": "AI写真馆：微信小程序 + 云函数 + 管理后台",
   "scripts": {
-    "test": "TZ=UTC jest",
-    "test:watch": "TZ=UTC jest --watch",
-    "test:coverage": "TZ=UTC jest --coverage"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "jest": "^29.7.0"
-  },
-  "dependencies": {
-    "@babel/runtime": "^7.29.2"
+    "dev:admin": "npm run dev --prefix admin-web",
+    "build:admin": "npm run build --prefix admin-web"
   }
 }
