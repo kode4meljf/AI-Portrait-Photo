@@ -1,0 +1,16 @@
+<view class="launch-page">
+  <view wx:if="{{loading}}" class="hint">正在加载…</view>
+
+  <view wx:elif="{{status === 'pending'}}" class="panel">
+    <text class="title">等待店长审核</text>
+    <text class="desc">您已申请加入{{storeName || '门店'}}，请店长在「员工管理」中通过后再使用。</text>
+    <button class="btn" bindtap="bootstrap">刷新状态</button>
+  </view>
+
+  <view wx:else class="panel">
+    <text class="title">门店工作台</text>
+    <text class="desc">创建新门店或使用邀请码加入已有门店</text>
+    <button class="btn primary" bindtap="goCreateStore">创建门店</button>
+    <button class="btn" bindtap="goJoin">输入邀请码加入</button>
+  </view>
+</view>

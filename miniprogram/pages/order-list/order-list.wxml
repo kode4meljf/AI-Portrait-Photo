@@ -5,10 +5,10 @@
 
     <!-- 统计概览（动态数据） -->
     <view class="stats-overview">
-      <view class="stats-label">本月累计下单金额</view>
+      <view class="stats-label">本月累计订单</view>
       <view class="stats-amount">
-        <text class="yuan">¥</text>
-        <text>{{monthTotalAmount}}</text>
+        <text>{{monthOrderCount}}</text>
+        <text class="yuan">单</text>
       </view>
       <view class="stats-trend" wx:if="{{monthCompare}}">
         <text>{{monthCompare}}</text>
@@ -57,50 +57,61 @@
         <view class="month-summary">
           <text class="ms-label">{{item.month}}累计订单</text>
           <view style="text-align:right">
-            <text class="ms-amount">¥{{item.totalAmount}}</text>
+            <text class="ms-amount">{{item.totalCount}} 单</text>
             <!-- 可选同比，暂不显示 -->
           </view>
         </view>
 
-        <!-- 该月份下的订单卡片 -->
-        <view wx:for="{{item.orders}}" wx:for-item="order" wx:key="_id" class="order-card">
-          <view class="order-header">
-            <view class="order-customer">
-              <view class="customer-avatar">
-                <image src="{{order.customerInfo.avatarUrl || 'https://picsum.photos/72/72?random=1'}}" mode="aspectFill"></image>
-              </view>
-              <view>
-                <view class="customer-name">{{order.customerInfo.nickName || '匿名客户'}}</view>
-                <view class="customer-time">{{order.createTimeStr}}</view>
-              </view>
-            </view>
-            <view class="order-status {{order.statusClass}}">{{order.statusText}}</view>
+        <!-- 该月份下的订单卡片（方案 A：成片主导，点击卡片进详情） -->
+        <view
+          wx:for="{{item.orders}}"
+          wx:for-item="order"
+          wx:key="_id"
+          class="order-card"
+          bindtap="onOrderDetail"
+          data-order="{{order}}"
+          hover-class="order-card--hover"
+          hover-stay-time="80"
+        >
+          <view class="order-photo-wrap">
+            <image class="order-photo" src="{{order.photoThumb}}" mode="aspectFill" />
+            <text class="order-photo-label">摆台预览</text>
           </view>
-          <view class="order-body">
-            <view class="order-products">
-              <!-- 展示订单中的商品（目前每个订单只有一个相框，但保留多个的扩展） -->
-              <block wx:for="{{order.items}}" wx:for-item="item" wx:key="index">
-                <view class="order-product">
-                  <view class="product-thumb">
-                    <image src="{{item.thumb || 'https://picsum.photos/96/96?random=2'}}" mode="aspectFill"></image>
-                  </view>
-                  <view class="product-info">
-                    <view class="product-name">{{item.name}}</view>
-                    <view class="product-spec">{{item.spec}}</view>
-                  </view>
-                  <view class="product-price">¥{{item.price}}</view>
-                </view>
-              </block>
+          <view class="order-main">
+            <view class="order-top">
+              <view class="order-head-text">
+                <text class="order-no">{{order.orderNo}}</text>
+                <text class="order-title">{{order.frameName || '写真摆台'}}</text>
+              </view>
+              <view class="order-status {{order.statusClass}}">{{order.statusText}}</view>
             </view>
-          </view>
-          <view class="order-footer">
-            <view class="order-total">合计¥<text class="total-price">{{order.totalPrice}}</text></view>
-            <view class="order-actions">
-              <button class="action-btn secondary" data-order="{{order}}" bindtap="onOrderDetail">详情</button>
-              <button wx:if="{{order.status === 'pending'}}" class="action-btn primary" data-order="{{order}}" bindtap="onConfirmProduction">确认制作</button>
-              <button wx:if="{{order.status === 'producing'}}" class="action-btn secondary" data-order="{{order}}" bindtap="onViewLogistics">📦 查看物流</button>
-              <button wx:if="{{order.status === 'shipped'}}" class="action-btn secondary" data-order="{{order}}" bindtap="onConfirmReceipt">✅ 确认签收</button>
-              <!-- 已完成订单只显示详情 -->
+            <view class="order-meta">
+              <text wx:if="{{order.styleName}}" class="order-meta-line">风格 {{order.styleName}}</text>
+              <text class="order-meta-line">客户 {{order.displayCustomerName}} · {{order.createTimeStr}}</text>
+            </view>
+            <view
+              wx:if="{{order.showConfirmProduction || order.showViewLogistics || order.showConfirmReceipt}}"
+              class="order-actions"
+              catchtap="stopActionBubble"
+            >
+              <view
+                wx:if="{{order.showConfirmProduction}}"
+                class="action-btn primary"
+                data-order="{{order}}"
+                catchtap="onConfirmProduction"
+              >确认制作</view>
+              <view
+                wx:if="{{order.showViewLogistics}}"
+                class="action-btn secondary"
+                data-order="{{order}}"
+                catchtap="onViewLogistics"
+              >查看物流</view>
+              <view
+                wx:if="{{order.showConfirmReceipt}}"
+                class="action-btn secondary"
+                data-order="{{order}}"
+                catchtap="onConfirmReceipt"
+              >确认签收</view>
             </view>
           </view>
         </view>

@@ -39,7 +39,24 @@
       bindrefresherrefresh="onPullDownRefresh"
       refresher-triggered="{{refreshing}}"
     >
-      <view wx:if="{{filteredCustomers.length === 0 && !loading}}" class="empty-tip">
+      <view
+        wx:if="{{includeStoreOption && !searchKeyword}}"
+        class="customer-item store-scope-item {{selectedId === '__all_store__' ? 'selected' : ''}}"
+        bindtap="onStoreOptionTap"
+      >
+        <view class="customer-avatar customer-avatar--initial store-scope-avatar">
+          <text class="avatar-initial-text">店</text>
+        </view>
+        <view class="customer-info">
+          <text class="customer-name">{{storeOptionLabel}}</text>
+          <text class="customer-phone">查看本店全部客户的相册</text>
+        </view>
+        <view class="customer-right">
+          <text class="store-scope-tag">全店</text>
+        </view>
+      </view>
+
+      <view wx:if="{{filteredCustomers.length === 0 && !loading && !(includeStoreOption && !searchKeyword)}}" class="empty-tip">
         <text wx:if="{{searchKeyword}}">未找到匹配的客户</text>
         <text wx:else>暂无客户</text>
       </view>
@@ -52,7 +69,7 @@
           <text class="avatar-initial-text">{{item.avatarInitial}}</text>
         </view>
         <view class="customer-info">
-          <text class="customer-name">{{item.nickName || '匿名用户'}}</text>
+          <text class="customer-name">{{item.displayName}}</text>
           <text class="customer-phone">{{item.phone || '未绑定手机'}}</text>
         </view>
         <view class="customer-right">
@@ -94,16 +111,20 @@
           <view wx:else class="edit-avatar edit-avatar--initial" style="background-color: {{editAvatarTint}};">
             <text class="edit-avatar-initial">{{editAvatarInitial}}</text>
           </view>
-          <text class="edit-avatar-hint">头像仅展示，暂不支持修改</text>
+          <text class="edit-avatar-hint">头像来自客户码，客户打卡后自动更新</text>
         </view>
 
         <view class="edit-form">
+          <view wx:if="{{editWxNickName}}" class="edit-field edit-field--readonly">
+            <text class="edit-label">微信昵称</text>
+            <text class="edit-readonly">{{editWxNickName}}</text>
+          </view>
           <view class="edit-field">
-            <text class="edit-label">客户昵称</text>
+            <text class="edit-label">客户称呼</text>
             <input
               class="edit-input"
               placeholder-class="edit-placeholder"
-              placeholder="请输入客户昵称"
+              placeholder="店长备注，方便识别客户"
               value="{{editForm.nickName}}"
               bindinput="onEditInput"
               data-key="nickName"

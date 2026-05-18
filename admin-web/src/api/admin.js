@@ -18,5 +18,22 @@ export const api = {
   updateOrderStatus: (data) => adminRequest('orders.updateStatus', data),
 
   listCheckins: (params) => adminRequest('checkins.list', {}, params),
-  getCheckinSummary: (params) => adminRequest('checkins.summary', params)
+  getCheckinSummary: (params) => adminRequest('checkins.summary', params),
+
+  listStyles: (params) => adminRequest('styles.list', {}, params),
+  getStyle: (id) => adminRequest('styles.get', { id }),
+  createStyle: (data) => adminRequest('styles.create', data),
+  updateStyle: (data) => adminRequest('styles.update', data),
+  deleteStyle: (data) => adminRequest('styles.delete', data),
+  uploadStyleSample: (data) => adminRequest('styles.uploadSample', data),
+
+  listFrames: (params) => adminRequest('frames.list', {}, params),
+  getFrame: (id) => adminRequest('frames.get', { id }),
+  createFrame: (data) => adminRequest('frames.create', data),
+  updateFrame: (data) => adminRequest('frames.update', data),
+  deleteFrame: (data) => adminRequest('frames.delete', data),
+  uploadFrameCover: (data) => adminRequest('frames.uploadCover', data),
+
+  getPlatformSettings: () => adminRequest('platformSettings.get'),
+  updatePlatformSettings: (data) => adminRequest('platformSettings.update', data)
 }

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "员工管理",
+  "navigationBarBackgroundColor": "#1a1a2e",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f3f4f6",
+  "enablePullDownRefresh": true
+}

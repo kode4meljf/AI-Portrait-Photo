@@ -18,3 +18,10 @@ admin-web/.env
 admin-web/.env.local
 admin-web/.env.*.local
 cloudfunctions/**/node_modules/
+miniprogram/cloudfunctions/**/node_modules/
+
+# 风格样图仅在 ~/Desktop/AI写真，勿放入 miniprogram/
+miniprogram/assets/styles-raw/
+miniprogram/assets/styles/
+miniprogram/assets/styles-34/
+miniprogram/assets/styles-generated/

@@ -4,6 +4,9 @@
  */
 
 const app = getApp()
+const { getCustomerDisplayName } = require('../../utils/customerDisplay')
+
+const STORE_OPTION_ID = '__all_store__'
 
 function isToday(timestamp) {
   if (!timestamp) return false
@@ -45,6 +48,19 @@ Component({
     selectedId: {
       type: String,
       value: ''
+    },
+    includeStoreOption: {
+      type: Boolean,
+      value: false
+    },
+    storeOptionLabel: {
+      type: String,
+      value: '全店客户'
+    },
+    /** false 时仅触发 select 事件，不写首页拍摄会话 */
+    applyGlobalSelection: {
+      type: Boolean,
+      value: true
     }
   },
 
@@ -66,6 +82,7 @@ Component({
     editAvatarUrl: '',
     editAvatarInitial: '客',
     editAvatarTint: '#4e7cf6',
+    editWxNickName: '',
     editChanged: false,
     editSaving: false,
   },
@@ -139,15 +156,25 @@ Component({
 
       try {
         const db = wx.cloud.database()
-        let query = db.collection('customers')
+        const storeId = app.globalData.storeId
+        if (!storeId) {
+          this.setData({ customers: [], filteredCustomers: [] })
+          this.calcStats([])
+          return
+        }
+
+        let query = db.collection('customers').where({ storeId })
 
         // 服务端模糊搜索
         if (this.data.searchKeyword) {
           const _ = db.command
-          query = query.where(
-            _.or([
-              { nickName: db.RegExp({ regexp: this.data.searchKeyword, options: 'i' }) },
-              { phone: db.RegExp({ regexp: this.data.searchKeyword, options: 'i' }) }
+          query = db.collection('customers').where(
+            _.and([
+              { storeId },
+              _.or([
+                { nickName: db.RegExp({ regexp: this.data.searchKeyword, options: 'i' }) },
+                { phone: db.RegExp({ regexp: this.data.searchKeyword, options: 'i' }) }
+              ])
             ])
           )
         }
@@ -165,7 +192,8 @@ Component({
             ...c,
             todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
             createTimeStr: c.createTime ? this.formatDate(c.createTime) : '',
-            avatarInitial: initialFromName(c.nickName),
+            displayName: getCustomerDisplayName(c),
+            avatarInitial: initialFromName(c.nickName || c.wxNickName),
             avatarTint: pickAvatarTint(c._id || nick)
           }
         })
@@ -210,13 +238,28 @@ Component({
       }
     },
 
+    onStoreOptionTap() {
+      if (this.properties.applyGlobalSelection) {
+        app.globalData.selectedCustomerId = null
+        app.globalData.selectedCustomer = null
+        wx.removeStorageSync('selectedCustomerId')
+      }
+      this.setData({ selectedId: STORE_OPTION_ID })
+      setTimeout(() => {
+        this.triggerEvent('select', { allStore: true })
+        this.triggerEvent('close')
+      }, 150)
+    },
+
     // 点击客户
     onCustomerTap(e) {
       const customer = e.currentTarget.dataset.customer
 
-      app.globalData.selectedCustomerId = customer._id
-      app.globalData.selectedCustomer = customer
-      wx.setStorageSync('selectedCustomerId', customer._id)
+      if (this.properties.applyGlobalSelection) {
+        app.globalData.selectedCustomerId = customer._id
+        app.globalData.selectedCustomer = customer
+        wx.setStorageSync('selectedCustomerId', customer._id)
+      }
 
       this.setData({ selectedId: customer._id })
 
@@ -227,7 +270,7 @@ Component({
     },
 
     avatarMetaFromCustomer(customer, id) {
-      const nick = customer?.nickName || ''
+      const nick = customer?.nickName || customer?.wxNickName || ''
       return {
         editAvatarUrl: customer?.avatarUrl || '',
         editAvatarInitial: customer?.avatarInitial || initialFromName(nick),
@@ -257,6 +300,7 @@ Component({
       this.setData({
         editPanelVisible: true,
         editingId: id,
+        editWxNickName: (customer.wxNickName || '').trim(),
         editForm: { ...snapshot },
         editSnapshot: { ...snapshot },
         ...this.avatarMetaFromCustomer(customer, id),

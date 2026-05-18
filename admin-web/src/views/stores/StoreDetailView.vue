@@ -67,7 +67,7 @@ async function loadDetail() {
 async function save() {
   saving.value = true
   try {
-    const data = await api.updateStore({ ...form.value, storeId: form.value._id })
+    const data = await api.updateStore({ ...form.value, _id: form.value._id })
     form.value = data
     ElMessage.success('保存成功')
   } catch (e) {

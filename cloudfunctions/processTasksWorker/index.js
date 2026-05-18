@@ -5,6 +5,7 @@ const tencentcloud = require('tencentcloud-sdk-nodejs');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+const STYLE_TEMPLATES_COLLECTION = 'style_templates';
 
 const secretId = process.env.TENCENT_SECRET_ID;
 const secretKey = process.env.TENCENT_SECRET_KEY;
@@ -112,11 +113,11 @@ async function processTask(task) {
     
     // 获取模板
     let template = null;
-    const byId = await db.collection('templates').where({ id: templateId }).get();
+    const byId = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: templateId }).get();
     if (byId.data.length) {
         template = byId.data[0];
     } else {
-        const byDoc = await db.collection('templates').doc(templateId).get();
+        const byDoc = await db.collection(STYLE_TEMPLATES_COLLECTION).doc(templateId).get();
         if (byDoc.data) template = byDoc.data;
     }
     if (!template) throw new Error(`模板不存在，templateId: ${templateId}`);

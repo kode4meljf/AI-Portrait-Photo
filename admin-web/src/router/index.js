@@ -48,6 +48,24 @@ const routes = [
         name: 'checkins',
         component: () => import('@/views/checkins/CheckinView.vue'),
         meta: { title: '打卡管理' }
+      },
+      {
+        path: 'styles',
+        name: 'styles',
+        component: () => import('@/views/styles/StyleListView.vue'),
+        meta: { title: '风格管理' }
+      },
+      {
+        path: 'frames',
+        name: 'frames',
+        component: () => import('@/views/frames/FrameListView.vue'),
+        meta: { title: '相框管理' }
+      },
+      {
+        path: 'settings/platform',
+        name: 'platform-settings',
+        component: () => import('@/views/settings/PlatformSettingsView.vue'),
+        meta: { title: '平台配置' }
       }
     ]
   }

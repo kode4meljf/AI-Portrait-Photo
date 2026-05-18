@@ -1,0 +1,19 @@
+<view class="form-page">
+  <view class="field">
+    <text class="label">门店名称</text>
+    <input value="{{name}}" data-key="name" bindinput="onInput" placeholder="门店名称" />
+  </view>
+  <view class="field">
+    <text class="label">联系人</text>
+    <input value="{{contactName}}" data-key="contactName" bindinput="onInput" placeholder="选填" />
+  </view>
+  <view class="field">
+    <text class="label">联系电话</text>
+    <input value="{{contactPhone}}" data-key="contactPhone" bindinput="onInput" placeholder="选填" />
+  </view>
+  <view class="field">
+    <text class="label">地址</text>
+    <input value="{{address}}" data-key="address" bindinput="onInput" placeholder="选填" />
+  </view>
+  <button class="submit" loading="{{submitting}}" bindtap="onSubmit">创建并进入工作台</button>
+</view>

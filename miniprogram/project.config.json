@@ -2,10 +2,13 @@
   "description": "项目配置文件 - AI写真馆",
   "packOptions": {
     "ignore": [
-      {
-        "value": "/minitest",
-        "type": "folder"
-      }
+      { "type": "folder", "value": "/minitest" },
+      { "type": "folder", "value": "assets/styles-raw" },
+      { "type": "folder", "value": "assets/styles" },
+      { "type": "folder", "value": "assets/styles-34" },
+      { "type": "folder", "value": "assets/styles-generated" },
+      { "type": "folder", "value": "docs" },
+      { "type": "folder", "value": "cloudfunctions" }
     ],
     "include": []
   },
@@ -56,7 +59,7 @@
   "libVersion": "3.15.2",
   "appid": "wxa17b6104ffe25221",
   "projectname": "ai-photo-studio",
-  "cloudfunctionRoot": "cloudfunctions/",
+  "cloudfunctionRoot": "../cloudfunctions/",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",

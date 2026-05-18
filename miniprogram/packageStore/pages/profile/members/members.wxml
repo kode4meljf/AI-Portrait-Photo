@@ -1,0 +1,127 @@
+<view class="members-page">
+  <scroll-view
+    class="scroll-area"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <!-- 概览 -->
+    <view class="summary-card">
+      <view class="summary-item">
+        <text class="summary-num">{{active.length}}</text>
+        <text class="summary-label">在职员工</text>
+      </view>
+      <view class="summary-divider"></view>
+      <view class="summary-item">
+        <text class="summary-num {{pending.length ? 'highlight' : ''}}">{{pending.length}}</text>
+        <text class="summary-label">待审核</text>
+      </view>
+    </view>
+
+    <!-- 邀请入职（店长） -->
+    <view wx:if="{{isOwner}}" class="invite-card">
+      <view class="invite-head">
+        <view class="invite-icon-wrap">
+          <image class="invite-icon" src="/assets/icons/ws-staff.svg" mode="aspectFit"></image>
+        </view>
+        <view class="invite-text">
+          <text class="invite-title">邀请员工加入</text>
+          <text class="invite-desc">生成 24 小时有效邀请码，发送给员工扫码加入</text>
+        </view>
+      </view>
+      <view class="invite-action" hover-class="invite-action-active" bindtap="onCreateInvite">
+        <text>生成邀请码</text>
+      </view>
+      <view wx:if="{{inviteToken}}" class="invite-token-box">
+        <text class="token-label">当前邀请码</text>
+        <view class="token-row">
+          <text class="token-value">{{inviteToken}}</text>
+          <view class="token-copy" hover-class="token-copy-active" bindtap="onCopyInvite">复制</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 待审核 -->
+    <view class="section">
+      <view class="section-head">
+        <view class="section-title-wrap">
+          <text class="section-title">待审核</text>
+          <view wx:if="{{pending.length}}" class="section-badge">{{pending.length}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{pending.length}}" class="member-list">
+        <view wx:for="{{pending}}" wx:key="_id" class="member-card pending-card">
+          <view class="member-main">
+            <view class="avatar avatar-pending">{{item.initial}}</view>
+            <view class="member-info">
+              <text class="member-name">{{item.displayName}}</text>
+              <text class="member-meta">申请加入门店</text>
+            </view>
+          </view>
+          <view class="member-actions">
+            <view
+              class="action-btn reject"
+              hover-class="action-btn-active"
+              data-id="{{item._id}}"
+              bindtap="onReject"
+            >拒绝</view>
+            <view
+              class="action-btn approve"
+              hover-class="action-btn-active"
+              data-id="{{item._id}}"
+              bindtap="onApprove"
+            >通过</view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-block">
+        <text class="empty-icon">✓</text>
+        <text class="empty-text">暂无待审核申请</text>
+      </view>
+    </view>
+
+    <!-- 在职团队 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">在职团队</text>
+        <text class="section-sub">{{active.length}} 人</text>
+      </view>
+
+      <view wx:if="{{active.length}}" class="member-list">
+        <view wx:for="{{active}}" wx:key="_id" class="member-card">
+          <view class="member-main">
+            <view class="avatar {{item.isOwnerRole ? 'avatar-owner' : 'avatar-staff'}}">{{item.initial}}</view>
+            <view class="member-info">
+              <view class="name-row">
+                <text class="member-name">{{item.displayName}}</text>
+                <view class="role-tag {{item.isOwnerRole ? 'owner' : 'staff'}}">{{item.roleLabel}}</view>
+              </view>
+              <text class="member-meta">{{item.isOwnerRole ? '门店创建者' : '可协助接待客户与云相册'}}</text>
+            </view>
+          </view>
+          <view
+            wx:if="{{isOwner && !item.isOwnerRole}}"
+            class="remove-btn"
+            hover-class="remove-btn-active"
+            data-id="{{item._id}}"
+            data-name="{{item.displayName}}"
+            bindtap="onDisable"
+          >移出</view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-block">
+        <text class="empty-icon">👥</text>
+        <text class="empty-text">暂无在职员工</text>
+        <text wx:if="{{isOwner}}" class="empty-hint">生成邀请码邀请同事加入</text>
+      </view>
+    </view>
+
+    <view class="page-footer"></view>
+  </scroll-view>
+</view>

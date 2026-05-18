@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>订单卡片设计对比</title>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --card: #fff;
+      --ink: #1a1a2e;
+      --muted: #a1a1aa;
+      --line: #f0f0f0;
+      --pending-bg: #fff8f0;
+      --pending: #e67e22;
+      --producing-bg: #eff6ff;
+      --producing: #2563eb;
+      --shipped-bg: #f0fdf4;
+      --shipped: #22c55e;
+      --done-bg: #f5f5f5;
+      --done: #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 16px 16px 48px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .intro { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+    section { margin-bottom: 32px; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* —— 当前方案（简化还原） —— */
+    .card-current {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .card-current .head {
+      padding: 14px 16px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+    .card-current .user { display: flex; gap: 10px; align-items: center; }
+    .card-current .avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: #e4e4e7;
+    }
+    .card-current .name { font-size: 14px; font-weight: 600; }
+    .card-current .time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .pill {
+      font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500;
+    }
+    .pill.pending { background: var(--pending-bg); color: var(--pending); }
+    .card-current .body { padding: 12px 16px; }
+    .card-current .row { display: flex; gap: 10px; align-items: center; }
+    .card-current .thumb {
+      width: 48px; height: 48px; border-radius: 8px; background: #e4e4e7; flex-shrink: 0;
+    }
+    .card-current .prod { font-size: 13px; font-weight: 500; }
+    .card-current .spec { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .card-current .foot {
+      padding: 10px 16px 14px;
+      border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn {
+      font-size: 12px; padding: 6px 14px; border-radius: 20px; border: none;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn.sec { background: #f5f5f5; color: #666; }
+    .btn.pri { background: var(--ink); color: #fff; }
+
+    /* —— 推荐方案 A：成片主导 —— */
+    .card-a {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      position: relative;
+    }
+    .card-a .photo-wrap {
+      width: 88px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .card-a .photo {
+      width: 88px;
+      height: 110px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #e8e4df 0%, #d4cfc8 100%);
+      border: 3px solid #c9a962;
+      box-shadow: inset 0 0 0 4px #fff;
+    }
+    .card-a .photo-label {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: #fff;
+      background: rgba(0,0,0,0.35);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .card-a .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .card-a .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .card-a .order-no { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .card-a .title { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .card-a .meta {
+      font-size: 12px;
+      color: #52525b;
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+    .card-a .meta span { color: var(--muted); }
+    .card-a .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+    .card-a .chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #fafafa;
+      border: 1px solid var(--line);
+      color: #52525b;
+    }
+    .card-a .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .card-a .actions .btn { flex: 1; text-align: center; }
+
+    /* —— 推荐方案 B：状态条 + 整卡可点 —— */
+    .card-b {
+      background: var(--card);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      cursor: pointer;
+    }
+    .card-b .strip {
+      width: 4px;
+      flex-shrink: 0;
+      background: var(--producing);
+    }
+    .card-b .strip.pending { background: var(--pending); }
+    .card-b .strip.shipped { background: var(--shipped); }
+    .card-b .inner { flex: 1; padding: 12px 14px 12px 12px; }
+    .card-b .row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .card-b .row1 .left { display: flex; align-items: center; gap: 8px; }
+    .card-b .mini-thumb {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: linear-gradient(135deg, #f4f4f5, #e4e4e7);
+    }
+    .card-b .frame-name { font-size: 14px; font-weight: 600; }
+    .card-b .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .card-b .row2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #52525b;
+    }
+    .card-b .row2 .customer { display: flex; align-items: center; gap: 6px; }
+    .card-b .dot {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #4e7cf6; color: #fff;
+      font-size: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 600;
+    }
+    .card-b .chev { color: #d4d4d8; font-size: 18px; }
+
+    .tag-rec {
+      display: inline-block;
+      font-size: 10px;
+      background: #ecfdf5;
+      color: #059669;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>订单列表 · 卡片设计对比</h1>
+  <p class="intro">
+    摆台订单的核心是「成片 + 状态 + 客户」，门店侧需要快速扫一眼知道要不要处理。
+    以下为当前实现与两套改进方案的静态稿（375px 宽）。
+  </p>
+
+  <section>
+    <div class="section-title">当前实现（简化还原）</div>
+    <div class="card-current">
+      <div class="head">
+        <div class="user">
+          <div class="avatar"></div>
+          <div>
+            <div class="name">张姐</div>
+            <div class="time">05-18 14:32</div>
+          </div>
+        </div>
+        <span class="pill pending">待处理</span>
+      </div>
+      <div class="body">
+        <div class="row">
+          <div class="thumb"></div>
+          <div>
+            <div class="prod">原木火烈鸟</div>
+            <div class="spec">机长照</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn sec">详情</button>
+        <button class="btn pri">确认制作</button>
+      </div>
+    </div>
+    <p class="note">
+      问题：头/身/脚三段分割 + 三条分割线偏重；客户头像占位过大、成片缩略图偏小；
+      订单号缺失；按钮区占高；整卡不可点，只能点小按钮。
+    </p>
+  </section>
+
+  <section>
+    <div class="section-title">推荐 A · 成片主导 <span class="tag-rec">推荐</span></div>
+    <div class="card-a">
+      <div class="photo-wrap">
+        <div class="photo"></div>
+        <span class="photo-label">摆台预览</span>
+      </div>
+      <div class="main">
+        <div class="top">
+          <div>
+            <div class="order-no">OR1747123456789</div>
+            <div class="title">原木火烈鸟</div>
+          </div>
+          <span class="pill pending">待处理</span>
+        </div>
+        <div class="meta">
+          风格 <span>机长照</span><br />
+          客户 <span>张姐</span> · 05-18 14:32
+        </div>
+        <div class="chips">
+          <span class="chip">10寸实木</span>
+          <span class="chip">待发货</span>
+        </div>
+        <div class="actions">
+          <button class="btn sec">详情</button>
+          <button class="btn pri">确认制作</button>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      左大图是订单主角；状态与客户降为辅助信息；订单号可复制；操作仍在卡内但层级更清晰。
+      适合写真摆台单一 SKU 场景。
+    </p>
+  </section>
+
+  <section>
+    <div class="section-title">推荐 B · 状态条 + 整卡点击</div>
+    <div class="card-b">
+      <div class="strip pending"></div>
+      <div class="inner">
+        <div class="row1">
+          <div class="left">
+            <div class="mini-thumb"></div>
+            <div>
+              <div class="frame-name">原木火烈鸟</div>
+              <div class="sub">机长照 · OR1747…6789</div>
+            </div>
+          </div>
+          <span class="pill pending">待处理</span>
+        </div>
+        <div class="row2">
+          <div class="customer">
+            <span class="dot">张</span>
+            张姐
+          </div>
+          <span>05-18 14:32 <span class="chev">›</span></span>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      更紧凑，适合列表很长时；左侧色条强化 Tab 筛选对应关系；整卡进详情，底部操作移到详情页或左滑。
+      适合订单量大、以查阅为主时。
+    </p>
+  </section>
+</body>
+</html>

@@ -1,0 +1,23 @@
+.form-page {
+  padding: 32rpx;
+}
+
+.field {
+  margin-bottom: 28rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.label {
+  display: block;
+  font-size: 26rpx;
+  color: #888;
+  margin-bottom: 12rpx;
+}
+
+.submit {
+  margin-top: 40rpx;
+  background: #ff69b4;
+  color: #fff;
+}

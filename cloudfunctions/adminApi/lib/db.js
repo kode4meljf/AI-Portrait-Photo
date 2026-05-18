@@ -6,6 +6,7 @@ const db = cloud.database()
 const _ = db.command
 
 const ORDER_STATUSES = ['待处理', '制作中', '已发货', '已完成']
+const STYLE_TEMPLATES_COLLECTION = 'style_templates'
 
 function toDateString(value) {
   if (!value) return ''
@@ -28,6 +29,7 @@ module.exports = {
   db,
   _,
   ORDER_STATUSES,
+  STYLE_TEMPLATES_COLLECTION,
   toDateString,
   parsePage
 }

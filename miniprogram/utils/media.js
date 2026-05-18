@@ -104,7 +104,8 @@ async function _createBatch() {
   const db = wx.cloud.database();
   const storeId = app.globalData.storeId;
 
-  if (!storeId || storeId === 'mock_store_id') {
+  const { isValidStoreId } = require('./storeSession');
+  if (!isValidStoreId(storeId)) {
     throw new Error('门店ID无效');
   }
 
@@ -123,7 +124,8 @@ async function _createBatch() {
 /** 上传单张图片并保存记录 */
 async function _uploadAndSavePhoto(tempFilePath, batchId) {
   const storeId = app.globalData.storeId;
-  if (!storeId || storeId === 'mock_store_id') {
+  const { isValidStoreId } = require('./storeSession');
+  if (!isValidStoreId(storeId)) {
     console.error('storeId无效');
     return false;
   }
@@ -182,4 +184,69 @@ function _compressImage(src) {
   });
 }
 
-module.exports = { chooseAndUpload, uploadSingle };
+/** 微信本地临时路径（含开发者工具里的 http://tmp/） */
+function isWechatLocalPath(url) {
+  const s = String(url || '').trim();
+  if (!s) return false;
+  if (s.startsWith('cloud://')) return false;
+  if (s.startsWith('wxfile://')) return true;
+  if (/^https?:\/\/tmp\//i.test(s)) return true;
+  if (!/^https?:\/\//i.test(s)) return true;
+  return false;
+}
+
+/** 真实可公网访问的 http(s) 外链 */
+function isRemoteHttpUrl(url) {
+  const s = String(url || '').trim();
+  return /^https?:\/\//i.test(s) && !/^https?:\/\/tmp\//i.test(s);
+}
+
+/**
+ * 将本地路径转为云存储 fileID（cloud://）
+ * @param {string} source
+ * @returns {Promise<string>}
+ */
+const ensureCloudFileUrl = async (source) => {
+  if (!source) {
+    throw new Error('缺少图片');
+  }
+  if (source.startsWith('cloud://')) {
+    return source;
+  }
+  if (isRemoteHttpUrl(source)) {
+    throw new Error('远程 http 图片请使用 resolvePhotoForOrder');
+  }
+
+  const storeId = app.globalData.storeId || 'unknown';
+  const ext = String(source).toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+  const cloudPath = `frame-orders/${storeId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const uploadRes = await wx.cloud.uploadFile({
+    cloudPath,
+    filePath: source
+  });
+  return uploadRes.fileID;
+};
+
+/**
+ * 摆台下单用：本地/tmp 先上传；已是 cloud:// 直接返回；真实外链留给云函数转存
+ */
+const resolvePhotoForOrder = async (source) => {
+  if (!source) throw new Error('缺少图片');
+  if (source.startsWith('cloud://')) return source;
+  if (isWechatLocalPath(source)) {
+    return ensureCloudFileUrl(source);
+  }
+  if (isRemoteHttpUrl(source)) {
+    return source;
+  }
+  return ensureCloudFileUrl(source);
+};
+
+module.exports = {
+  chooseAndUpload,
+  uploadSingle,
+  ensureCloudFileUrl,
+  resolvePhotoForOrder,
+  isWechatLocalPath,
+  isRemoteHttpUrl
+};

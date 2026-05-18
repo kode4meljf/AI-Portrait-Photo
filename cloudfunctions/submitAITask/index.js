@@ -1,6 +1,8 @@
 const cloud = require('wx-server-sdk');
+const { resolveStoreIdFromOpenid } = require('../lib/resolveStoreMember');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+const STYLE_TEMPLATES_COLLECTION = 'style_templates';
 
 exports.main = async (event, context) => {
   const { photoId, templateId } = event;
@@ -10,16 +12,18 @@ exports.main = async (event, context) => {
 
   try {
     // 验证模板是否存在（使用 id 字段，而非 _id）
-    const templateRes = await db.collection('templates').where({ id: templateId }).get();
+    const templateRes = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: templateId }).get();
     if (templateRes.data.length === 0) {
       return { success: false, error: '模板不存在' };
     }
+
+    const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
 
     // 创建任务记录
     const task = {
       photoId,
       templateId,
-      storeId: cloud.getWXContext().OPENID,
+      storeId,
       status: 'pending',
       createTime: new Date(),
       updateTime: null,

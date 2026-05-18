@@ -5,6 +5,10 @@
   "description": "AI写真馆：微信小程序 + 云函数 + 管理后台",
   "scripts": {
     "dev:admin": "npm run dev --prefix admin-web",
-    "build:admin": "npm run build --prefix admin-web"
+    "build:admin": "npm run build --prefix admin-web",
+    "seed:styles": "node scripts/seed-styles.js",
+    "process:style-samples": "node scripts/process-style-sample-images.js",
+    "print:style-sample-prompts": "node scripts/print-style-sample-prompts.js",
+    "upload:style-samples": "node scripts/upload-style-samples.js"
   }
 }

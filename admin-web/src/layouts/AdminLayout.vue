@@ -32,6 +32,18 @@
           <el-icon><Calendar /></el-icon>
           <span>打卡管理</span>
         </el-menu-item>
+        <el-menu-item index="/styles">
+          <el-icon><Picture /></el-icon>
+          <span>风格管理</span>
+        </el-menu-item>
+        <el-menu-item index="/frames">
+          <el-icon><Grid /></el-icon>
+          <span>相框管理</span>
+        </el-menu-item>
+        <el-menu-item index="/settings/platform">
+          <el-icon><Setting /></el-icon>
+          <span>平台配置</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 

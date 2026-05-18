@@ -1,14 +1,28 @@
 <!--pages/gallery/gallery.wxml-->
 <view class="gallery-container">
-  <!-- Tab栏（fixed，内容区独立滑动切换） -->
-  <view class="tabs">
-    <view class="tab {{activeTabIndex === 0 ? 'active' : ''}}" bindtap="switchTab" data-index="0">按时间</view>
-    <view class="tab {{activeTabIndex === 1 ? 'active' : ''}}" bindtap="switchTab" data-index="1">按收藏</view>
+  <view class="gallery-top">
+    <view class="filter-pill" hover-class="filter-pill-active" bindtap="onFilterRowTap">
+      <view class="pill-av {{singleCustomerMode ? '' : 'store'}}">{{filterCustomerInitial}}</view>
+      <text class="pill-name">{{singleCustomerMode ? filterCustomerName : '全店客户'}}</text>
+      <view class="btn-action">更换</view>
+    </view>
+    <view class="seg-tabs">
+      <view
+        class="seg-tab {{activeTabIndex === 0 ? 'on' : ''}}"
+        bindtap="switchTab"
+        data-index="0"
+      >按时间</view>
+      <view
+        class="seg-tab {{activeTabIndex === 1 ? 'on' : ''}}"
+        bindtap="switchTab"
+        data-index="1"
+      >有收藏</view>
+    </view>
+    <view wx:if="{{autoRefreshing}}" class="auto-hint">生成中，自动更新中…</view>
+    <view wx:elif="{{autoRefreshStopped}}" class="auto-hint muted">已停止自动更新，可下拉刷新</view>
   </view>
 
-  <!-- 内容区：swiper 左右滑动切换 -->
   <swiper class="content-swiper" current="{{activeTabIndex}}" bindchange="onSwiperChange" duration="300">
-    <!-- 按时间 -->
     <swiper-item>
       <scroll-view
         class="scroll-area"
@@ -27,24 +41,9 @@
             <view class="month-title">{{item.month}}</view>
           </view>
           <view class="batch-list">
-            <view wx:for="{{item.batches}}" wx:key="_id" class="batch-card" bindtap="onBatchTap" data-batch="{{item}}">
-              <view class="batch-header">
-                <view class="batch-date">{{item.createTimeStr}}</view>
-                <view class="batch-status {{item.status}}">
-                  <text wx:if="{{item.status === 'completed'}}">已完成</text>
-                  <text wx:elif="{{item.status === 'generating'}}">生成中 {{item.generatedCount}}/{{item.photoCount}}</text>
-                  <text wx:else>待生成</text>
-                </view>
-                <view class="download-btn" catchtap="onDownloadBatch" data-batch="{{item}}">下载</view>
-              </view>
-              <view class="batch-thumbs">
-                <block wx:for="{{item.thumbnails}}" wx:key="index">
-                  <view class="thumb-item">
-                    <image src="{{item}}" mode="aspectFill" class="thumb-img"></image>
-                  </view>
-                </block>
-              </view>
-            </view>
+            <block wx:for="{{item.batches}}" wx:for-item="batch" wx:key="_id">
+              <template is="batchCard" data="{{batch: batch, singleCustomerMode: singleCustomerMode}}" />
+            </block>
           </view>
         </block>
         <view wx:if="{{timeLoading}}" class="loading-tip">加载中...</view>
@@ -52,7 +51,6 @@
       </scroll-view>
     </swiper-item>
 
-    <!-- 按收藏 -->
     <swiper-item>
       <scroll-view
         class="scroll-area"
@@ -71,24 +69,9 @@
             <view class="month-title">{{item.month}}</view>
           </view>
           <view class="batch-list">
-            <view wx:for="{{item.batches}}" wx:key="_id" class="batch-card" bindtap="onBatchTap" data-batch="{{item}}">
-              <view class="batch-header">
-                <view class="batch-date">{{item.createTimeStr}}</view>
-                <view class="batch-status {{item.status}}">
-                  <text wx:if="{{item.status === 'completed'}}">已完成</text>
-                  <text wx:elif="{{item.status === 'generating'}}">生成中 {{item.generatedCount}}/{{item.photoCount}}</text>
-                  <text wx:else>待生成</text>
-                </view>
-                <view class="download-btn" catchtap="onDownloadBatch" data-batch="{{item}}">下载</view>
-              </view>
-              <view class="batch-thumbs">
-                <block wx:for="{{item.thumbnails}}" wx:key="index">
-                  <view class="thumb-item">
-                    <image src="{{item}}" mode="aspectFill" class="thumb-img"></image>
-                  </view>
-                </block>
-              </view>
-            </view>
+            <block wx:for="{{item.batches}}" wx:for-item="batch" wx:key="_id">
+              <template is="batchCard" data="{{batch: batch, singleCustomerMode: singleCustomerMode}}" />
+            </block>
           </view>
         </block>
         <view wx:if="{{favLoading}}" class="loading-tip">加载中...</view>
@@ -96,4 +79,70 @@
       </scroll-view>
     </swiper-item>
   </swiper>
+
+  <customer-picker
+    visible="{{pickerVisible}}"
+    selectedId="{{pickerSelectedId}}"
+    includeStoreOption="{{true}}"
+    storeOptionLabel="全店客户"
+    applyGlobalSelection="{{false}}"
+    bind:select="onPickerSelect"
+    bind:close="onPickerClose"
+  />
 </view>
+
+<template name="batchCard">
+  <view class="batch-card" bindtap="onBatchTap" data-batch="{{batch}}">
+    <view class="card-top {{singleCustomerMode ? 'compact' : ''}}">
+      <view
+        wx:if="{{!singleCustomerMode}}"
+        class="card-avatar"
+        style="background: {{batch.avatarColor}}"
+      >{{batch.customerInitial}}</view>
+      <view class="card-meta">
+        <view class="card-row1">
+          <text wx:if="{{!singleCustomerMode}}" class="card-customer">{{batch.customerName}}</text>
+          <text class="card-time {{singleCustomerMode ? 'prominent' : ''}}">{{batch.timeLabel}}</text>
+        </view>
+        <view class="card-row2">{{batch.summaryText}}</view>
+      </view>
+      <view class="status-tag {{batch.status}}">
+        <text wx:if="{{batch.status === 'completed'}}">已完成</text>
+        <text wx:elif="{{batch.status === 'generating'}}">{{batch.progressPercent}}%</text>
+        <text wx:elif="{{batch.status === 'partial'}}">部分失败</text>
+        <text wx:else>待生成</text>
+      </view>
+      <view class="card-more" catchtap="onBatchMenu" data-batch="{{batch}}">···</view>
+    </view>
+    <view class="card-preview">
+      <view class="cover-wrap">
+        <image
+          wx:if="{{batch.coverUrl}}"
+          class="cover-img"
+          src="{{batch.coverUrl}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="cover-empty">暂无预览</view>
+        <view wx:if="{{batch.status === 'generating'}}" class="cover-mask">
+          <view class="progress-ring">
+            <text class="progress-num">{{batch.progressPercent}}%</text>
+            <text class="progress-label">生成中</text>
+          </view>
+        </view>
+      </view>
+      <view class="thumb-side">
+        <view
+          wx:for="{{batch.thumbUrls}}"
+          wx:for-item="url"
+          wx:for-index="ti"
+          wx:key="ti"
+          wx:if="{{ti < 3}}"
+          class="thumb-cell"
+        >
+          <image class="thumb-img" src="{{url}}" mode="aspectFill" />
+        </view>
+        <view wx:if="{{batch.extraCount > 0}}" class="thumb-cell more">+{{batch.extraCount}}</view>
+      </view>
+    </view>
+  </view>
+</template>

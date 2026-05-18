@@ -1,0 +1,139 @@
+/**
+ * @file 风格模板：云库读取与展示字段归一化
+ */
+
+const LOCAL_SAMPLES = [
+  '/assets/templates/simple.jpg',
+  '/assets/templates/flower.jpg',
+  '/assets/templates/hanfu.jpg'
+]
+
+/** 仅在网络/数据库不可用时兜底（风格选择页不再默认使用） */
+const DEFAULT_STYLES = [
+  { id: 'S01', name: '机长照', prompt: 'professional airline pilot portrait', sort: 10 },
+  { id: 'S02', name: '港风街拍', prompt: 'Hong Kong street fashion portrait', sort: 20 },
+  { id: 'S03', name: '法式复古', prompt: 'French vintage portrait', sort: 30 }
+].map((item, index) => ({
+  ...item,
+  enabled: true,
+  sampleFileId: LOCAL_SAMPLES[index] || LOCAL_SAMPLES[0]
+}))
+
+function parseStyleCode(id) {
+  const m = String(id || '').match(/^S(\d{1,2})$/i)
+  return m ? Number(m[1]) : 9999
+}
+
+function normalizeStyle(row) {
+  if (!row) return null
+  const sampleFileId = String(
+    row.sampleFileId || row.sampleUrl || row.coverFileId || row.coverUrl || ''
+  ).trim()
+  return {
+    _id: row._id || '',
+    id: row.id || '',
+    name: row.name || '',
+    prompt: row.prompt || '',
+    sampleFileId,
+    sort: row.sort != null ? row.sort : 0,
+    enabled: row.enabled !== false
+  }
+}
+
+function sortStyles(list) {
+  return list.slice().sort((a, b) => {
+    const na = parseStyleCode(a.id)
+    const nb = parseStyleCode(b.id)
+    if (na !== nb) return na - nb
+    const sa = Number(a.sort) || 0
+    const sb = Number(b.sort) || 0
+    if (sa !== sb) return sa - sb
+    return String(a.id).localeCompare(String(b.id))
+  })
+}
+
+/**
+ * 云 fileID 转 https 展示地址（可选，cloud:// 也可直接用于 image）
+ */
+async function attachSampleDisplayUrls(styles) {
+  if (!styles.length) return []
+  const cloudIds = [
+    ...new Set(
+      styles
+        .map((s) => s.sampleFileId)
+        .filter((id) => id && String(id).startsWith('cloud://'))
+    )
+  ]
+  if (!cloudIds.length) {
+    return styles.map((s) => ({
+      ...s,
+      sampleDisplayUrl: s.sampleFileId || ''
+    }))
+  }
+  try {
+    const res = await wx.cloud.getTempFileURL({ fileList: cloudIds })
+    const map = {}
+    ;(res.fileList || []).forEach((item) => {
+      if (item.fileID && item.tempFileURL) {
+        map[item.fileID] = item.tempFileURL
+      }
+    })
+    return styles.map((s) => ({
+      ...s,
+      sampleDisplayUrl: map[s.sampleFileId] || s.sampleFileId || ''
+    }))
+  } catch (e) {
+    console.warn('[styles] getTempFileURL 失败', e)
+    return styles.map((s) => ({
+      ...s,
+      sampleDisplayUrl: s.sampleFileId || ''
+    }))
+  }
+}
+
+/**
+ * 从 style_templates 拉取启用中的风格（按 sort / S 编号排序）
+ */
+async function fetchStyleTemplates(db, options = {}) {
+  const collection = options.collection || 'style_templates'
+  const limit = options.limit || 20
+  const onlyEnabled = options.onlyEnabled !== false
+
+  const res = await db.collection(collection).limit(limit).get()
+  let list = (res.data || []).map(normalizeStyle).filter((s) => s && s.id)
+  if (onlyEnabled) {
+    list = list.filter((s) => s.enabled)
+  }
+  list = sortStyles(list)
+  return attachSampleDisplayUrls(list)
+}
+
+/**
+ * 按 id 列表顺序返回风格（用于生成结果页）
+ */
+async function fetchStylesByIds(db, styleIds, options = {}) {
+  const ids = (styleIds || []).filter(Boolean)
+  const pool = await fetchStyleTemplates(db, options)
+  if (!ids.length) return pool
+  const map = {}
+  pool.forEach((s) => {
+    map[s.id] = s
+  })
+  const ordered = ids.map((id) => map[id]).filter(Boolean)
+  return ordered.length ? ordered : pool
+}
+
+function pickStyles(pool, count) {
+  const n = count === 9 ? 9 : 3
+  return pool.slice(0, Math.min(n, pool.length))
+}
+
+module.exports = {
+  DEFAULT_STYLES: DEFAULT_STYLES.map(normalizeStyle),
+  normalizeStyle,
+  sortStyles,
+  attachSampleDisplayUrls,
+  fetchStyleTemplates,
+  fetchStylesByIds,
+  pickStyles
+}

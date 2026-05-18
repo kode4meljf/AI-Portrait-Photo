@@ -4,6 +4,9 @@
  */
 
 const app = getApp();
+const { isValidStoreId } = require('../../utils/storeSession');
+const { getProfileCollection } = require('../../utils/account');
+const { safeNavigateTo } = require('../../utils/navigation');
 
 // 内置日期工具函数
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -56,15 +59,33 @@ Page({
     this.loadCheckinStats();
   },
 
+  onShow() {
+    if (!isValidStoreId(app.globalData.storeId)) {
+      if (!this._relaunching) {
+        this._relaunching = true;
+        wx.reLaunch({
+          url: '/pages/launch/launch',
+          complete: () => {
+            this._relaunching = false;
+          }
+        });
+      }
+      return;
+    }
+    this.loadStoreInfo();
+    this.loadOrderStats();
+    this.loadCheckinStats();
+  },
+
   async loadStoreInfo() {
     const storeId = app.globalData.storeId;
-    if (!storeId) {
-      console.error("storeId为空");
+    if (!isValidStoreId(storeId)) {
+      console.error('storeId 无效');
       return;
     }
     try {
       const db = wx.cloud.database();
-      const res = await db.collection("store_profile").doc(storeId).get();
+      const res = await db.collection(getProfileCollection()).doc(storeId).get();
       const info = res.data;
       // 计算套餐进度
       let progress = 0;
@@ -146,21 +167,21 @@ Page({
   // 查看昨日未打卡名单
   onViewUncheckedYesterday() {
     wx.navigateTo({
-      url: `/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&type=yesterday`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&type=yesterday`
     });
   },
 
   // 查看今日已打卡名单
   onViewCheckedToday() {
     wx.navigateTo({
-      url: `/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=checked`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=checked`
     });
   },
 
   // 查看今日未打卡名单
   onViewUncheckedToday() {
     wx.navigateTo({
-      url: `/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=unchecked`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=unchecked`
     });
   },
 
@@ -181,7 +202,10 @@ Page({
   async onInitTestData() {
     wx.showLoading({ title: '插入中...' });
     try {
-      const res = await wx.cloud.callFunction({ name: 'initTestData' });
+      const res = await wx.cloud.callFunction({
+        name: 'initTestData',
+        data: { action: 'insertSample4', storeId: app.globalData.storeId }
+      });
       wx.hideLoading();
       console.log('[initTestData] result:', res);
       if (res.result && res.result.success) {
@@ -197,24 +221,30 @@ Page({
   },
 
   onEditStore() {
-    wx.navigateTo({
-      url: "/pages/profile/edit-store/edit-store",
+    safeNavigateTo({
+      url: '/packageStore/pages/profile/edit-store/edit-store',
       fail: (err) => {
         console.error("导航到编辑页面失败:", err);
         const msg = (err && (err.errMsg || err.message)) ? String(err.errMsg || err.message) : "未知错误";
         wx.showToast({ title: msg.length > 20 ? "页面打开失败" : msg, icon: "none", duration: 3000 });
-      },
+      }
     });
   },
 
-  // 充值/升级会员
   onRecharge() {
-    wx.navigateTo({ url: "/pages/profile/recharge/recharge" });
+    safeNavigateTo({ url: '/packageStore/pages/profile/recharge/recharge' });
   },
 
-  // 查看全部客户（打卡详情页）
   onViewAllCustomers() {
-    wx.navigateTo({ url: "/pages/profile/customer-list/customer-list?selectMode=false" });
+    safeNavigateTo({ url: '/packageStore/pages/profile/customer-list/customer-list?selectMode=false' });
+  },
+
+  onManageMembers() {
+    safeNavigateTo({ url: '/packageStore/pages/profile/members/members' });
+  },
+
+  onCreateCustomer() {
+    safeNavigateTo({ url: '/packageStore/pages/profile/customer-create/customer-create' });
   },
 
   // 下拉刷新

@@ -4,6 +4,12 @@
 
 const app = getApp();
 const { uploadSingle } = require('../../utils/media.js');
+const { STYLE_TEMPLATES_COLLECTION } = require('../../config/constants.js');
+const { fetchStyleTemplates } = require('../../config/styles.js');
+const { isValidStoreId } = require('../../utils/storeSession');
+const { getProfileCollection } = require('../../utils/account');
+const { getCustomerDisplayName } = require('../../utils/customerDisplay');
+const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
 
 function formatNow() {
   const d = new Date();
@@ -11,13 +17,24 @@ function formatNow() {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-/** 原生 TabBar 层级高于普通 view，弹层期间隐藏 TabBar，关闭后恢复 */
+/** 弹层期间隐藏 TabBar；关闭 animation 降低 DevTools routeDone/webviewId 报错概率 */
+let tabBarHiddenForOverlay = false;
+
 function hideTabBarForOverlay() {
-  wx.hideTabBar({ animation: true, fail: () => {} });
+  if (tabBarHiddenForOverlay) return;
+  tabBarHiddenForOverlay = true;
+  wx.hideTabBar({
+    animation: false,
+    fail: () => {
+      tabBarHiddenForOverlay = false;
+    }
+  });
 }
 
 function showTabBarAfterOverlay() {
-  wx.showTabBar({ animation: true, fail: () => {} });
+  if (!tabBarHiddenForOverlay) return;
+  tabBarHiddenForOverlay = false;
+  wx.showTabBar({ animation: false, fail: () => {} });
 }
 
 Page({
@@ -33,19 +50,35 @@ Page({
     loading: false,
     checkinResult: null,
     hasCheckedInOnce: false,
-    todayServiceCount: 0
+    todayVisitCount: 0,
+    hasLinkedCustomer: false,
+    linkedCustomerName: ''
   },
 
   onLoad() {
     this.loadStoreInfo();
+    this.loadTodayVisitCount();
     this.loadTemplates();
     this.refreshCustomerInfo();
   },
 
   onShow() {
+    if (!isValidStoreId(app.globalData.storeId)) {
+      if (!this._relaunching) {
+        this._relaunching = true;
+        wx.reLaunch({
+          url: '/pages/launch/launch',
+          complete: () => {
+            this._relaunching = false;
+          }
+        });
+      }
+      return;
+    }
     if (!this.data.pickerVisible) {
       showTabBarAfterOverlay();
     }
+    this.loadTodayVisitCount();
     if (app.globalData.selectedCustomerId !== this.data.selectedCustomer?._id) {
       this.refreshCustomerInfo();
     }
@@ -70,52 +103,60 @@ Page({
 
   async loadStoreInfo() {
     const storeId = app.globalData.storeId;
-    if (storeId && storeId !== 'mock_store_id') {
-      try {
-        const db = wx.cloud.database();
-        const res = await db.collection('store_profile').doc(storeId).get();
-        this.setData({ storeInfo: res.data });
-      } catch (e) {
-        console.log('门店信息加载失败', e);
-      }
+    if (!isValidStoreId(storeId)) return;
+    try {
+      const db = wx.cloud.database();
+      const res = await db.collection(getProfileCollection()).doc(storeId).get();
+      this.setData({ storeInfo: res.data || {} });
+    } catch (e) {
+      console.log('门店信息加载失败', e);
+    }
+  },
+
+  /** 今日到店：当日打卡 customerId 去重人数 */
+  async loadTodayVisitCount() {
+    const storeId = app.globalData.storeId;
+    if (!isValidStoreId(storeId)) return;
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'storeStats',
+        data: { action: 'checkin', storeId }
+      });
+      const stats = res.result || {};
+      this.setData({ todayVisitCount: stats.todayCount || 0 });
+    } catch (e) {
+      console.error('加载今日到店失败', e);
     }
   },
 
   async loadTemplates() {
     try {
       const db = wx.cloud.database();
-      const res = await db.collection('templates').get();
-      if (res.data && res.data.length > 0) {
-        const templates = res.data.sort((a, b) => Number(a.id) - Number(b.id));
-        this.setData({ templates });
-      } else {
-        this.setDefaultTemplates();
-      }
+      const templates = await fetchStyleTemplates(db, {
+        collection: STYLE_TEMPLATES_COLLECTION,
+        limit: 12,
+        onlyEnabled: true
+      });
+      this.setData({ templates: templates.slice(0, 4) });
     } catch (err) {
       console.error('加载模板失败', err);
-      this.setDefaultTemplates();
+      this.setData({ templates: [] });
     }
-  },
-
-  setDefaultTemplates() {
-    const templates = [
-      { id: '1', name: '油画质感', thumb: 'https://picsum.photos/400/400?random=61', prompt: '' },
-      { id: '2', name: '杂志封面', thumb: 'https://picsum.photos/400/400?random=62', prompt: '' },
-      { id: '3', name: '古风唯美', thumb: 'https://picsum.photos/400/400?random=63', prompt: '' },
-      { id: '4', name: '法式浪漫', thumb: 'https://picsum.photos/400/400?random=64', prompt: '' }
-    ];
-    this.setData({ templates });
   },
 
   async refreshCustomerInfo() {
     const customerId = app.globalData.selectedCustomerId;
     if (!customerId) {
+      app.globalData.selectedCustomer = null;
+      wx.removeStorageSync('selectedCustomerId');
       this.setData({
         selectedCustomer: null,
         pickerSelectedId: '',
         checkinDays: 0,
         equityAlbum: 0,
-        equityFrame: 0
+        equityFrame: 0,
+        hasLinkedCustomer: false,
+        linkedCustomerName: ''
       });
       return;
     }
@@ -128,27 +169,56 @@ Page({
         pickerSelectedId: customer._id || '',
         checkinDays: customer.totalCheckins || 0,
         equityAlbum: customer.equityAlbum || 0,
-        equityFrame: customer.equityFrame || 0
+        equityFrame: customer.equityFrame || 0,
+        hasLinkedCustomer: true,
+        linkedCustomerName: getCustomerDisplayName(customer)
       });
     } catch (error) {
       console.error('获取客户信息失败:', error);
     }
   },
 
-  onSelectCustomer() {
+  onLinkCustomer() {
     hideTabBarForOverlay();
     this.setData({ pickerVisible: true });
   },
 
+  onUnlinkCustomer() {
+    clearShootCustomer(app);
+    this.setData({
+      selectedCustomer: null,
+      pickerSelectedId: '',
+      hasLinkedCustomer: false,
+      linkedCustomerName: '',
+      checkinDays: 0,
+      equityAlbum: 0,
+      equityFrame: 0
+    });
+    wx.showToast({ title: '已取消关联，仍可继续拍摄', icon: 'none' });
+  },
+
+  onCreateCustomer() {
+    wx.navigateTo({
+      url: '/packageStore/pages/profile/customer-create/customer-create'
+    });
+  },
+
+  onContinueCheckin() {
+    this.onCheckinTap();
+  },
+
   onPickerSelect(e) {
     const { customer } = e.detail;
+    applyShootCustomer(app, customer);
     this.setData({
       pickerVisible: false,
       selectedCustomer: customer,
       pickerSelectedId: customer._id || '',
       checkinDays: customer.totalCheckins || 0,
       equityAlbum: customer.equityAlbum || 0,
-      equityFrame: customer.equityFrame || 0
+      equityFrame: customer.equityFrame || 0,
+      hasLinkedCustomer: true,
+      linkedCustomerName: getCustomerDisplayName(customer)
     });
     showTabBarAfterOverlay();
   },
@@ -161,12 +231,15 @@ Page({
   onPickerCustomerUpdated(e) {
     const { customer } = e.detail;
     if (!customer) return;
+    applyShootCustomer(app, customer);
     this.setData({
       selectedCustomer: customer,
       pickerSelectedId: customer._id || '',
       checkinDays: customer.totalCheckins || 0,
       equityAlbum: customer.equityAlbum || 0,
-      equityFrame: customer.equityFrame || 0
+      equityFrame: customer.equityFrame || 0,
+      hasLinkedCustomer: true,
+      linkedCustomerName: getCustomerDisplayName(customer)
     });
     if (this.data.checkinResult && this.data.checkinResult._id === customer._id) {
       this.setData({
@@ -177,12 +250,6 @@ Page({
         }
       });
     }
-  },
-
-  onCancelSelect() {
-    app.globalData.selectedCustomerId = null;
-    wx.removeStorageSync('selectedCustomerId');
-    this.refreshCustomerInfo();
   },
 
   async onCheckinTap() {
@@ -202,10 +269,18 @@ Page({
         return;
       }
 
-      const customer = await this.upsertCustomerAndCheckin(payload);
+      const { callCustomer } = require('../../utils/storeSession');
+      const customer = await callCustomer('scan.bindCheckin', {
+        customerId: payload.customerId,
+        wxNickName: payload.wxNickName,
+        avatarUrl: payload.avatarUrl,
+        wxOpenId: payload.wxOpenId,
+        phone: payload.phone
+      });
       this.setData({
         checkinResult: {
           ...customer,
+          displayName: getCustomerDisplayName(customer),
           timeText: `打卡时间 ${formatNow()}`,
           totalCheckins: customer.totalCheckins || 0
         },
@@ -214,15 +289,26 @@ Page({
         pickerSelectedId: customer._id || ''
       });
 
-      app.globalData.selectedCustomerId = customer._id;
-      app.globalData.selectedCustomer = customer;
-      wx.setStorageSync('selectedCustomerId', customer._id);
+      applyShootCustomer(app, customer);
+      this.setData({
+        hasLinkedCustomer: true,
+        linkedCustomerName: getCustomerDisplayName(customer)
+      });
 
       wx.showToast({ title: '今日已打卡', icon: 'success' });
+      this.loadTodayVisitCount();
     } catch (e) {
       if (e && (e.errMsg || '').includes('cancel')) return;
       console.error('扫码打卡失败', e);
-      wx.showToast({ title: '扫码失败', icon: 'none' });
+      if (e.code === 'CUSTOMER_BOUND_OTHER_STORE') {
+        wx.showModal({
+          title: '无法打卡',
+          content: e.message || '该客户已由其他门店管理',
+          showCancel: false
+        });
+        return;
+      }
+      wx.showToast({ title: e.message || '扫码失败', icon: 'none' });
     }
   },
 
@@ -239,53 +325,11 @@ Page({
     }
   },
 
-  async upsertCustomerAndCheckin(payload) {
-    const db = wx.cloud.database();
-    const _ = db.command;
-    const now = Date.now();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStamp = today.getTime();
-
-    let customer = null;
-    const byId = await db.collection('customers').where({ customerId: payload.customerId }).limit(1).get();
-    if (byId.data.length > 0) {
-      customer = byId.data[0];
-      await db.collection('customers').doc(customer._id).update({
-        data: {
-          totalCheckins: _.inc(1),
-          lastCheckinTime: now,
-          lastCheckinDate: todayStamp,
-          updateTime: now
-        }
-      });
-      const latest = await db.collection('customers').doc(customer._id).get();
-      customer = latest.data;
-    } else {
-      const createData = {
-        customerId: payload.customerId,
-        nickName: payload.name || '新客户',
-        phone: payload.phone || '',
-        remark: '',
-        avatarUrl: payload.avatarUrl || '/assets/icons/album-placeholder.png',
-        totalCheckins: 1,
-        lastCheckinTime: now,
-        lastCheckinDate: todayStamp,
-        createTime: now,
-        updateTime: now
-      };
-      const addRes = await db.collection('customers').add({ data: createData });
-      const latest = await db.collection('customers').doc(addRes._id).get();
-      customer = latest.data;
-    }
-
-    return customer;
-  },
-
   previewTemplate(e) {
     const template = this.data.templates[e.currentTarget.dataset.index];
-    if (template && template.thumb) {
-      wx.previewImage({ urls: [template.thumb], current: template.thumb });
+    const url = template && (template.sampleDisplayUrl || template.sampleFileId);
+    if (url) {
+      wx.previewImage({ urls: [url], current: url });
     } else {
       wx.showToast({ title: '预览失败', icon: 'none' });
     }
@@ -308,8 +352,10 @@ Page({
           wx.showToast({ title: '未获取到图片', icon: 'none' });
           return;
         }
-        const url = encodeURIComponent(file.tempFilePath);
-        wx.navigateTo({ url: `/pages/cloud/style-selector/style-selector?originalUrl=${url}` });
+        const qs = buildShootQuery({ originalUrl: file.tempFilePath });
+        wx.navigateTo({
+          url: `/packageStore/pages/cloud/style-selector/style-selector?${qs}`
+        });
       },
       fail: (err) => {
         if (err && err.errMsg && err.errMsg.includes('cancel')) return;

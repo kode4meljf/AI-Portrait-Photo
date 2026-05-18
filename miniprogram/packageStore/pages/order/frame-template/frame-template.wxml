@@ -1,0 +1,44 @@
+<!--packageOrder/pages/frame-template/frame-template.wxml-->
+<view class="container">
+  <!-- 顶部预览区 -->
+  <view class="preview-section">
+    <view class="preview-header">
+      <text class="preview-title">所选照片</text>
+      <text class="photo-count">{{photoUrls.length}}张</text>
+    </view>
+    <scroll-view class="preview-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="preview-list">
+        <view wx:for="{{photoUrls}}" wx:key="index" class="preview-item">
+          <image src="{{item}}" mode="aspectFill" class="preview-img"></image>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 相框模板选择区 -->
+  <view class="template-section">
+    <view class="section-title">
+      <view class="title-bar"></view>
+      <text>选择相框款式</text>
+    </view>
+    <view class="template-list">
+      <view wx:for="{{templates}}" wx:key="id" class="template-card {{selectedTemplate.id === item.id ? 'selected' : ''}}" bindtap="selectTemplate" data-template="{{item}}">
+        <image src="{{item.coverDisplayUrl || item.coverFileId}}" mode="aspectFill" class="template-thumb"></image>
+        <view class="template-info">
+          <text class="template-name">{{item.name}}</text>
+          <text class="template-spec" wx:if="{{item.specText}}">{{item.specText}}</text>
+        </view>
+        <view wx:if="{{selectedTemplate.id === item.id}}" class="selected-mark">✓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部固定栏 -->
+  <view class="bottom-bar">
+    <view class="total-price">
+      <text class="total-label">消耗</text>
+      <text class="total-value">⚡ {{frameCost}}</text>
+    </view>
+    <button class="confirm-btn" bindtap="confirmOrder" disabled="{{submitting}}">{{submitting ? '提交中...' : '确认生成订单'}}</button>
+  </view>
+</view>

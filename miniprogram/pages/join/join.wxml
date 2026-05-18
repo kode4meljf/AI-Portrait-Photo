@@ -1,0 +1,11 @@
+<view class="join-page">
+  <view class="field">
+    <text class="label">邀请码</text>
+    <input value="{{token}}" bindinput="onTokenInput" placeholder="请输入店长提供的邀请码" />
+  </view>
+  <button class="btn" bindtap="onPreview">查看门店</button>
+  <view wx:if="{{preview}}" class="preview">
+    <text>门店：{{preview.storeName}}</text>
+  </view>
+  <button class="btn primary" loading="{{submitting}}" bindtap="onAccept">申请加入</button>
+</view>

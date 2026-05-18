@@ -4,6 +4,10 @@
  */
 
 const app = getApp();
+const { callOrderApi } = require('../../utils/orderApi');
+const { getCustomerDisplayName } = require('../../utils/customerDisplay');
+
+const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
   if (!date) return "";
   const d = new Date(date);
@@ -37,7 +41,7 @@ Page({
     currentPage: 0,
     refreshing: false,
     // 统计概览数据
-    monthTotalAmount: 0,
+    monthOrderCount: 0,
     monthCompare: "",
     categoryCount: {
       frame: 0,
@@ -52,6 +56,11 @@ Page({
   },
 
   onShow() {
+    if (app.globalData.ordersNeedRefresh) {
+      app.globalData.ordersNeedRefresh = false;
+      this.refreshData();
+      return;
+    }
     if (this.needRefresh) {
       this.refreshData();
       this.needRefresh = false;
@@ -63,37 +72,16 @@ Page({
     this.setData({ loading: true });
 
     try {
-      const db = wx.cloud.database();
-      let query = db.collection("frame_orders")
-        .where({ storeId: app.globalData.storeId });
+      const page = isLoadMore ? this.data.currentPage + 1 : 1;
+      const { list, hasMore } = await callOrderApi('list', {
+        orderType: 'frame',
+        statusTab: this.data.currentTab,
+        customerId: app.globalData.selectedCustomerId || undefined,
+        page,
+        pageSize: this.data.pageSize
+      });
 
-      // 客户过滤
-      if (app.globalData.selectedCustomerId) {
-        query = query.where({ customerId: app.globalData.selectedCustomerId });
-      }
-
-      // 状态筛选（all 表示不筛选）
-      if (this.data.currentTab !== "all") {
-        let statusMap = {
-          "pending": "待处理",
-          "producing": "制作中",
-          "shipped": "已发货",
-          "done": "已完成"
-        };
-        query = query.where({ status: statusMap[this.data.currentTab] });
-      }
-
-      const skip = isLoadMore ? this.data.currentPage * this.data.pageSize : 0;
-      const res = await query
-        .orderBy("createTime", "desc")
-        .skip(skip)
-        .limit(this.data.pageSize)
-        .get();
-
-      const orders = res.data;
-      // 格式化订单并填充客户信息
-      const formattedOrders = await this.formatOrders(orders);
-      // 更新各状态计数
+      const formattedOrders = this.formatOrders(list);
       await this.updateTabCounts();
 
       // 合并已有订单（仅用于加载更多）
@@ -104,8 +92,8 @@ Page({
       const groups = this.groupOrdersByMonth(allOrders);
       this.setData({
         orderGroups: groups,
-        hasMore: formattedOrders.length === this.data.pageSize,
-        currentPage: isLoadMore ? this.data.currentPage + 1 : 1
+        hasMore,
+        currentPage: page
       });
 
       // 计算本月统计概览（使用当前月份的数据）
@@ -119,44 +107,25 @@ Page({
   },
 
   async updateTabCounts() {
-    // 获取各状态订单数量（仅用于Tab显示角标）
-    const db = wx.cloud.database();
-    const storeId = app.globalData.storeId;
-    const customerCondition = app.globalData.selectedCustomerId ? { customerId: app.globalData.selectedCustomerId } : {};
-    const baseCondition = { storeId, ...customerCondition };
     try {
-      const pendingCount = await db.collection("frame_orders").where({ ...baseCondition, status: "待处理" }).count();
-      const producingCount = await db.collection("frame_orders").where({ ...baseCondition, status: "制作中" }).count();
-      const shippedCount = await db.collection("frame_orders").where({ ...baseCondition, status: "已发货" }).count();
-      const doneCount = await db.collection("frame_orders").where({ ...baseCondition, status: "已完成" }).count();
-      const allCount = pendingCount.total + producingCount.total + shippedCount.total + doneCount.total;
-      const tabs = this.data.tabs.map(tab => {
-        if (tab.status === "all") return { ...tab, count: allCount };
-        if (tab.status === "pending") return { ...tab, count: pendingCount.total };
-        if (tab.status === "producing") return { ...tab, count: producingCount.total };
-        if (tab.status === "shipped") return { ...tab, count: shippedCount.total };
-        if (tab.status === "done") return { ...tab, count: doneCount.total };
-        return tab;
+      const { counts } = await callOrderApi('countByStatus', {
+        orderType: 'frame',
+        customerId: app.globalData.selectedCustomerId || undefined
       });
+      const tabs = this.data.tabs.map((tab) => ({
+        ...tab,
+        count: counts[tab.status] ?? 0
+      }));
       this.setData({ tabs });
     } catch (err) {
-      console.error("更新Tab计数失败", err);
+      console.error('更新Tab计数失败', err);
     }
   },
 
-  async formatOrders(orders) {
+  formatOrders(orders) {
     if (!orders.length) return [];
-    const db = wx.cloud.database();
-    const customerIds = [...new Set(orders.map(o => o.customerId).filter(id => id))];
-    let customerMap = {};
-    if (customerIds.length) {
-      const res = await db.collection("customers")
-        .where({ _id: db.command.in(customerIds) })
-        .get();
-      res.data.forEach(c => { customerMap[c._id] = c; });
-    }
     return orders.map(order => {
-      const customerInfo = customerMap[order.customerId] || null;
+      const customerInfo = order.customerInfo || null;
       // 状态样式映射
       let statusClass = "";
       let statusText = order.status;
@@ -167,22 +136,19 @@ Page({
         case "已完成": statusClass = "done"; break;
         default: statusClass = "pending";
       }
-      // 商品列表（根据订单字段构造）
-      const items = [{
-        name: order.frameName,
-        spec: `${order.size} · ${order.material}`,
-        price: order.price,
-        thumb: order.frameThumb || "https://picsum.photos/96/96?random=1"
-      }];
-      // 若订单有多个商品可扩展
+      const legacyPhoto = Array.isArray(order.photos) ? order.photos[0] : '';
+      const thumb = order.photoUrl || legacyPhoto || '';
       return {
         ...order,
         createTimeStr: formatDate(order.createTime, "MM-dd HH:mm"),
         customerInfo,
+        displayCustomerName: getCustomerDisplayName(customerInfo),
+        photoThumb: thumb || PLACEHOLDER_THUMB,
         statusClass,
         statusText,
-        items,
-        totalPrice: order.price
+        showConfirmProduction: statusClass === 'pending',
+        showViewLogistics: statusClass === 'producing',
+        showConfirmReceipt: statusClass === 'shipped'
       };
     });
   },
@@ -193,10 +159,10 @@ Page({
       const date = new Date(order.createTime);
       const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
       if (!groupsMap.has(monthKey)) {
-        groupsMap.set(monthKey, { month: monthKey, totalAmount: 0, orders: [] });
+        groupsMap.set(monthKey, { month: monthKey, totalCount: 0, orders: [] });
       }
       const group = groupsMap.get(monthKey);
-      group.totalAmount += order.price;
+      group.totalCount += 1;
       group.orders.push(order);
     });
     // 按月份倒序
@@ -213,20 +179,19 @@ Page({
     const now = new Date();
     const currentMonth = `${now.getFullYear()}年${now.getMonth() + 1}月`;
     const currentGroup = groups.find(g => g.month === currentMonth);
-    const totalAmount = currentGroup ? currentGroup.totalAmount : 0;
-    // 计算品类统计（遍历所有订单）
+    const monthOrderCount = currentGroup ? currentGroup.totalCount : 0;
     let frameCount = 0, albumCount = 0, photoCount = 0, otherCount = 0;
     const allOrders = groups.flatMap(g => g.orders);
     allOrders.forEach(order => {
-      // 根据 frameName 粗略分类，实际可完善
-      const name = order.frameName || "";
-      if (name.includes("相框") || name.includes("摆台")) frameCount++;
-      else if (name.includes("写真集") || name.includes("相册")) albumCount++;
-      else if (name.includes("精修") || name.includes("照片")) photoCount++;
+      const name = order.frameName || '';
+      const style = order.styleName || '';
+      if (name.includes('相框') || name.includes('摆台') || style) frameCount++;
+      else if (name.includes('写真集') || name.includes('相册')) albumCount++;
+      else if (name.includes('精修') || name.includes('照片')) photoCount++;
       else otherCount++;
     });
     this.setData({
-      monthTotalAmount: totalAmount,
+      monthOrderCount,
       categoryCount: {
         frame: frameCount,
         album: albumCount,
@@ -249,24 +214,26 @@ Page({
     this.loadOrders();
   },
 
+  stopActionBubble() {},
+
   onOrderDetail(e) {
     const order = e.currentTarget.dataset.order;
+    if (!order || !order._id) return;
     wx.navigateTo({
-      url: `/pages/order/order-detail/order-detail?orderId=${order._id}`
+      url: `/packageStore/pages/order/order-detail/order-detail?orderId=${order._id}`
     });
   },
 
   onViewLogistics(e) {
     const order = e.currentTarget.dataset.order;
-    if (order.shippingNo) {
-      wx.showModal({
-        title: "物流信息",
-        content: `运单号：${order.shippingNo}\n物流公司：顺丰速运\n当前状态：${order.status === "已发货" ? "已发出，预计3天内送达" : "制作中，暂未发货"}`,
-        showCancel: false
-      });
-    } else {
-      wx.showToast({ title: "暂无物流信息", icon: "none" });
-    }
+    if (!order || !order._id) return;
+    const scrollTo = order.shippingNo || order.status === '已发货' ? 'logistics' : '';
+    const query = scrollTo
+      ? `orderId=${order._id}&scrollTo=${scrollTo}`
+      : `orderId=${order._id}`;
+    wx.navigateTo({
+      url: `/packageStore/pages/order/order-detail/order-detail?${query}`
+    });
   },
 
   onConfirmProduction(e) {
@@ -276,12 +243,12 @@ Page({
       content: "开始制作该订单？",
       success: async (res) => {
         if (res.confirm) {
-          // 更新订单状态为“制作中”
-          const db = wx.cloud.database();
-          await db.collection("frame_orders").doc(order._id).update({
-            data: { status: "制作中" }
+          await callOrderApi('updateStatus', {
+            orderType: 'frame',
+            orderId: order._id,
+            status: '制作中'
           });
-          wx.showToast({ title: "已开始制作", icon: "success" });
+          wx.showToast({ title: '已开始制作', icon: 'success' });
           this.refreshData();
         }
       }
@@ -295,11 +262,12 @@ Page({
       content: "确认客户已收到商品？",
       success: async (res) => {
         if (res.confirm) {
-          const db = wx.cloud.database();
-          await db.collection("frame_orders").doc(order._id).update({
-            data: { status: "已完成" }
+          await callOrderApi('updateStatus', {
+            orderType: 'frame',
+            orderId: order._id,
+            status: '已完成'
           });
-          wx.showToast({ title: "已确认签收", icon: "success" });
+          wx.showToast({ title: '已确认签收', icon: 'success' });
           this.refreshData();
         }
       }

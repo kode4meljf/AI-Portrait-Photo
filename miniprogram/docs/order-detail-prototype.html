@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>订单详情页 · 设计方案</title>
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --card: #fff;
+      --ink: #1a1a2e;
+      --muted: #a1a1aa;
+      --sub: #52525b;
+      --line: #f0f0f0;
+      --gold: #c9a962;
+      --pending: #e67e22;
+      --pending-bg: #fff8f0;
+      --producing: #2563eb;
+      --producing-bg: #eff6ff;
+      --shipped: #22c55e;
+      --shipped-bg: #f0fdf4;
+      --done: #888;
+      --done-bg: #f5f5f5;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #e8e8ec;
+      color: var(--ink);
+      padding: 16px 16px 64px;
+    }
+    .doc-header {
+      max-width: 420px;
+      margin: 0 auto 20px;
+    }
+    .doc-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .doc-header p { font-size: 13px; color: var(--sub); line-height: 1.65; }
+    .doc-header .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .doc-header .tag {
+      font-size: 11px; padding: 4px 10px; border-radius: 20px;
+      background: #fff; color: var(--sub);
+    }
+
+    .section-label {
+      max-width: 420px;
+      margin: 28px auto 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .section-note {
+      max-width: 420px;
+      margin: 0 auto 12px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* —— 手机框 —— */
+    .phone {
+      max-width: 390px;
+      margin: 0 auto;
+      background: var(--bg);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+      position: relative;
+      min-height: 720px;
+      padding-bottom: calc(72px + var(--safe-bottom));
+    }
+    .phone + .phone { margin-top: 32px; }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 8px;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .nav .back { font-size: 22px; color: var(--ink); width: 32px; }
+    .nav .title { font-size: 17px; font-weight: 600; }
+    .nav .more { font-size: 13px; color: var(--sub); }
+
+    /* 状态头 */
+    .status-hero {
+      margin: 0 16px 12px;
+      padding: 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
+      color: #fff;
+    }
+    .status-hero.shipped-bg {
+      background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+    }
+    .status-hero.pending-bg {
+      background: linear-gradient(135deg, #9a3412 0%, #e67e22 100%);
+    }
+    .status-hero .main-status {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .status-hero .sub-status {
+      font-size: 13px;
+      opacity: 0.88;
+      line-height: 1.5;
+    }
+
+    /* 已发货：状态头下物流摘要条（首屏可见最新轨迹） */
+    .logistics-strip {
+      display: none;
+      margin: 0 16px 12px;
+      padding: 12px 14px;
+      background: var(--card);
+      border-radius: 14px;
+      border-left: 4px solid var(--shipped);
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: 0 2px 10px rgba(34, 197, 94, 0.08);
+    }
+    .logistics-strip.visible { display: flex; }
+    .logistics-strip .strip-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--shipped-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .logistics-strip .strip-main { flex: 1; min-width: 0; }
+    .logistics-strip .strip-latest {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .logistics-strip .strip-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .logistics-strip .strip-arrow {
+      color: #d4d4d8;
+      font-size: 18px;
+      line-height: 32px;
+      flex-shrink: 0;
+    }
+
+    .layout-badge {
+      max-width: 390px;
+      margin: 0 auto 8px;
+      font-size: 11px;
+      color: var(--producing);
+      background: var(--producing-bg);
+      padding: 6px 12px;
+      border-radius: 8px;
+      line-height: 1.45;
+    }
+
+    .content-stack { display: block; }
+
+    /* 进度条 */
+    .steps {
+      margin: 0 16px 16px;
+      padding: 14px 12px;
+      background: var(--card);
+      border-radius: 14px;
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: 22px;
+      height: 2px;
+      background: var(--line);
+      z-index: 0;
+    }
+    .steps .track-done {
+      position: absolute;
+      left: 12%;
+      top: 22px;
+      height: 2px;
+      background: var(--producing);
+      z-index: 0;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .step .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--line);
+      margin: 0 auto 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #fff;
+    }
+    .step.done .dot { background: var(--producing); }
+    .step.active .dot {
+      background: var(--producing);
+      box-shadow: 0 0 0 4px var(--producing-bg);
+    }
+    .step .label { font-size: 10px; color: var(--muted); }
+    .step.done .label, .step.active .label { color: var(--ink); font-weight: 500; }
+
+    /* 成片预览 */
+    .preview-card {
+      margin: 0 16px 12px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .preview-card .sec-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    /* 成片仅保留图内角标「点击放大」，点击整图 wx.previewImage */
+    .frame-stage {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 4px;
+    }
+    .frame-photo {
+      width: 200px;
+      height: 250px;
+      border-radius: 12px;
+      background: linear-gradient(160deg, #e8e4df, #cfc8c0);
+      border: 4px solid var(--gold);
+      box-shadow: inset 0 0 0 6px #fff, 0 8px 24px rgba(0,0,0,0.08);
+      position: relative;
+    }
+    .frame-photo::after {
+      content: '点击放大';
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 10px;
+      color: #fff;
+      background: rgba(0,0,0,0.35);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .product-rows { margin-top: 14px; }
+    .product-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 6px 0;
+      color: var(--sub);
+    }
+    .product-row .val { color: var(--ink); font-weight: 500; text-align: right; max-width: 60%; }
+
+    /* 通用卡片 */
+    .info-card {
+      margin: 0 16px 12px;
+      background: var(--card);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .info-card .head {
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .info-card .head .action {
+      font-size: 12px;
+      color: var(--producing);
+      font-weight: 500;
+    }
+    .cell {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .cell:last-child { border-bottom: none; }
+    .cell .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #e4e4e7;
+      flex-shrink: 0;
+    }
+    .cell .cell-main { flex: 1; min-width: 0; }
+    .cell .name { font-size: 15px; font-weight: 600; }
+    .cell .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .cell .arrow { color: #d4d4d8; font-size: 18px; }
+    .kv {
+      display: flex;
+      justify-content: space-between;
+      padding: 11px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+    .kv:last-child { border-bottom: none; }
+    .kv .k { color: var(--muted); flex-shrink: 0; }
+    .kv .v {
+      color: var(--ink);
+      text-align: right;
+      max-width: 68%;
+      word-break: break-all;
+    }
+    .kv .v.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    .copy-btn {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 11px;
+      color: var(--producing);
+      padding: 2px 8px;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    /* 物流 */
+    .logistics-card .carrier {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .logistics-card .carrier-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #fef3c7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .logistics-card .carrier-name { font-size: 14px; font-weight: 600; }
+    .logistics-card .tracking {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .timeline { padding: 8px 14px 14px; }
+    .tl-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      position: relative;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 28px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--line);
+    }
+    .tl-item.active:not(:last-child)::before { background: #86efac; }
+    .tl-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--line);
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+    .tl-item.active .tl-dot {
+      background: var(--shipped);
+      box-shadow: 0 0 0 4px var(--shipped-bg);
+    }
+    .tl-item.done .tl-dot { background: #d4d4d8; }
+    .tl-text .time { font-size: 11px; color: var(--muted); }
+    .tl-text .msg { font-size: 13px; color: var(--sub); margin-top: 2px; line-height: 1.45; }
+    .tl-item.active .tl-text .msg { color: var(--ink); font-weight: 500; }
+    .logistics-empty {
+      padding: 20px 14px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .logistics-empty .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+
+    /* 当前版对比 */
+    .phone.current .simple-body { padding: 16px; }
+    .phone.current .row {
+      display: flex;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+    .phone.current .row .label { color: var(--muted); width: 80px; }
+    .phone.current .thumb-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .phone.current .thumb {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      background: #e4e4e7;
+    }
+
+    /* 底部操作栏 */
+    .bottom-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 16px calc(10px + var(--safe-bottom));
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .bottom-bar .ghost {
+      flex: 0 0 auto;
+      padding: 11px 16px;
+      border-radius: 22px;
+      font-size: 13px;
+      background: #f4f4f5;
+      color: var(--sub);
+      border: none;
+    }
+    .bottom-bar .primary {
+      flex: 1;
+      padding: 12px;
+      border-radius: 22px;
+      font-size: 15px;
+      font-weight: 600;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      text-align: center;
+    }
+    .bottom-bar .primary.green { background: #16a34a; }
+    .bottom-bar .primary.orange { background: #ea580c; }
+
+    /* 状态切换器（仅设计稿用） */
+    .state-tabs {
+      max-width: 390px;
+      margin: 0 auto 12px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .state-tabs button {
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 20px;
+      border: 1px solid #d4d4d8;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .state-tabs button.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    .compare-grid {
+      display: grid;
+      gap: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    @media (min-width: 860px) {
+      .compare-grid {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+      }
+    }
+
+    .legend {
+      max-width: 420px;
+      margin: 24px auto 0;
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.7;
+    }
+    .legend h3 { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+    .legend ul { padding-left: 18px; }
+    .legend li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <div class="doc-header">
+    <h1>订单详情页 · 设计方案</h1>
+    <p>
+      与列表「方案 A」视觉统一。<strong>模块顺序随 status 变化</strong>：待处理/制作中以成片+操作为主；
+      <strong>已发货</strong>在状态头下展示物流摘要条，并将完整物流卡片上移到成片之前。
+    </p>
+    <p style="font-size:12px;margin-top:8px;word-break:break-all;line-height:1.5">
+      本地路径：<a href="file:///Users/kode4meljf/.qclaw/workspace/AI-Portrait/miniprogram/docs/order-detail-prototype.html">file:///Users/kode4meljf/.qclaw/workspace/AI-Portrait/miniprogram/docs/order-detail-prototype.html</a>
+    </p>
+    <div class="tag-row">
+      <span class="tag">frame_orders</span>
+      <span class="tag">待处理 → 制作中 → 已发货 → 已完成</span>
+      <span class="tag">shippingNo</span>
+      <span class="tag">customerInfo</span>
+    </div>
+  </div>
+
+  <p class="section-label">当前实现（过于简略）</p>
+  <p class="section-note">仅订单号、状态、时间 + 小图；物流区仅有运单号 + 联系客服。</p>
+
+  <div class="compare-grid">
+    <div class="phone current">
+      <div class="nav">
+        <span class="back">‹</span>
+        <span class="title">订单详情</span>
+        <span class="more"></span>
+      </div>
+      <div class="simple-body">
+        <div class="row"><span class="label">订单号</span><span>OR1747123456789</span></div>
+        <div class="row"><span class="label">状态</span><span>已发货</span></div>
+        <div class="row"><span class="label">下单时间</span><span>2026-05-16 14:32</span></div>
+        <div class="thumb-row">
+          <div class="thumb"></div>
+          <div>
+            <div style="font-weight:600">复古金框摆台</div>
+            <div style="font-size:12px;color:#a1a1aa;margin-top:4px">汉服写真</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0;font-size:13px;color:#52525b">
+          运单号：SF1234567890<br>
+          <span style="color:#2563eb">联系客服查询</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 推荐方案：可切换状态预览 -->
+    <div>
+      <p class="section-label" style="margin-top:0">推荐方案（交互原型）</p>
+      <p class="section-note">点击下方标签切换状态，观察<strong>模块顺序</strong>变化。实装由 <code>order.status</code> 驱动，勿仅用 <code>shippingNo</code> 判断。</p>
+
+      <div class="layout-badge" id="layoutBadge">当前布局：成片优先 · 物流置底（空态）</div>
+
+      <div class="state-tabs" id="stateTabs">
+        <button type="button" data-state="pending" class="active">待处理</button>
+        <button type="button" data-state="producing">制作中</button>
+        <button type="button" data-state="shipped">已发货</button>
+        <button type="button" data-state="done">已完成</button>
+      </div>
+
+      <div class="phone" id="recommendedPhone">
+        <div class="nav">
+          <span class="back">‹</span>
+          <span class="title">订单详情</span>
+          <span class="more">客服</span>
+        </div>
+
+        <div class="status-hero pending-bg" id="statusHero">
+          <div class="main-status" id="heroTitle">待店长确认制作</div>
+          <div class="sub-status" id="heroSub">确认后将扣减摆台次数并开始制作，预计 3–5 个工作日</div>
+        </div>
+
+        <div class="logistics-strip" id="logisticsStrip">
+          <div class="strip-icon">🚚</div>
+          <div class="strip-main">
+            <div class="strip-latest" id="stripLatest">【杭州市】快件已到达 西湖区营业部，正在派送中</div>
+            <div class="strip-meta" id="stripMeta">顺丰 SF1234567890 · 05-16 18:20 · <span class="copy-btn">复制单号</span></div>
+          </div>
+          <span class="strip-arrow">›</span>
+        </div>
+
+        <div class="content-stack" id="contentStack">
+        <div class="steps" id="stepsBlock">
+          <div class="track-done" id="trackDone" style="width: 0%"></div>
+          <div class="step active" data-step="0"><div class="dot">1</div><div class="label">待处理</div></div>
+          <div class="step" data-step="1"><div class="dot">2</div><div class="label">制作中</div></div>
+          <div class="step" data-step="2"><div class="dot">3</div><div class="label">已发货</div></div>
+          <div class="step" data-step="3"><div class="dot">4</div><div class="label">已完成</div></div>
+        </div>
+
+          <div class="info-card logistics-card" id="logisticsCard">
+            <div class="head">
+              物流跟踪
+              <span class="action" id="logisticsAction">复制单号</span>
+            </div>
+            <div id="logisticsBody"></div>
+          </div>
+
+        <div class="preview-card" id="previewCard">
+          <div class="sec-title">摆台成片</div>
+          <div class="frame-stage">
+            <div class="frame-photo"></div>
+          </div>
+          <div class="product-rows">
+            <div class="product-row"><span>相框模板</span><span class="val">复古金框 · 6寸竖版</span></div>
+            <div class="product-row"><span>写真风格</span><span class="val">汉服写真</span></div>
+            <div class="product-row"><span>消耗次数</span><span class="val">摆台 1 次</span></div>
+          </div>
+        </div>
+
+        <div class="info-card" id="customerCard">
+          <div class="head">关联客户</div>
+          <div class="cell">
+            <div class="avatar"></div>
+            <div class="cell-main">
+              <div class="name">小美（客户称呼）</div>
+              <div class="desc">微信：小美同学 · 138****5678</div>
+            </div>
+            <span class="arrow">›</span>
+          </div>
+        </div>
+
+        <div class="info-card" id="orderCard">
+          <div class="head">订单信息</div>
+          <div class="kv">
+            <span class="k">订单编号</span>
+            <span class="v mono">OR1747123456789 <span class="copy-btn">复制</span></span>
+          </div>
+          <div class="kv"><span class="k">下单时间</span><span class="v">2026-05-16 14:32</span></div>
+          <div class="kv" id="rowUpdate"><span class="k">更新时间</span><span class="v">2026-05-16 14:32</span></div>
+          <div class="kv"><span class="k">所属门店</span><span class="v">西湖印象店</span></div>
+        </div>
+        </div><!-- contentStack -->
+
+        <div class="bottom-bar" id="bottomBar">
+          <button type="button" class="ghost">联系客服</button>
+          <button type="button" class="primary orange" id="primaryBtn">确认制作</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h3>设计说明 & 落地要点</h3>
+    <ul>
+      <li><strong>状态头 + 四步进度条</strong>：与列表状态胶囊一致；当前步高亮，已完成步骤连线着色。</li>
+      <li><strong>摆台成片区</strong>：大图金框；<strong>仅图内角标「点击放大」</strong>作提示，点击整图 <code>wx.previewImage</code>（不设右上角「全屏预览」，避免重复入口）。</li>
+      <li><strong>客户卡片</strong>：展示 <code>getCustomerDisplayName</code> + 微信昵称/手机号脱敏；可跳转客户详情（若有）。</li>
+      <li><strong>订单信息</strong>：订单号一键复制；展示 createTime / updateTime / storeName。</li>
+      <li><strong>物流 · 按 status 调序（非 shippingNo）</strong>：
+        <ul>
+          <li><strong>待处理 / 制作中</strong>：顺序 = 进度条 → 成片 → 客户 → 订单 → 物流空态（置底）。</li>
+          <li><strong>已发货</strong>：状态头下增加<strong>物流摘要条</strong>（最新一条轨迹）；顺序 = 进度条 → <strong>物流卡片</strong> → 成片 → 客户 → 订单。</li>
+          <li><strong>已完成</strong>：成片优先；物流收成签收摘要置底。</li>
+          <li>列表「查看物流」进详情时可 <code>scrollIntoView</code> 物流区，无需全局固定物流第一。</li>
+        </ul>
+      </li>
+      <li><strong>底部操作</strong>：待处理→确认制作；制作中→查看物流；已发货→确认签收；已完成→仅联系客服/再次下单（可选）。</li>
+      <li><strong>数据字段</strong>：现有 <code>orderNo, status, photoUrl, frameName, styleName, shippingNo, customerInfo, createTime, updateTime</code>；物流轨迹可新增 <code>logisticsCompany, logisticsTraces[]</code> 或云函数聚合查询。</li>
+    </ul>
+  </div>
+
+  <script>
+    const STATES = {
+      pending: {
+        heroClass: 'pending-bg',
+        heroTitle: '待店长确认制作',
+        heroSub: '确认后将扣减摆台次数并开始制作，预计 3–5 个工作日',
+        stepIndex: 0,
+        trackWidth: '0%',
+        primary: { text: '确认制作', class: 'orange' },
+        showUpdate: false,
+        logistics: 'empty-pending',
+        layoutBadge: '当前布局：成片优先 · 物流置底（空态）',
+        sectionOrder: ['stepsBlock', 'previewCard', 'customerCard', 'orderCard', 'logisticsCard'],
+        showLogisticsStrip: false
+      },
+      producing: {
+        heroClass: '',
+        heroTitle: '工厂制作中',
+        heroSub: '正在冲印与装裱，完成后将录入快递单号并通知您',
+        stepIndex: 1,
+        trackWidth: '33%',
+        primary: { text: '查看物流', class: '' },
+        showUpdate: true,
+        logistics: 'empty-producing',
+        layoutBadge: '当前布局：成片优先 · 物流置底（空态，制作中）',
+        sectionOrder: ['stepsBlock', 'previewCard', 'customerCard', 'orderCard', 'logisticsCard'],
+        showLogisticsStrip: false
+      },
+      shipped: {
+        heroClass: 'shipped-bg',
+        heroTitle: '包裹运输中',
+        heroSub: '预计 5 月 19 日前送达 · 顺丰速运',
+        stepIndex: 2,
+        trackWidth: '66%',
+        primary: { text: '确认签收', class: 'green' },
+        showUpdate: true,
+        logistics: 'full',
+        layoutBadge: '当前布局：已发货 · 物流摘要条 + 物流卡片在成片之前',
+        sectionOrder: ['stepsBlock', 'logisticsCard', 'previewCard', 'customerCard', 'orderCard'],
+        showLogisticsStrip: true
+      },
+      done: {
+        heroClass: '',
+        heroTitle: '订单已完成',
+        heroSub: 'SF1234567890 已于 05-17 11:32 签收',
+        stepIndex: 3,
+        trackWidth: '100%',
+        primary: null,
+        showUpdate: true,
+        logistics: 'done',
+        layoutBadge: '当前布局：成片优先 · 物流收成签收摘要（置底）',
+        sectionOrder: ['stepsBlock', 'previewCard', 'customerCard', 'orderCard', 'logisticsCard'],
+        showLogisticsStrip: false
+      }
+    };
+
+    const LOGISTICS_HTML = {
+      'empty-pending': `
+        <div class="logistics-empty">
+          <div class="icon">📦</div>
+          <div>确认制作后进入生产流程</div>
+          <div style="margin-top:4px;font-size:12px">发货后将在此展示物流轨迹</div>
+        </div>`,
+      'empty-producing': `
+        <div class="logistics-empty">
+          <div class="icon">🏭</div>
+          <div>制作中，暂未发货</div>
+          <div style="margin-top:4px;font-size:12px">有运单号后将自动更新，也可联系客服查询</div>
+        </div>`,
+      full: `
+        <div class="carrier">
+          <div class="carrier-icon">🚚</div>
+          <div>
+            <div class="carrier-name">顺丰速运</div>
+            <div class="tracking">运单号 SF1234567890 <span class="copy-btn">复制</span></div>
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="tl-item active">
+            <div class="tl-dot"></div>
+            <div class="tl-text">
+              <div class="time">05-16 18:20</div>
+              <div class="msg">【杭州市】快件已到达 西湖区营业部，正在派送中</div>
+            </div>
+          </div>
+          <div class="tl-item done">
+            <div class="tl-dot"></div>
+            <div class="tl-text">
+              <div class="time">05-16 09:15</div>
+              <div class="msg">【杭州市】快件已从 萧山转运中心 发出</div>
+            </div>
+          </div>
+          <div class="tl-item done">
+            <div class="tl-dot"></div>
+            <div class="tl-text">
+              <div class="time">05-15 20:40</div>
+              <div class="msg">商家已发货，等待揽收</div>
+            </div>
+          </div>
+        </div>`,
+      done: `
+        <div class="carrier">
+          <div class="carrier-icon">✓</div>
+          <div>
+            <div class="carrier-name">已签收</div>
+            <div class="tracking">SF1234567890 · 05-17 11:32 本人签收</div>
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="tl-item active">
+            <div class="tl-dot"></div>
+            <div class="tl-text">
+              <div class="time">05-17 11:32</div>
+              <div class="msg">已签收，感谢使用顺丰速运</div>
+            </div>
+          </div>
+        </div>`
+    };
+
+    const SECTION_IDS = ['stepsBlock', 'logisticsCard', 'previewCard', 'customerCard', 'orderCard'];
+
+    function applySectionOrder(order) {
+      const stack = document.getElementById('contentStack');
+      order.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) stack.appendChild(el);
+      });
+    }
+
+    function renderState(stateKey) {
+      const s = STATES[stateKey];
+      const hero = document.getElementById('statusHero');
+      hero.className = 'status-hero ' + (s.heroClass || '');
+      document.getElementById('heroTitle').textContent = s.heroTitle;
+      document.getElementById('heroSub').textContent = s.heroSub;
+      document.getElementById('trackDone').style.width = s.trackWidth;
+      document.getElementById('rowUpdate').style.display = s.showUpdate ? 'flex' : 'none';
+      document.getElementById('layoutBadge').textContent = s.layoutBadge;
+      document.getElementById('logisticsStrip').classList.toggle('visible', !!s.showLogisticsStrip);
+      document.getElementById('logisticsBody').innerHTML = LOGISTICS_HTML[s.logistics];
+      document.getElementById('logisticsAction').style.visibility =
+        s.logistics === 'full' || s.logistics === 'done' ? 'visible' : 'hidden';
+      applySectionOrder(s.sectionOrder);
+
+      document.querySelectorAll('.step').forEach((el, i) => {
+        el.classList.remove('active', 'done');
+        if (i < s.stepIndex) el.classList.add('done');
+        if (i === s.stepIndex) el.classList.add('active');
+        if (stateKey === 'done') el.classList.add('done');
+      });
+
+      const bar = document.getElementById('bottomBar');
+      const primary = document.getElementById('primaryBtn');
+      if (!s.primary) {
+        primary.style.display = 'none';
+        bar.querySelector('.ghost').textContent = '联系客服';
+      } else {
+        primary.style.display = 'block';
+        primary.textContent = s.primary.text;
+        primary.className = 'primary ' + (s.primary.class || '');
+        bar.querySelector('.ghost').textContent = stateKey === 'pending' ? '联系客服' : '复制单号';
+      }
+
+      document.querySelectorAll('#stateTabs button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.state === stateKey);
+      });
+    }
+
+    document.getElementById('stateTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-state]');
+      if (btn) renderState(btn.dataset.state);
+    });
+
+    renderState('pending');
+  </script>
+</body>
+</html>
