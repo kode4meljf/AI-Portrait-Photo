@@ -34,13 +34,7 @@ function todayDateString() {
   return `${y}-${m}-${day}`
 }
 
-function buildQrPayload(customerId, extra = {}) {
-  return JSON.stringify({
-    type: 'customer_checkin',
-    customerId,
-    ...extra
-  })
-}
+const { buildCheckinQrPayload } = require('./qrPayload')
 
 function pickClientProfile(payload) {
   const wxNickName = (payload.wxNickName || payload.wechatNickName || '').trim()
@@ -72,7 +66,7 @@ function formatCustomerResponse(row, extra = {}) {
     phone: row.phone || '',
     avatarUrl: row.avatarUrl || '',
     totalCheckins: row.totalCheckins || 0,
-    qrPayload: buildQrPayload(row.customerId),
+    qrPayload: buildCheckinQrPayload(row),
     ...extra
   }
 }
@@ -176,6 +170,7 @@ async function scanBindCheckin(openid, payload) {
   if (clientProfile.avatarUrl) {
     updateData.avatarUrl = clientProfile.avatarUrl
   }
+  // 每次打卡：扫码 payload 中的微信昵称写入库（与注册时写入字段一致）
   if (clientProfile.wxNickName) {
     updateData.wxNickName = clientProfile.wxNickName
   }

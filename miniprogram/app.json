@@ -3,6 +3,7 @@
     "pages/launch/launch",
     "pages/launch/create-store",
     "pages/join/join",
+    "pages/customer-register/register",
     "pages/index/index",
     "pages/gallery/gallery",
     "pages/order-list/order-list",
@@ -37,7 +38,20 @@
         "pages/cloud/generate-result/generate-result",
         "pages/cloud/frame-selector/frame-selector",
         "pages/order/order-detail/order-detail",
-        "pages/order/frame-template/frame-template"
+        "pages/order/frame-template/frame-template",
+        "pages/profile/customer-invite/customer-invite"
+      ]
+    },
+    {
+      "root": "packageCustomer",
+      "name": "customer",
+      "pages": [
+        "pages/home/home",
+        "pages/showcase/showcase",
+        "pages/gallery/gallery",
+        "pages/order-list/order-list",
+        "pages/order-detail/order-detail",
+        "pages/profile/profile"
       ]
     }
   ],

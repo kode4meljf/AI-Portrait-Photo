@@ -1,0 +1,164 @@
+<view class="page" wx:if="{{!loading && view}}">
+  <scroll-view
+    class="scroll-area"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    scroll-into-view="{{scrollIntoView}}"
+    scroll-with-animation
+  >
+    <view class="status-hero {{view.heroClass}}">
+      <view class="main-status">{{view.heroTitle}}</view>
+      <view class="sub-status">{{view.heroSub}}</view>
+    </view>
+
+    <view
+      wx:if="{{view.showLogisticsStrip}}"
+      class="logistics-strip"
+      bindtap="onScrollToLogistics"
+    >
+      <view class="strip-icon">🚚</view>
+      <view class="strip-main">
+        <view class="strip-latest">{{view.stripLatest}}</view>
+        <view class="strip-meta">{{view.stripMeta}}</view>
+      </view>
+      <text class="strip-arrow">›</text>
+    </view>
+
+    <view class="steps">
+      <view class="track-done" style="width: {{view.trackWidth}}"></view>
+      <view
+        wx:for="{{view.steps}}"
+        wx:key="label"
+        class="step {{item.done ? 'done' : ''}} {{item.active ? 'active' : ''}}"
+      >
+        <view class="dot">{{index + 1}}</view>
+        <view class="label">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view
+      wx:if="{{view.logisticsBeforePreview}}"
+      class="info-card logistics-card"
+      id="logistics-anchor"
+    >
+      <view class="head">
+        <text>物流跟踪</text>
+        <text wx:if="{{view.showCopyShipping}}" class="action" catchtap="onCopyShippingNo">复制单号</text>
+      </view>
+      <block wx:if="{{view.logisticsMode === 'timeline' || view.logisticsMode === 'done'}}">
+        <view class="carrier">
+          <view class="carrier-icon">{{view.logisticsMode === 'done' ? '✓' : '🚚'}}</view>
+          <view class="carrier-text">
+            <view class="carrier-name">{{view.logisticsMode === 'done' ? '已签收' : view.logisticsCompany}}</view>
+            <view class="tracking">
+              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length}}">{{view.shippingNo}} · {{view.traces[0].time}} 签收</text>
+              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} 已签收</text>
+              <text wx:else>运单号 {{view.shippingNo}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="timeline">
+          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.active ? 'active' : 'done'}}">
+            <view class="tl-dot"></view>
+            <view class="tl-text">
+              <view class="time">{{item.time}}</view>
+              <view class="msg">{{item.msg}}</view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="logistics-empty">
+        <view class="icon">{{view.logisticsEmptyIcon}}</view>
+        <view>{{view.logisticsEmptyTitle}}</view>
+        <view class="sub">{{view.logisticsEmptySub}}</view>
+      </view>
+    </view>
+
+    <view class="preview-card">
+      <view class="sec-title">摆台成片</view>
+      <view class="frame-stage">
+        <view class="frame-photo-wrap" bindtap="previewImage">
+          <image class="frame-photo" src="{{view.photoUrl}}" mode="aspectFill" />
+          <text class="frame-photo-hint">点击放大</text>
+        </view>
+      </view>
+      <view class="product-rows">
+        <view class="product-row">
+          <text class="k">相框模板</text>
+          <text class="v">{{view.frameName || '写真摆台'}}</text>
+        </view>
+        <view class="product-row" wx:if="{{view.styleName}}">
+          <text class="k">写真风格</text>
+          <text class="v">{{view.styleName}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="info-card">
+      <view class="head">订单信息</view>
+      <view class="kv">
+        <text class="k">订单编号</text>
+        <view class="v">
+          <text class="mono">{{view.orderNo}}</text>
+          <text class="copy-btn" catchtap="onCopyOrderNo">复制</text>
+        </view>
+      </view>
+      <view class="kv">
+        <text class="k">下单时间</text>
+        <text class="v">{{view.createTimeStr}}</text>
+      </view>
+      <view class="kv" wx:if="{{view.showUpdateTime}}">
+        <text class="k">更新时间</text>
+        <text class="v">{{view.updateTimeStr}}</text>
+      </view>
+      <view class="kv">
+        <text class="k">所属门店</text>
+        <text class="v">{{view.storeName}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!view.logisticsBeforePreview}}" class="info-card logistics-card" id="logistics-anchor">
+      <view class="head">
+        <text>物流跟踪</text>
+        <text wx:if="{{view.showCopyShipping}}" class="action" catchtap="onCopyShippingNo">复制单号</text>
+      </view>
+      <block wx:if="{{view.logisticsMode === 'timeline' || view.logisticsMode === 'done'}}">
+        <view class="carrier">
+          <view class="carrier-icon">{{view.logisticsMode === 'done' ? '✓' : '🚚'}}</view>
+          <view class="carrier-text">
+            <view class="carrier-name">{{view.logisticsMode === 'done' ? '已签收' : view.logisticsCompany}}</view>
+            <view class="tracking">
+              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length}}">{{view.shippingNo}} · {{view.traces[0].time}} 签收</text>
+              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} 已签收</text>
+              <text wx:else>运单号 {{view.shippingNo}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="timeline">
+          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.active ? 'active' : 'done'}}">
+            <view class="tl-dot"></view>
+            <view class="tl-text">
+              <view class="time">{{item.time}}</view>
+              <view class="msg">{{item.msg}}</view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="logistics-empty">
+        <view class="icon">{{view.logisticsEmptyIcon}}</view>
+        <view>{{view.logisticsEmptyTitle}}</view>
+        <view class="sub">{{view.logisticsEmptySub}}</view>
+      </view>
+    </view>
+
+    <view class="scroll-bottom-spacer"></view>
+  </scroll-view>
+
+  <view class="bottom-bar" wx:if="{{view.showBottomBar}}">
+    <view wx:if="{{view.showBottomGhost}}" class="ghost primary-only" bindtap="onGhostAction">复制单号</view>
+  </view>
+</view>
+
+<view wx:elif="{{loading}}" class="state-tip">加载中…</view>
+<view wx:else class="state-tip">订单不存在或加载失败</view>

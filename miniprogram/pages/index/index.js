@@ -7,9 +7,28 @@ const { uploadSingle } = require('../../utils/media.js');
 const { STYLE_TEMPLATES_COLLECTION } = require('../../config/constants.js');
 const { fetchStyleTemplates } = require('../../config/styles.js');
 const { isValidStoreId } = require('../../utils/storeSession');
+const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { getProfileCollection } = require('../../utils/account');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
+
+function linkedCustomerView(customer) {
+  if (!customer) {
+    return {
+      hasLinkedCustomer: false,
+      linkedCustomerName: '',
+      linkedCustomerAvatar: '',
+      linkedCustomerInitial: ''
+    };
+  }
+  const linkedCustomerName = getCustomerDisplayName(customer);
+  return {
+    hasLinkedCustomer: true,
+    linkedCustomerName,
+    linkedCustomerAvatar: customer.avatarUrl || '',
+    linkedCustomerInitial: (linkedCustomerName || '客').slice(0, 1)
+  };
+}
 
 function formatNow() {
   const d = new Date();
@@ -52,7 +71,9 @@ Page({
     hasCheckedInOnce: false,
     todayVisitCount: 0,
     hasLinkedCustomer: false,
-    linkedCustomerName: ''
+    linkedCustomerName: '',
+    linkedCustomerAvatar: '',
+    linkedCustomerInitial: ''
   },
 
   onLoad() {
@@ -63,6 +84,13 @@ Page({
   },
 
   onShow() {
+    redirectCustomerIfNeeded().then((redirected) => {
+      if (redirected) return;
+      this._onShowStore();
+    });
+  },
+
+  _onShowStore() {
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
@@ -155,8 +183,7 @@ Page({
         checkinDays: 0,
         equityAlbum: 0,
         equityFrame: 0,
-        hasLinkedCustomer: false,
-        linkedCustomerName: ''
+        ...linkedCustomerView(null)
       });
       return;
     }
@@ -170,8 +197,7 @@ Page({
         checkinDays: customer.totalCheckins || 0,
         equityAlbum: customer.equityAlbum || 0,
         equityFrame: customer.equityFrame || 0,
-        hasLinkedCustomer: true,
-        linkedCustomerName: getCustomerDisplayName(customer)
+        ...linkedCustomerView(customer)
       });
     } catch (error) {
       console.error('获取客户信息失败:', error);
@@ -188,11 +214,10 @@ Page({
     this.setData({
       selectedCustomer: null,
       pickerSelectedId: '',
-      hasLinkedCustomer: false,
-      linkedCustomerName: '',
       checkinDays: 0,
       equityAlbum: 0,
-      equityFrame: 0
+      equityFrame: 0,
+      ...linkedCustomerView(null)
     });
     wx.showToast({ title: '已取消关联，仍可继续拍摄', icon: 'none' });
   },
@@ -217,8 +242,7 @@ Page({
       checkinDays: customer.totalCheckins || 0,
       equityAlbum: customer.equityAlbum || 0,
       equityFrame: customer.equityFrame || 0,
-      hasLinkedCustomer: true,
-      linkedCustomerName: getCustomerDisplayName(customer)
+      ...linkedCustomerView(customer)
     });
     showTabBarAfterOverlay();
   },
@@ -238,8 +262,7 @@ Page({
       checkinDays: customer.totalCheckins || 0,
       equityAlbum: customer.equityAlbum || 0,
       equityFrame: customer.equityFrame || 0,
-      hasLinkedCustomer: true,
-      linkedCustomerName: getCustomerDisplayName(customer)
+      ...linkedCustomerView(customer)
     });
     if (this.data.checkinResult && this.data.checkinResult._id === customer._id) {
       this.setData({
@@ -290,10 +313,7 @@ Page({
       });
 
       applyShootCustomer(app, customer);
-      this.setData({
-        hasLinkedCustomer: true,
-        linkedCustomerName: getCustomerDisplayName(customer)
-      });
+      this.setData(linkedCustomerView(customer));
 
       wx.showToast({ title: '今日已打卡', icon: 'success' });
       this.loadTodayVisitCount();

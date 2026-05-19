@@ -3,6 +3,7 @@
 const app = getApp();
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId } = require('../../utils/storeSession');
+const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
 const AUTO_REFRESH_INTERVAL_MS = 8000;
@@ -113,16 +114,19 @@ Page({
   },
 
   onShow() {
-    this._autoRefreshStartedAt = null;
-    this.syncFilterContext();
-    const toast = app.globalData.pendingGalleryToast;
-    if (toast) {
-      app.globalData.pendingGalleryToast = '';
-      setTimeout(() => {
-        wx.showToast({ title: toast, icon: 'success', duration: 2000 });
-      }, 80);
-    }
-    this.refreshData();
+    redirectCustomerIfNeeded().then((redirected) => {
+      if (redirected) return;
+      this._autoRefreshStartedAt = null;
+      this.syncFilterContext();
+      const toast = app.globalData.pendingGalleryToast;
+      if (toast) {
+        app.globalData.pendingGalleryToast = '';
+        setTimeout(() => {
+          wx.showToast({ title: toast, icon: 'success', duration: 2000 });
+        }, 80);
+      }
+      this.refreshData();
+    });
   },
 
   onHide() {
@@ -521,7 +525,7 @@ Page({
       itemList: ['全部下载', linkLabel],
       success: (res) => {
         if (res.tapIndex === 0) {
-          this.downloadBatchAll(batch);
+          this.onDownloadBatch({ currentTarget: { dataset: { batch } } });
         } else if (res.tapIndex === 1) {
           this.openBatchCustomerPicker(batch._id);
         }
@@ -535,7 +539,8 @@ Page({
     });
   },
 
-  async downloadBatchAll(batch) {
+  async onDownloadBatch(e) {
+    const batch = e.currentTarget.dataset.batch;
     wx.showLoading({ title: '获取照片...' });
     try {
       const db = wx.cloud.database();
@@ -546,11 +551,22 @@ Page({
         return;
       }
       const urls = photos.map((p) => p.aiUrl || p.originalUrl).filter(Boolean);
-      if (!urls.length) {
-        wx.showToast({ title: '没有可下载的图片', icon: 'none' });
-        return;
-      }
-      await this.downloadImages(urls);
+      wx.showActionSheet({
+        itemList: ['全部下载', '选择单张下载'],
+        success: async (actionRes) => {
+          if (actionRes.tapIndex === 0) {
+            await this.downloadImages(urls);
+          } else if (actionRes.tapIndex === 1) {
+            const itemList = urls.map((_, idx) => `照片${idx + 1}`);
+            wx.showActionSheet({
+              itemList,
+              success: async (sheetRes) => {
+                if (sheetRes.tapIndex !== -1) await this.downloadImage(urls[sheetRes.tapIndex]);
+              }
+            });
+          }
+        }
+      });
     } catch (error) {
       console.error('下载失败:', error);
       wx.showToast({ title: '下载失败', icon: 'error' });

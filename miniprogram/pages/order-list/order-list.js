@@ -5,6 +5,7 @@
 
 const app = getApp();
 const { callOrderApi } = require('../../utils/orderApi');
+const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
@@ -56,6 +57,13 @@ Page({
   },
 
   onShow() {
+    redirectCustomerIfNeeded().then((redirected) => {
+      if (redirected) return;
+      this._onShowStoreOrders();
+    });
+  },
+
+  _onShowStoreOrders() {
     if (app.globalData.ordersNeedRefresh) {
       app.globalData.ordersNeedRefresh = false;
       this.refreshData();

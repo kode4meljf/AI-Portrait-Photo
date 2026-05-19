@@ -1,13 +1,23 @@
 const { applySessionToApp, isValidStoreId } = require('../../utils/storeSession')
 
 const STORE_HOME = '/pages/index/index'
+const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
+const REGISTER_PAGE = '/pages/customer-register/register'
 const ENTRY = '/pages/launch/launch'
 
 Page({
   data: {
     loading: true,
     status: '',
-    storeName: ''
+    storeName: '',
+    registerToken: ''
+  },
+
+  onLoad(options) {
+    const token = (options.token || options.scene || '').trim()
+    if (token) {
+      this.setData({ registerToken: token })
+    }
   },
 
   onShow() {
@@ -19,23 +29,44 @@ Page({
     this._bootstrapping = true
     const app = getApp()
     this.setData({ loading: true })
+
     try {
       if (!app.globalData.openId) {
         await app.ensureLogin()
       }
-      const account = await applySessionToApp(app)
-      if (account.canUseStore && isValidStoreId(account.storeId)) {
-        wx.reLaunch({ url: STORE_HOME, fail: () => {} })
-        return
-      }
-      if (account.status === 'pending') {
-        this.setData({
-          loading: false,
-          status: 'pending',
-          storeName: account.storeName || ''
+
+      const registerToken = this.data.registerToken
+      if (registerToken) {
+        wx.redirectTo({
+          url: `${REGISTER_PAGE}?token=${encodeURIComponent(registerToken)}`
         })
         return
       }
+
+      const account = await applySessionToApp(app)
+
+      if (account.accountKind === 'store') {
+        if (account.canUseStore && isValidStoreId(account.storeId)) {
+          wx.reLaunch({ url: STORE_HOME })
+          return
+        }
+        if (account.status === 'pending') {
+          this.setData({
+            loading: false,
+            status: 'pending',
+            storeName: account.storeName || ''
+          })
+          return
+        }
+        this.setData({ loading: false, status: 'entry' })
+        return
+      }
+
+      if (account.accountKind === 'customer') {
+        wx.reLaunch({ url: CUSTOMER_HOME })
+        return
+      }
+
       this.setData({ loading: false, status: 'entry' })
     } catch (e) {
       console.error('[launch]', e)
@@ -51,5 +82,13 @@ Page({
 
   goJoin() {
     wx.navigateTo({ url: '/pages/join/join' })
+  },
+
+  goCustomerRegisterHint() {
+    wx.showModal({
+      title: '顾客注册',
+      content: '请使用门店发给您的注册链接或二维码完成注册。若已有账号，请确认链接未过期。',
+      showCancel: false
+    })
   }
 })

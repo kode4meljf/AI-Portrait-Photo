@@ -39,10 +39,22 @@ async function resolveAccount() {
 
 async function applySessionToApp(app) {
   const data = await resolveAccount()
+  const accountKind = data.accountKind || (data.canUseStore ? 'store' : 'none')
+
   app.globalData.membership = data
-  app.globalData.storeId = data.canUseStore ? data.storeId : null
+  app.globalData.accountKind = accountKind
+  app.globalData.storeId = accountKind === 'store' && data.canUseStore ? data.storeId : null
   app.globalData.storeRole = data.role || null
   app.globalData.storeName = data.storeName || ''
+  app.globalData.customer = accountKind === 'customer' ? data.customer || null : null
+  app.globalData.customerDocId =
+    accountKind === 'customer' ? data.customerDocId || data.customer?._id || null : null
+
+  if (accountKind !== 'store') {
+    app.globalData.selectedCustomerId = null
+    app.globalData.selectedCustomer = null
+  }
+
   return data
 }
 

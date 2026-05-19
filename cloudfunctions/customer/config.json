@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "openapi": []
+    "openapi": ["phonenumber.getPhoneNumber"]
   },
   "timeout": 30
 }

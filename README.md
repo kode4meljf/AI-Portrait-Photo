@@ -38,3 +38,11 @@ cd admin-web && npm install && npm run dev
 ## 云环境
 
 小程序 `miniprogram/app.js` 中的云开发 `env` 需与微信云控制台环境一致。
+
+## 云数据库
+
+顾客注册（V1 双端）会用到**新集合** `customer_register_invites`，并在 `customers` 上增加 `wxOpenId`、`source` 等字段；联系平台依赖 `platform_settings` 文档 `default`。
+
+**首次上线前请阅读：** [docs/database.md](docs/database.md)（含字段说明、建议索引、权限与初始化步骤）。
+
+> 说明：云开发会在云函数**首次写入**时自动创建集合，但不会自动帮你配权限/索引/初始文档，需要按文档在云控制台补全。

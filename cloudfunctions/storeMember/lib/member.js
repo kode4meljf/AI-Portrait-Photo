@@ -49,27 +49,81 @@ async function getStoreName(storeId) {
   }
 }
 
+async function getCustomerByOpenId(openid) {
+  const res = await db.collection('customers').where({ wxOpenId: openid }).limit(1).get()
+  return res.data[0] || null
+}
+
 async function accountResolve(openid) {
   const member = await getAnyMember(openid)
-  if (!member) {
+  if (member) {
+    const storeName = await getStoreName(member.storeId)
     return {
-      hasMembership: false,
-      canUseStore: false,
-      storeId: null,
-      role: null,
-      status: null
+      accountKind: 'store',
+      hasMembership: true,
+      canUseStore: member.status === 'active' && isValidStoreId(member.storeId),
+      storeId: member.storeId,
+      role: member.role,
+      status: member.status,
+      storeName,
+      memberId: member._id
     }
   }
-  const storeName = await getStoreName(member.storeId)
-  return {
-    hasMembership: true,
-    canUseStore: member.status === 'active' && isValidStoreId(member.storeId),
-    storeId: member.storeId,
-    role: member.role,
-    status: member.status,
-    storeName,
-    memberId: member._id
+
+  const customer = await getCustomerByOpenId(openid)
+  if (customer && isValidStoreId(customer.storeId) && (customer.phone || '').trim()) {
+    const storeName = await getStoreName(customer.storeId)
+    return {
+      accountKind: 'customer',
+      hasMembership: true,
+      canUseStore: false,
+      storeId: customer.storeId,
+      storeName,
+      customerDocId: customer._id,
+      customerId: customer.customerId,
+      customer: {
+        _id: customer._id,
+        customerId: customer.customerId,
+        nickName: customer.nickName || '',
+        wxNickName: customer.wxNickName || '',
+        phone: customer.phone || '',
+        avatarUrl: customer.avatarUrl || ''
+      }
+    }
   }
+
+  return {
+    accountKind: 'none',
+    hasMembership: false,
+    canUseStore: false,
+    storeId: null,
+    role: null,
+    status: null
+  }
+}
+
+const CUSTOMER_REGISTER_INVITES = 'customer_register_invites'
+
+async function customerRegisterInviteCreate(openid, payload) {
+  const member = await requireActiveMember(openid)
+  const storeId = member.storeId
+  const token = generateInviteToken()
+  const now = Date.now()
+  const expireHours = Number(payload.expireHours) || 168
+  const expireAt = now + expireHours * 3600 * 1000
+
+  await db.collection(CUSTOMER_REGISTER_INVITES).add({
+    data: {
+      token,
+      storeId,
+      createdBy: openid,
+      status: 'active',
+      expireAt,
+      createTime: now
+    }
+  })
+
+  return { token, storeId, expireAt }
 }
 
 async function storeCreate(openid, payload) {
@@ -379,6 +433,59 @@ async function platformSettingsGet(openid) {
   return platform.getSettingsForStore()
 }
 
+/** 云相册：将批次及下属照片关联到客户（服务端写入，避免客户端无写权限） */
+async function batchLinkCustomer(openid, payload) {
+  const member = await requireActiveMember(openid)
+  const storeId = member.storeId
+  const batchId = String(payload.batchId || '').trim()
+  const customerDocId = String(payload.customerId || payload.customerDocId || '').trim()
+  if (!batchId) throw new Error('缺少批次 ID')
+  if (!customerDocId) throw new Error('请选择客户')
+
+  let batch
+  try {
+    const batchRes = await db.collection('batches').doc(batchId).get()
+    batch = batchRes.data
+  } catch (e) {
+    throw new Error('批次不存在')
+  }
+  if (!batch || batch.storeId !== storeId) throw new Error('无权操作该批次')
+
+  let customer
+  try {
+    const custRes = await db.collection('customers').doc(customerDocId).get()
+    customer = custRes.data
+  } catch (e) {
+    throw new Error('客户不存在')
+  }
+  if (!customer || customer.storeId !== storeId) throw new Error('客户不属于当前门店')
+
+  const now = Date.now()
+  await db.collection('batches').doc(batchId).update({
+    data: { customerId: customerDocId, updateTime: now }
+  })
+
+  const photosRes = await db.collection('photos').where({ batchId }).get()
+  const photos = photosRes.data || []
+  const chunkSize = 20
+  for (let i = 0; i < photos.length; i += chunkSize) {
+    const chunk = photos.slice(i, i + chunkSize)
+    await Promise.all(
+      chunk.map((p) =>
+        db.collection('photos').doc(p._id).update({ data: { customerId: customerDocId } })
+      )
+    )
+  }
+
+  const alias = (customer.nickName || '').trim()
+  const wxNick = (customer.wxNickName || '').trim()
+  return {
+    batchId,
+    customerId: customerDocId,
+    customerName: alias || wxNick || '匿名用户'
+  }
+}
+
 module.exports = {
   accountResolve,
   storeCreate,
@@ -394,5 +501,7 @@ module.exports = {
   memberDisable,
   requireActiveMember,
   getStoreName,
-  platformSettingsGet
+  platformSettingsGet,
+  customerRegisterInviteCreate,
+  batchLinkCustomer
 }

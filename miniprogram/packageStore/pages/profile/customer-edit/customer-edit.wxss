@@ -113,7 +113,7 @@
 .edit-readonly {
   display: block;
   font-size: 30rpx;
-  color: #52525b;
+  color: #3f3f46;
   line-height: 44rpx;
 }
 

@@ -4,6 +4,9 @@ const { applySessionToApp, isValidStoreId } = require('./utils/storeSession');
 App({
   globalData: {
     accountId: null,
+    accountKind: 'none',
+    customer: null,
+    customerDocId: null,
     selectedCustomerId: null,
     selectedCustomer: null,
     /** 云相册筛选：null 表示全店 */
@@ -19,9 +22,9 @@ App({
     ordersNeedRefresh: false,
     /** 生成结果 → 摆台：cloud:// fileID，避免 query 重复传大图路径 */
     pendingFrameOrder: null,
-    /** 云相册：从客户列表返回后展示关联成功提示（避免 navigateBack 吞掉 toast） */
+    /** 云相册：从客户列表返回后展示关联成功提示 */
     pendingGalleryToast: '',
-    /** 云相册：刚关联的批次与客户，用于列表即时刷新 */
+    /** 云相册：刚关联的批次与客户（列表即时展示，刷新后以库为准） */
     galleryBatchLinked: null
   },
 

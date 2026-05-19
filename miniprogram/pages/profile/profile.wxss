@@ -330,6 +330,17 @@
   background: linear-gradient(145deg, #ecfdf3 0%, #d1fae5 100%);
 }
 
+.ws-icon.teal {
+  background: linear-gradient(145deg, #ecfeff 0%, #cffafe 100%);
+}
+
+.ws-icon-emoji {
+  font-size: 36rpx;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
 .ws-icon-img {
   width: 48rpx;
   height: 48rpx;

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "首页",
+  "usingComponents": {
+    "customer-nav": "/components/customer-nav/customer-nav"
+  }
+}

@@ -1,25 +1,153 @@
-<view class="container">
-  <view class="search-bar">
-    <input class="search-input" placeholder="搜索昵称或手机号" bindinput="onSearchInput" value="{{searchKeyword}}"/>
-  </view>
-
-  <view wx:if="{{customers.length === 0 && !loading}}" class="empty-wrap">
-    <text class="empty-tip">暂无客户</text>
-    <button class="seed-btn" bindtap="onSeedMockCustomers">插入 4 条模拟客户</button>
-  </view>
-  <view class="customer-list">
-    <view wx:for="{{customers}}" wx:key="_id" class="customer-card" bindtap="onCustomerTap" data-customer="{{item}}">
-      <image class="avatar" src="{{item.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill"></image>
-      <view class="info">
-        <text class="name">{{item.nickName || '匿名用户'}}</text>
-        <text class="phone">{{item.phone || '未绑定手机'}}</text>
-      </view>
-      <view class="stats">
-        <text>打卡 {{item.totalCheckins || 0}} 天</text>
-        <text>相册余 {{item.equityAlbum || 0}}</text>
+<view class="page">
+  <!-- 列表 -->
+  <block wx:if="{{!editPanelVisible}}">
+    <view class="search-bar-wrap">
+      <view class="search-bar">
+        <text class="search-icon">🔍</text>
+        <input
+          class="search-input"
+          placeholder="搜索客户姓名或手机号"
+          value="{{searchKeyword}}"
+          bindinput="onSearchInput"
+          bindconfirm="onSearchInput"
+        />
+        <text wx:if="{{searchKeyword}}" class="clear-icon" bindtap="onClearSearch">×</text>
       </view>
     </view>
-  </view>
-  <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
-  <view wx:if="{{!hasMore && customers.length > 0}}" class="no-more">没有更多了</view>
+
+    <scroll-view
+      class="customer-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      bindscrolltolower="onReachBottom"
+      refresher-enabled
+      bindrefresherrefresh="onPullDownRefresh"
+      refresher-triggered="{{refreshing}}"
+    >
+      <view wx:if="{{customers.length === 0 && !loading}}" class="empty-wrap">
+        <text class="empty-tip">{{searchKeyword ? '未找到匹配的客户' : '暂无客户'}}</text>
+        <button wx:if="{{!searchKeyword && !selectMode}}" class="seed-btn" bindtap="onSeedMockCustomers">插入 4 条模拟客户</button>
+      </view>
+
+      <view
+        wx:for="{{customers}}"
+        wx:key="_id"
+        class="customer-item {{selectMode && item._id === highlightId ? 'selected' : ''}}"
+        bindtap="onCustomerTap"
+        data-customer="{{item}}"
+      >
+        <view wx:if="{{item.avatarUrl}}" class="customer-avatar customer-avatar--image">
+          <image class="customer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
+        </view>
+        <view wx:else class="customer-avatar customer-avatar--initial" style="background-color: {{item.avatarTint}};">
+          <text class="avatar-initial-text">{{item.avatarInitial}}</text>
+        </view>
+        <view class="customer-info">
+          <text class="customer-name">{{item.displayName}}</text>
+          <text class="customer-phone">{{item.phone || '未绑定手机'}}</text>
+        </view>
+        <view class="customer-right">
+          <view class="right-status-col">
+            <text wx:if="{{item.todayCheckedIn}}" class="right-tag">今日已打卡</text>
+            <text class="right-checkins">累计打卡 <text class="right-checkins-num">{{item.totalCheckins || 0}}</text> 次</text>
+          </view>
+          <view
+            class="edit-hit"
+            catchtap="onEditCustomer"
+            data-id="{{item._id}}"
+            hover-class="edit-hit--active"
+            hover-stay-time="80"
+          >
+            <image class="edit-hit-icon" src="/assets/icons/edit-pencil.svg" mode="aspectFit" />
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{loading && customers.length > 0}}" class="loading-tip">加载中...</view>
+      <view wx:if="{{!hasMore && customers.length > 0}}" class="no-more">没有更多了</view>
+    </scroll-view>
+
+    <view class="stats-bar">
+      <text>累计客户 {{totalCustomers}} 人 / 共打卡 {{totalCheckins}} 次</text>
+    </view>
+  </block>
+
+  <!-- 编辑客户（与首页选择客户弹层一致） -->
+  <block wx:else>
+    <view class="edit-header">
+      <view class="nav-back" bindtap="onEditBack" hover-class="nav-back--active" hover-stay-time="80">
+        <view class="nav-back-chevron"></view>
+      </view>
+      <text class="edit-title">编辑客户</text>
+      <view class="header-spacer"></view>
+    </view>
+    <view class="header-line"></view>
+
+    <scroll-view class="edit-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="edit-profile">
+        <view wx:if="{{editAvatarUrl}}" class="edit-avatar edit-avatar--image">
+          <image class="edit-avatar-img" src="{{editAvatarUrl}}" mode="aspectFill" />
+        </view>
+        <view wx:else class="edit-avatar edit-avatar--initial" style="background-color: {{editAvatarTint}};">
+          <text class="edit-avatar-initial">{{editAvatarInitial}}</text>
+        </view>
+        <text class="edit-avatar-hint">头像来自客户码，客户打卡后自动更新</text>
+      </view>
+
+      <view class="edit-form">
+        <view class="edit-field edit-field--readonly">
+          <text class="edit-label">微信昵称</text>
+          <text class="edit-readonly">{{editWxNickName || '暂未同步，客户打卡后将自动更新'}}</text>
+        </view>
+        <view class="edit-field">
+          <text class="edit-label">客户称呼</text>
+          <input
+            class="edit-input"
+            placeholder-class="edit-placeholder"
+            placeholder="店长备注，方便识别客户"
+            value="{{editForm.nickName}}"
+            bindinput="onEditInput"
+            data-key="nickName"
+          />
+        </view>
+        <view class="edit-field">
+          <text class="edit-label">手机号</text>
+          <input
+            class="edit-input"
+            type="number"
+            maxlength="11"
+            placeholder-class="edit-placeholder"
+            placeholder="请输入 11 位手机号"
+            value="{{editForm.phone}}"
+            bindinput="onEditInput"
+            data-key="phone"
+          />
+        </view>
+        <view class="edit-field edit-field--textarea">
+          <text class="edit-label">备注</text>
+          <textarea
+            class="edit-textarea"
+            placeholder-class="edit-placeholder"
+            placeholder="选填，可记录客户偏好、拍摄要求等"
+            value="{{editForm.remark}}"
+            bindinput="onEditInput"
+            data-key="remark"
+            maxlength="200"
+            auto-height
+            show-confirm-bar="{{false}}"
+          />
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="edit-save-bar">
+      <view
+        class="edit-save-btn {{editSaving || !editChanged ? 'edit-save-btn--disabled' : ''}}"
+        hover-class="edit-save-btn-hover"
+        hover-stay-time="80"
+        bindtap="onEditSave"
+      >保存</view>
+    </view>
+  </block>
 </view>

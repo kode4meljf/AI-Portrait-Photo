@@ -51,9 +51,6 @@
           <text class="customer-name">{{storeOptionLabel}}</text>
           <text class="customer-phone">查看本店全部客户的相册</text>
         </view>
-        <view class="customer-right">
-          <text class="store-scope-tag">全店</text>
-        </view>
       </view>
 
       <view wx:if="{{filteredCustomers.length === 0 && !loading && !(includeStoreOption && !searchKeyword)}}" class="empty-tip">
@@ -115,9 +112,9 @@
         </view>
 
         <view class="edit-form">
-          <view wx:if="{{editWxNickName}}" class="edit-field edit-field--readonly">
+          <view class="edit-field edit-field--readonly">
             <text class="edit-label">微信昵称</text>
-            <text class="edit-readonly">{{editWxNickName}}</text>
+            <text class="edit-readonly">{{editWxNickName || '暂未同步，客户打卡后将自动更新'}}</text>
           </view>
           <view class="edit-field">
             <text class="edit-label">客户称呼</text>

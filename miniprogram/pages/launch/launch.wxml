@@ -8,9 +8,10 @@
   </view>
 
   <view wx:else class="panel">
-    <text class="title">门店工作台</text>
-    <text class="desc">创建新门店或使用邀请码加入已有门店</text>
+    <text class="title">AI 写真馆</text>
+    <text class="desc">门店人员请创建或加入门店；顾客请通过门店提供的注册链接进入</text>
     <button class="btn primary" bindtap="goCreateStore">创建门店</button>
-    <button class="btn" bindtap="goJoin">输入邀请码加入</button>
+    <button class="btn" bindtap="goJoin">店员邀请码加入</button>
+    <text class="link" bindtap="goCustomerRegisterHint">我是顾客，已有注册链接？</text>
   </view>
 </view>

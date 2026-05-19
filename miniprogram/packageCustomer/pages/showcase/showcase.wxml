@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="intro">平台风格样板公开展示，具体拍摄与生成由门店为您服务</view>
+  <view class="grid">
+    <view
+      wx:for="{{templates}}"
+      wx:key="id"
+      class="item"
+      bindtap="previewTemplate"
+      data-index="{{index}}"
+    >
+      <image src="{{item.sampleDisplayUrl || item.sampleFileId}}" mode="aspectFill" />
+      <text class="name">{{item.name}}</text>
+    </view>
+  </view>
+  <view wx:if="{{!templates.length}}" class="empty">暂无风格展示</view>
+</view>
+<customer-nav current="showcase" />

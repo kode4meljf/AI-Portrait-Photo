@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="card profile-head">
+    <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+      <image wx:if="{{profile.avatarUrl}}" class="avatar" src="{{profile.avatarUrl}}" mode="aspectFill" />
+      <view wx:else class="avatar placeholder">我</view>
+    </button>
+    <view class="meta">
+      <text class="name">{{wxNickName}}</text>
+      <text class="store">所属 · {{storeName}}</text>
+    </view>
+  </view>
+
+  <view class="card form">
+    <view class="row row-readonly">
+      <text class="label">微信昵称</text>
+      <text class="readonly-val">{{wxNickName}}</text>
+    </view>
+    <text class="readonly-hint">由微信同步，不可修改；到店打卡后会自动更新</text>
+    <view class="row phone-row">
+      <text class="label">手机号</text>
+      <text class="phone-val">{{phone || '未绑定'}}</text>
+      <button class="link-btn" open-type="getPhoneNumber" bindgetphonenumber="onChangePhone">更换</button>
+    </view>
+  </view>
+</view>
+<customer-nav current="profile" />

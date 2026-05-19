@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="card">
+    <view class="title">生成顾客注册链接</view>
+    <view class="hint">顾客注册时可填写微信昵称（写入 wxNickName）；每次到店打卡会再次同步昵称。门店称呼 nickName 由店长在客户资料中维护</view>
+    <view class="btn primary" bindtap="onGenerate">{{loading ? '生成中…' : '生成新链接'}}</view>
+  </view>
+
+  <view class="card" wx:if="{{registerPath}}">
+    <view class="label">小程序路径（可配置到公众号/短信）</view>
+    <text class="path" selectable>{{registerPath}}</text>
+    <view class="expire" wx:if="{{expireAtStr}}">有效期至 {{expireAtStr}}</view>
+    <view class="btn outline" bindtap="onCopyPath">复制路径</view>
+    <view class="tip">也可将路径生成小程序码，张贴在店内供顾客扫码注册</view>
+  </view>
+</view>

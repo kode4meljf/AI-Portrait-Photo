@@ -1,0 +1,49 @@
+<view class="page" wx:if="{{!loading}}">
+  <view class="hero">
+    <text class="hero-title">加入 {{storeName}}</text>
+    <text class="hero-sub">授权微信与手机号，即可成为本店顾客</text>
+  </view>
+
+  <view class="card">
+    <view class="avatar-row">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="avatar-placeholder">头像</view>
+      </button>
+      <text class="avatar-hint">点击设置头像（选填）</text>
+    </view>
+
+    <view class="field">
+      <text class="label">微信昵称</text>
+      <input
+        class="input"
+        type="nickname"
+        placeholder="点击使用微信昵称（选填）"
+        value="{{wxNickName}}"
+        bindinput="onNicknameInput"
+      />
+      <text class="field-hint">注册时写入，之后不可在小程序内修改；到店打卡时会再次同步</text>
+    </view>
+
+    <view class="field phone-field">
+      <text class="label">手机号 <text class="required">*</text></text>
+      <button
+        class="phone-btn {{phoneReady ? 'phone-btn--done' : ''}}"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+      >
+        {{phoneReady ? '✓ 已授权手机号' : '授权手机号（必填）'}}
+      </button>
+    </view>
+  </view>
+
+  <button
+    class="submit-btn {{submitting || !phoneReady ? 'submit-btn--disabled' : ''}}"
+    disabled="{{submitting || !phoneReady}}"
+    bindtap="onSubmit"
+  >
+    {{submitting ? '提交中…' : '完成注册'}}
+  </button>
+</view>
+
+<view wx:else class="loading-tip">加载中…</view>

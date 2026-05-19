@@ -93,6 +93,12 @@
           </view>
           <text class="ws-label">客户列表</text>
         </view>
+        <view class="ws-item" hover-class="ws-item-active" bindtap="onCustomerInvite">
+          <view class="ws-icon teal">
+            <text class="ws-icon-emoji">🔗</text>
+          </view>
+          <text class="ws-label">顾客注册</text>
+        </view>
       </view>
     </view>
 

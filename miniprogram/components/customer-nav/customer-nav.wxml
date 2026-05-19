@@ -1,0 +1,12 @@
+<view class="customer-nav">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="path"
+    class="nav-item {{current === item.key ? 'active' : ''}}"
+    data-path="{{item.path}}"
+    bindtap="onTap"
+  >
+    <text class="nav-icon">{{item.icon}}</text>
+    <text class="nav-text">{{item.text}}</text>
+  </view>
+</view>

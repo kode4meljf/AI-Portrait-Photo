@@ -50,6 +50,12 @@ exports.main = async (event) => {
       case 'platform.settings':
         data = await member.platformSettingsGet(openid)
         break
+      case 'customerRegisterInvite.create':
+        data = await member.customerRegisterInviteCreate(openid, event)
+        break
+      case 'batch.linkCustomer':
+        data = await member.batchLinkCustomer(openid, event)
+        break
       default:
         return { success: false, error: `未知 action: ${action}` }
     }

@@ -7,6 +7,7 @@ const app = getApp();
 const { isValidStoreId } = require('../../utils/storeSession');
 const { getProfileCollection } = require('../../utils/account');
 const { safeNavigateTo } = require('../../utils/navigation');
+const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 
 // 内置日期工具函数
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -60,6 +61,13 @@ Page({
   },
 
   onShow() {
+    redirectCustomerIfNeeded().then((redirected) => {
+      if (redirected) return;
+      this._onShowStoreProfile();
+    });
+  },
+
+  _onShowStoreProfile() {
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
@@ -245,6 +253,10 @@ Page({
 
   onCreateCustomer() {
     safeNavigateTo({ url: '/packageStore/pages/profile/customer-create/customer-create' });
+  },
+
+  onCustomerInvite() {
+    safeNavigateTo({ url: '/packageStore/pages/profile/customer-invite/customer-invite' });
   },
 
   // 下拉刷新

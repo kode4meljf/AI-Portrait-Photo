@@ -4,31 +4,14 @@
  */
 
 const app = getApp()
-const { getCustomerDisplayName } = require('../../utils/customerDisplay')
+const {
+  initialFromName,
+  pickAvatarTint,
+  mapCustomerRow,
+  calcListStats
+} = require('../../utils/customerListDisplay')
 
 const STORE_OPTION_ID = '__all_store__'
-
-function isToday(timestamp) {
-  if (!timestamp) return false
-  const d = new Date(timestamp)
-  const now = new Date()
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
-}
-
-const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
-
-function pickAvatarTint(key) {
-  const s = String(key || '')
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
-  return AVATAR_BG[h % AVATAR_BG.length]
-}
-
-function initialFromName(name) {
-  const t = (name || '').trim()
-  if (!t) return '客'
-  return t.slice(0, 1)
-}
 
 Component({
   properties: {
@@ -140,11 +123,8 @@ Component({
       this.loadCustomers()
     },
 
-    // 计算统计数据
     calcStats(customers) {
-      const totalCustomers = customers.length
-      const totalCheckins = customers.reduce((sum, c) => sum + (c.totalCheckins || 0), 0)
-      this.setData({ totalCustomers, totalCheckins })
+      this.setData(calcListStats(customers))
     },
 
     // 加载客户列表
@@ -186,17 +166,7 @@ Component({
           .limit(this.data.pageSize)
           .get()
 
-        const customers = res.data.map(c => {
-          const nick = c.nickName || '匿名用户'
-          return {
-            ...c,
-            todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
-            createTimeStr: c.createTime ? this.formatDate(c.createTime) : '',
-            displayName: getCustomerDisplayName(c),
-            avatarInitial: initialFromName(c.nickName || c.wxNickName),
-            avatarTint: pickAvatarTint(c._id || nick)
-          }
-        })
+        const customers = res.data.map((c) => mapCustomerRow(c))
 
         const allCustomers = isLoadMore ? [...this.data.customers, ...customers] : customers
 

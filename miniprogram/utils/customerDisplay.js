@@ -1,5 +1,5 @@
 /**
- * 客户展示名：有客户称呼用称呼，否则用微信昵称
+ * 门店端展示名：优先店长称呼 nickName，否则微信昵称
  */
 function getCustomerDisplayName(customer) {
   if (!customer) return '匿名用户'
@@ -9,6 +9,13 @@ function getCustomerDisplayName(customer) {
   return wx || '匿名用户'
 }
 
+/** 顾客端展示名：仅微信昵称（不展示 nickName） */
+function getCustomerWxDisplayName(customer) {
+  if (!customer) return '微信用户'
+  return (customer.wxNickName || '').trim() || '微信用户'
+}
+
 module.exports = {
-  getCustomerDisplayName
+  getCustomerDisplayName,
+  getCustomerWxDisplayName
 }

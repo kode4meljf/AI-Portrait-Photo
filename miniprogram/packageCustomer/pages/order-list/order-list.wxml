@@ -1,0 +1,17 @@
+<view class="page">
+  <view
+    wx:for="{{orders}}"
+    wx:key="_id"
+    class="card"
+    bindtap="goDetail"
+    data-id="{{item._id}}"
+  >
+    <view class="row">
+      <text class="title">{{item.frameName || '写真摆台'}}</text>
+      <text class="status">{{item.status}}</text>
+    </view>
+    <text class="sub">{{item.orderNo}} · {{item.createTimeStr}}</text>
+  </view>
+  <view wx:if="{{!orders.length}}" class="empty">暂无订单</view>
+</view>
+<customer-nav current="orders" />
