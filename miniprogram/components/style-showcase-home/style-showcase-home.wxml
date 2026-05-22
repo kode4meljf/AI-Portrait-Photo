@@ -1,0 +1,49 @@
+<view class="showcase-section">
+  <view class="section-head">
+    <text class="section-title">{{title}}</text>
+    <text class="section-more" bindtap="onMore">{{moreText}}</text>
+  </view>
+
+  <view wx:if="{{layout === 'empty'}}" class="showcase-empty">暂无风格展示</view>
+
+  <view wx:elif="{{layout === 'single'}}" class="c-single">
+    <view
+      class="c-hero c-hero--solo"
+      bindtap="onPreview"
+      data-index="{{hero.index}}"
+    >
+      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="top" />
+      <view wx:else class="c-img c-img--empty" />
+      <text class="c-badge">推荐</text>
+      <text class="c-grad-name">{{hero.name}}</text>
+    </view>
+  </view>
+
+  <view wx:else class="c-layout">
+    <view class="c-hero" bindtap="onPreview" data-index="{{hero.index}}">
+      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="top" />
+      <view wx:else class="c-img c-img--empty" />
+      <text class="c-badge">推荐</text>
+      <text class="c-grad-name">{{hero.name}}</text>
+    </view>
+    <view
+      wx:for="{{subs}}"
+      wx:key="id"
+      class="c-small"
+      bindtap="onPreview"
+      data-index="{{item.index}}"
+    >
+      <image
+        wx:if="{{item.thumbCover}}"
+        class="c-img"
+        src="{{item.thumbCover}}"
+        mode="{{item.thumbMode}}"
+      />
+      <view wx:else class="c-img c-img--empty" />
+      <text class="c-grad-name">{{item.name}}</text>
+    </view>
+    <view wx:if="{{subs.length < 2}}" class="c-small c-small--ghost">
+      <view class="c-img c-img--empty c-img--ghost" />
+    </view>
+  </view>
+</view>

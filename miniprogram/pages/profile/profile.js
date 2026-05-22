@@ -8,6 +8,7 @@ const { isValidStoreId } = require('../../utils/storeSession');
 const { getProfileCollection } = require('../../utils/account');
 const { safeNavigateTo } = require('../../utils/navigation');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
+const { syncStoreTabBar } = require('../../utils/storeTabBar');
 
 // 内置日期工具函数
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -68,6 +69,7 @@ Page({
   },
 
   _onShowStoreProfile() {
+    syncStoreTabBar(this);
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;

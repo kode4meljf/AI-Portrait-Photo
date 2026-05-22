@@ -8,8 +8,9 @@ const {
 } = require('../../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
-const { buildCheckinQrPayload } = require('../../../utils/checkinQr')
 const { fetchStyleTemplates } = require('../../../config/styles')
+
+const QR_UNAVAILABLE_HINT = '暂无法显示打卡码，请联系店长协助处理'
 
 Page({
   behaviors: [require('../../../behaviors/customerPageNav')],
@@ -21,8 +22,6 @@ Page({
     totalCheckins: 0,
     equityAlbum: 0,
     equityFrame: 0,
-    checkinQrPayload: '',
-    checkinQrReady: false,
     checkinQrFileId: '',
     codeWarn: '',
     previewTemplates: []
@@ -46,9 +45,6 @@ Page({
 
   applyProfileData(data) {
     app.globalData.customer = data
-    const checkinQrPayload =
-      data.qrPayload || buildCheckinQrPayload(data, app.globalData.openId)
-    const checkinQrReady = !!checkinQrPayload
     const checkinQrFileId = (data.checkinQrFileId || '').trim()
     this.setData({
       customer: data,
@@ -57,15 +53,10 @@ Page({
       totalCheckins: data.totalCheckins || 0,
       equityAlbum: data.equityAlbum != null ? data.equityAlbum : 0,
       equityFrame: data.equityFrame != null ? data.equityFrame : 0,
-      checkinQrPayload,
-      checkinQrReady,
       checkinQrFileId,
-      codeWarn: checkinQrReady
-        ? checkinQrFileId
-          ? ''
-          : '打卡码生成中，请稍后下拉刷新'
-        : '未检测到有效手机号，无法生成打卡码，请到「我的」重新授权手机号或联系门店'
+      codeWarn: checkinQrFileId ? '' : QR_UNAVAILABLE_HINT
     })
+    this._lastProfileError = ''
   },
 
   async loadProfile() {
@@ -88,12 +79,12 @@ Page({
       const msg = e.message || '加载失败'
       this.setData({
         checkinQrFileId: '',
-        codeWarn:
-          msg.indexOf('手机号') >= 0
-            ? `${msg}，无法生成打卡码`
-            : '未检测到有效手机号，无法生成打卡码，请完成注册或到「我的」授权手机号'
+        codeWarn: QR_UNAVAILABLE_HINT
       })
-      wx.showToast({ title: msg, icon: 'none' })
+      if (msg !== this._lastProfileError) {
+        this._lastProfileError = msg
+        wx.showToast({ title: msg, icon: 'none' })
+      }
     }
   },
 
@@ -112,7 +103,7 @@ Page({
   },
 
   onPreviewSample(e) {
-    const index = e.currentTarget.dataset.index
+    const index = e.detail && e.detail.index != null ? e.detail.index : e.currentTarget.dataset.index
     const urls = this.data.previewTemplates
       .map((t) => t.sampleDisplayUrl || t.sampleFileId)
       .filter(Boolean)

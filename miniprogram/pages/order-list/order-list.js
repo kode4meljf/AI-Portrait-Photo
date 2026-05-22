@@ -6,6 +6,7 @@
 const app = getApp();
 const { callOrderApi } = require('../../utils/orderApi');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
+const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
@@ -36,6 +37,7 @@ Page({
     ],
     currentTab: "all",
     orderGroups: [],       // 按月份分组的订单数据 [{ month, totalAmount, orders }]
+    allOrders: [],
     loading: false,
     hasMore: true,
     pageSize: 20,
@@ -64,6 +66,7 @@ Page({
   },
 
   _onShowStoreOrders() {
+    syncStoreTabBar(this);
     if (app.globalData.ordersNeedRefresh) {
       app.globalData.ordersNeedRefresh = false;
       this.refreshData();
@@ -76,24 +79,28 @@ Page({
   },
 
   async loadOrders(isLoadMore = false) {
+    const loadMore = isLoadMore === true;
     if (this.data.loading) return;
     this.setData({ loading: true });
 
     try {
-      const page = isLoadMore ? this.data.currentPage + 1 : 1;
-      const { list, hasMore } = await callOrderApi('list', {
+      const page = loadMore ? this.data.currentPage + 1 : 1;
+      const res = await callOrderApi('list', {
         orderType: 'frame',
         statusTab: this.data.currentTab,
         customerId: app.globalData.selectedCustomerId || undefined,
         page,
         pageSize: this.data.pageSize
       });
+      const list = res.list || [];
+      const hasMore = !!res.hasMore;
 
       const formattedOrders = this.formatOrders(list);
       await this.updateTabCounts();
 
       // 合并已有订单（仅用于加载更多）
-      let allOrders = isLoadMore ? [...this.data.allOrders, ...formattedOrders] : formattedOrders;
+      const prev = this.data.allOrders || [];
+      let allOrders = loadMore ? [...prev, ...formattedOrders] : formattedOrders;
       this.setData({ allOrders: allOrders });
 
       // 按月份分组并计算月度汇总
@@ -131,7 +138,7 @@ Page({
   },
 
   formatOrders(orders) {
-    if (!orders.length) return [];
+    if (!orders || !orders.length) return [];
     return orders.map(order => {
       const customerInfo = order.customerInfo || null;
       // 状态样式映射
@@ -289,12 +296,18 @@ Page({
       currentPage: 0,
       allOrders: []
     });
-    this.loadOrders();
+    return this.loadOrders(false);
   },
 
-  onPullDownRefresh() {
+  /** scroll-view 下拉刷新（勿与 loadOrders 参数混用：refresher 会传入 event） */
+  onScrollRefresh() {
     this.setData({ refreshing: true });
-    this.refreshData();
+    this.refreshData()
+      .catch(() => {})
+      .finally(() => {
+        this.setData({ refreshing: false });
+        wx.stopPullDownRefresh();
+      });
   },
 
   onReachBottom() {

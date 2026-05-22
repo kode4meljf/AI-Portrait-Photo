@@ -1,55 +1,150 @@
 .page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding: 24rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  background: #12141f;
+  padding: 8rpx 0 calc(24rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-.intro {
-  font-size: 24rpx;
-  color: #888;
+.state {
+  padding: 200rpx 48rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.45);
   line-height: 1.5;
-  margin-bottom: 24rpx;
-  padding: 0 8rpx;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20rpx;
+.state--error {
+  color: #f0a8b4;
 }
 
-.item {
-  border-radius: 24rpx;
+/* 主图 Swiper：高度由 js 按屏高 62% 动态设置 */
+.hero-swiper {
+  width: 100%;
+}
+
+.hero-card {
+  height: 100%;
+  margin: 0 16rpx;
+  border-radius: 28rpx;
   overflow: hidden;
-  background: #fff;
   position: relative;
-  height: 0;
-  padding-bottom: 120%;
+  background: #1e2230;
 }
 
-.item image {
-  position: absolute;
-  inset: 0;
+.hero-img {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
-.name {
+.hero-img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.35);
+  background: #252a38;
+}
+
+.hero-cap {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 40rpx 16rpx 16rpx;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  padding: 80rpx 28rpx 28rpx;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 35%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  box-sizing: border-box;
+}
+
+.hero-name {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
   color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.hero-sub {
+  display: block;
+  margin-top: 10rpx;
   font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.45;
+}
+
+.counter {
+  display: block;
+  text-align: center;
+  margin: 12rpx 0 12rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 缩略图条 */
+.thumb-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.thumb-row {
+  display: inline-flex;
+  gap: 16rpx;
+  padding: 0 24rpx 8rpx;
+}
+
+.thumb-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 104rpx;
+  flex-shrink: 0;
+}
+
+.thumb-img {
+  width: 104rpx;
+  height: 136rpx;
+  border-radius: 16rpx;
+  border: 3rpx solid transparent;
+  box-sizing: border-box;
+  background: #252a38;
+}
+
+.thumb-img--empty {
+  background: #2a3040;
+}
+
+.thumb-item.active .thumb-img {
+  border-color: #e8b86d;
+  box-shadow: 0 0 0 2rpx rgba(232, 184, 109, 0.35);
+}
+
+.thumb-name {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 104rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: center;
 }
 
-.empty {
+.thumb-item.active .thumb-name {
+  color: #e8b86d;
+  font-weight: 600;
+}
+
+.foot-hint {
+  display: block;
   text-align: center;
-  padding: 120rpx 0;
-  color: #aaa;
-  font-size: 28rpx;
+  margin-top: 20rpx;
+  padding: 0 32rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.32);
+  line-height: 1.45;
 }

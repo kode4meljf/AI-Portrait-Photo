@@ -4,8 +4,15 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const MOBILE_RE = /^1\d{10}$/
 
+function stripPhoneDigits(raw) {
+  let p = String(raw || '').trim().replace(/\s+/g, '')
+  if (p.startsWith('+86')) p = p.slice(3)
+  else if (p.startsWith('86') && p.length === 13) p = p.slice(2)
+  return p
+}
+
 function normalizeMobilePhone(phone) {
-  const p = String(phone || '').trim()
+  const p = stripPhoneDigits(phone)
   if (!p) throw new Error('请填写手机号')
   if (!MOBILE_RE.test(p)) throw new Error('请输入正确的 11 位手机号')
   return p

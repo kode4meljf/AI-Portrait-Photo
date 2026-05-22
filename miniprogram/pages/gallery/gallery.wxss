@@ -1,9 +1,13 @@
 /* pages/gallery/gallery.wxss · V5 一体药丸 */
+@import "../../styles/tab-bar.shared.wxss";
+
 .gallery-container {
   background: #f3f4f6;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
 }
 
 /* 顶栏固定，列表在下方 swiper 内滚动 */
@@ -129,7 +133,7 @@
 
 .scroll-area {
   height: 100%;
-  padding: 8rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  padding: 8rpx 32rpx 40rpx;
   box-sizing: border-box;
 }
 

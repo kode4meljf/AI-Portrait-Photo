@@ -5,6 +5,7 @@
   "backgroundColor": "#eef0f4",
   "homeButton": false,
   "usingComponents": {
-    "customer-nav": "/components/customer-nav/customer-nav"
+    "customer-nav": "/components/customer-nav/customer-nav",
+    "style-showcase-home": "/components/style-showcase-home/style-showcase-home"
   }
 }

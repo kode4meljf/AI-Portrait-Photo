@@ -4,6 +4,7 @@ const app = getApp();
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId } = require('../../utils/storeSession');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
+const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
 const AUTO_REFRESH_INTERVAL_MS = 8000;
@@ -116,6 +117,7 @@ Page({
   onShow() {
     redirectCustomerIfNeeded().then((redirected) => {
       if (redirected) return;
+      syncStoreTabBar(this);
       this._autoRefreshStartedAt = null;
       this.syncFilterContext();
       const toast = app.globalData.pendingGalleryToast;

@@ -11,6 +11,7 @@ const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { getProfileCollection } = require('../../utils/account');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
+const { syncStoreTabBar } = require('../../utils/storeTabBar');
 
 function linkedCustomerView(customer) {
   if (!customer) {
@@ -91,6 +92,7 @@ Page({
   },
 
   _onShowStore() {
+    syncStoreTabBar(this);
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
@@ -354,8 +356,10 @@ Page({
     }
   },
 
-  previewTemplate(e) {
-    const template = this.data.templates[e.currentTarget.dataset.index];
+  onPreviewTemplate(e) {
+    const index =
+      e.detail && e.detail.index != null ? e.detail.index : e.currentTarget.dataset.index;
+    const template = this.data.templates[index];
     const url = template && (template.sampleDisplayUrl || template.sampleFileId);
     if (url) {
       wx.previewImage({ urls: [url], current: url });
@@ -400,6 +404,6 @@ Page({
   },
 
   onMoreTemplates() {
-    wx.showToast({ title: '更多风格即将上线', icon: 'none' });
+    wx.navigateTo({ url: '/packageCustomer/pages/showcase/showcase' });
   }
 });

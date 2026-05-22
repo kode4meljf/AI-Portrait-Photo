@@ -1,11 +1,11 @@
-<view class="customer-nav">
+<view class="tab-bar">
   <view
     wx:for="{{tabs}}"
     wx:key="path"
-    class="nav-item {{current === item.key ? 'active' : ''}}"
+    class="tab-bar__item {{current === item.key ? 'tab-bar__item--active' : ''}}"
     data-path="{{item.path}}"
     bindtap="onTap"
   >
-    <text class="nav-text">{{item.text}}</text>
+    <text class="tab-bar__text">{{item.text}}</text>
   </view>
 </view>

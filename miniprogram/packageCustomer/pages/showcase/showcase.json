@@ -1,10 +1,9 @@
 {
-  "navigationBarTitleText": "风格样品",
+  "navigationBarTitleText": "风格画册",
   "navigationBarBackgroundColor": "#1a1a2e",
   "navigationBarTextStyle": "white",
-  "backgroundColor": "#f5f5f5",
-  "homeButton": false,
-  "usingComponents": {
-    "customer-nav": "/components/customer-nav/customer-nav"
-  }
+  "backgroundColor": "#12141f",
+  "backgroundColorTop": "#12141f",
+  "backgroundColorBottom": "#12141f",
+  "homeButton": false
 }

@@ -1,0 +1,31 @@
+/* 门店 custom-tab-bar 与顾客 customer-nav 共用 */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+  border-top: 1rpx solid #e5e5e5;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+
+.tab-bar__item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96rpx;
+  color: #999999;
+}
+
+.tab-bar__item--active {
+  color: #ff69b4;
+}
+
+.tab-bar__text {
+  font-size: 26rpx;
+  line-height: 1.3;
+}

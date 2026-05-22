@@ -4,11 +4,18 @@ function isValidMobilePhone(phone) {
   return MOBILE_RE.test(String(phone || '').trim())
 }
 
+function stripPhoneDigits(raw) {
+  let p = String(raw || '').trim().replace(/\s+/g, '')
+  if (p.startsWith('+86')) p = p.slice(3)
+  else if (p.startsWith('86') && p.length === 13) p = p.slice(2)
+  return p
+}
+
 function normalizeMobilePhone(phone) {
-  const p = String(phone || '').trim()
+  const p = stripPhoneDigits(phone)
   if (!p) return { ok: false, error: '请填写手机号' }
   if (!MOBILE_RE.test(p)) return { ok: false, error: '请输入正确的 11 位手机号' }
   return { ok: true, phone: p }
 }
 
-module.exports = { isValidMobilePhone, normalizeMobilePhone, MOBILE_RE }
+module.exports = { isValidMobilePhone, normalizeMobilePhone, stripPhoneDigits, MOBILE_RE }

@@ -83,20 +83,14 @@
         </view>
       </view>
 
-      <view class="showcase-section">
-        <view class="section-header" style="padding: 0 0 10rpx;">
-          <view class="s-title">风格样板展示</view>
-          <view class="s-more" bindtap="onMoreTemplates">更多 ›</view>
-        </view>
-        <view class="showcase-grid">
-          <block wx:for="{{templates}}" wx:key="id">
-            <view class="showcase-item" bindtap="previewTemplate" data-index="{{index}}">
-              <image src="{{item.sampleDisplayUrl || item.sampleFileId}}" mode="aspectFill"></image>
-              <view class="showcase-label">{{item.name}}</view>
-            </view>
-          </block>
-        </view>
-      </view>
+      <style-showcase-home
+        class="index-showcase"
+        templates="{{templates}}"
+        title="风格样板展示"
+        more-text="更多 ›"
+        bind:more="onMoreTemplates"
+        bind:preview="onPreviewTemplate"
+      />
     </view>
   </scroll-view>
 

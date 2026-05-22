@@ -128,71 +128,8 @@
   line-height: 1.5;
 }
 
-/* 风格样品：方案一（2×2 grid + 底部渐变名，对齐 showcase 页） */
-.showcase-section {
-  padding: 8rpx 32rpx 32rpx;
-}
-
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16rpx;
-  padding: 0 8rpx;
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1a1a2e;
-}
-
-.section-more {
-  font-size: 24rpx;
-  color: #0f3460;
-  font-weight: 500;
-}
-
-.samples {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
-}
-
-.sample-item {
-  position: relative;
-  border-radius: 24rpx;
-  overflow: hidden;
-  background: #fff;
-  height: 0;
-  padding-bottom: 133.33%;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
-}
-
-.sample-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+/* 风格样品：方案 C 主推+副格（组件 style-showcase-home） */
+.home-showcase {
   display: block;
-}
-
-.sample-name {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 40rpx 16rpx 16rpx;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
-  color: #fff;
-  font-size: 24rpx;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.samples-empty {
-  text-align: center;
-  padding: 48rpx 0;
-  font-size: 26rpx;
-  color: #9ca3af;
+  padding: 8rpx 32rpx 32rpx;
 }

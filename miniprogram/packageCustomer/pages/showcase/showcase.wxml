@@ -1,16 +1,64 @@
 <view class="page">
-  <view class="intro">平台风格样板公开展示，具体拍摄与生成由门店为您服务</view>
-  <view class="grid">
-    <view
-      wx:for="{{templates}}"
-      wx:key="id"
-      class="item"
-      bindtap="previewTemplate"
-      data-index="{{index}}"
+  <view wx:if="{{loading}}" class="state">正在加载风格…</view>
+  <view wx:elif="{{error}}" class="state state--error">{{error}}</view>
+  <view wx:elif="{{!templates.length}}" class="state">暂无风格展示</view>
+
+  <block wx:else>
+    <swiper
+      class="hero-swiper"
+      style="height: {{heroHeightPx}}px;"
+      current="{{currentIndex}}"
+      duration="280"
+      bindchange="onSwiperChange"
     >
-      <image src="{{item.sampleDisplayUrl || item.sampleFileId}}" mode="aspectFill" />
-      <text class="name">{{item.name}}</text>
-    </view>
-  </view>
-  <view wx:if="{{!templates.length}}" class="empty">暂无风格展示</view>
+      <swiper-item wx:for="{{templates}}" wx:key="id">
+        <view class="hero-card" bindtap="onPreview" data-index="{{index}}">
+          <image
+            wx:if="{{item.cover}}"
+            class="hero-img"
+            src="{{item.cover}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="hero-img hero-img--empty">暂无样图</view>
+          <view class="hero-cap">
+            <text class="hero-name">{{item.name}}</text>
+            <text class="hero-sub">{{item.blurb}}</text>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+
+    <text class="counter">{{currentIndex + 1}} / {{templates.length}} · 左右滑动切换</text>
+
+    <scroll-view
+      class="thumb-scroll"
+      scroll-x
+      enhanced
+      show-scrollbar="{{false}}"
+      scroll-into-view="{{thumbIntoView}}"
+      scroll-with-animation
+    >
+      <view class="thumb-row">
+        <view
+          wx:for="{{templates}}"
+          wx:key="id"
+          id="thumb-{{index}}"
+          class="thumb-item {{index === currentIndex ? 'active' : ''}}"
+          data-index="{{index}}"
+          bindtap="onThumbTap"
+        >
+          <image
+            wx:if="{{item.cover}}"
+            class="thumb-img"
+            src="{{item.cover}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="thumb-img thumb-img--empty" />
+          <text class="thumb-name">{{item.name}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <text class="foot-hint">{{footHint}}</text>
+  </block>
 </view>

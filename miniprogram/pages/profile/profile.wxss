@@ -1,9 +1,13 @@
 /* packageProfile/pages/profile/profile.wxss */
+@import "../../styles/tab-bar.shared.wxss";
+
 .profile-container {
   background-color: #f3f4f6;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
 }
 
 .scroll-area {

@@ -1,0 +1,121 @@
+/* 方案 C：主推 + 副格 */
+.showcase-section {
+  padding: 8rpx 0 0;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.section-more {
+  font-size: 24rpx;
+  color: #0f3460;
+  font-weight: 500;
+}
+
+.showcase-empty {
+  text-align: center;
+  padding: 48rpx 0;
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
+/* 右列略窄，减轻「扁横格 + 竖图」裁脸问题 */
+.c-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.82fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 16rpx;
+  height: 420rpx;
+}
+
+.c-single {
+  height: 400rpx;
+}
+
+.c-hero {
+  grid-row: span 2;
+  border-radius: 24rpx;
+  overflow: hidden;
+  position: relative;
+  background: #e9edf3;
+  box-shadow: 0 8rpx 28rpx rgba(26, 26, 46, 0.08);
+}
+
+.c-hero--solo {
+  grid-row: auto;
+  height: 100%;
+}
+
+.c-small {
+  border-radius: 20rpx;
+  overflow: hidden;
+  position: relative;
+  background: #eef0f4;
+  box-shadow: 0 4rpx 16rpx rgba(26, 26, 46, 0.06);
+}
+
+.c-small--ghost {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.c-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.c-img--empty {
+  background: linear-gradient(145deg, #d1d5db, #e5e7eb);
+  position: relative;
+}
+
+.c-img--ghost {
+  background: #e5e7eb;
+}
+
+.c-badge {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  z-index: 2;
+  padding: 6rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(232, 184, 109, 0.92);
+  color: #1a1a2e;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.c-grad-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 48rpx 12rpx 14rpx;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.58));
+  color: #fff;
+  font-size: 22rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.c-hero .c-grad-name {
+  font-size: 26rpx;
+  font-weight: 600;
+}

@@ -29,12 +29,17 @@ function normalizeStyle(row) {
   const sampleFileId = String(
     row.sampleFileId || row.sampleUrl || row.coverFileId || row.coverUrl || ''
   ).trim()
+  /** 首页副格横图（可选，16:9 或横版裁切，更适合右侧扁格） */
+  const sampleThumbFileId = String(
+    row.sampleThumbFileId || row.sampleThumbUrl || row.thumbFileId || ''
+  ).trim()
   return {
     _id: row._id || '',
     id: row.id || '',
     name: row.name || '',
     prompt: row.prompt || '',
     sampleFileId,
+    sampleThumbFileId,
     sort: row.sort != null ? row.sort : 0,
     enabled: row.enabled !== false
   }
@@ -60,14 +65,15 @@ async function attachSampleDisplayUrls(styles) {
   const cloudIds = [
     ...new Set(
       styles
-        .map((s) => s.sampleFileId)
+        .flatMap((s) => [s.sampleFileId, s.sampleThumbFileId])
         .filter((id) => id && String(id).startsWith('cloud://'))
     )
   ]
   if (!cloudIds.length) {
     return styles.map((s) => ({
       ...s,
-      sampleDisplayUrl: s.sampleFileId || ''
+      sampleDisplayUrl: s.sampleFileId || '',
+      sampleThumbDisplayUrl: s.sampleThumbFileId || ''
     }))
   }
   try {
@@ -80,13 +86,15 @@ async function attachSampleDisplayUrls(styles) {
     })
     return styles.map((s) => ({
       ...s,
-      sampleDisplayUrl: map[s.sampleFileId] || s.sampleFileId || ''
+      sampleDisplayUrl: map[s.sampleFileId] || s.sampleFileId || '',
+      sampleThumbDisplayUrl: map[s.sampleThumbFileId] || s.sampleThumbFileId || ''
     }))
   } catch (e) {
     console.warn('[styles] getTempFileURL 失败', e)
     return styles.map((s) => ({
       ...s,
-      sampleDisplayUrl: s.sampleFileId || ''
+      sampleDisplayUrl: s.sampleFileId || '',
+      sampleThumbDisplayUrl: s.sampleThumbFileId || ''
     }))
   }
 }
