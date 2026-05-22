@@ -25,3 +25,8 @@ miniprogram/assets/styles-raw/
 miniprogram/assets/styles/
 miniprogram/assets/styles-34/
 miniprogram/assets/styles-generated/
+
+# Custom
+.cursor/
+.npm-cache/
+docs/
