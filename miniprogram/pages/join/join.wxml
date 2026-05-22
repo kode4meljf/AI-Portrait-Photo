@@ -1,11 +1,135 @@
 <view class="join-page">
-  <view class="field">
-    <text class="label">邀请码</text>
-    <input value="{{token}}" bindinput="onTokenInput" placeholder="请输入店长提供的邀请码" />
+  <view class="join-hero">
+    <view class="join-hero-icon">
+      <image class="join-hero-img" src="/assets/icons/ws-staff.svg" mode="aspectFit"></image>
+    </view>
+    <text class="join-hero-title">加入门店团队</text>
+    <text class="join-hero-sub">输入邀请码，向店长申请成为员工</text>
   </view>
-  <button class="btn" bindtap="onPreview">查看门店</button>
-  <view wx:if="{{preview}}" class="preview">
-    <text>门店：{{preview.storeName}}</text>
+
+  <view class="join-card">
+    <view class="field">
+      <text class="label">邀请码</text>
+      <view class="input-shell">
+        <input
+          class="input-shell__field"
+          value="{{token}}"
+          bindinput="onTokenInput"
+          placeholder="请输入或扫码获取邀请码"
+          placeholder-class="input-placeholder"
+        />
+        <view
+          class="input-shell__scan"
+          hover-class="input-shell__scan--press"
+          bindtap="onScanInvite"
+        >
+          <image
+            class="input-shell__scan-icon"
+            src="/assets/icons/scan-qr.svg"
+            mode="aspectFit"
+          />
+        </view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">你的称呼<text class="required">*</text></text>
+      <input
+        class="input"
+        type="nickname"
+        value="{{staffNickName}}"
+        bindinput="onStaffNickNameInput"
+        placeholder="点击可使用微信昵称"
+        placeholder-class="input-placeholder"
+      />
+      <text class="field-hint">店长在「员工管理」中可见，便于审核</text>
+    </view>
+
+    <view class="field phone-field">
+      <text class="label">手机号（选填）</text>
+      <button
+        class="phone-btn {{phoneReady ? 'phone-btn--done' : ''}}"
+        hover-class="phone-btn--press"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+      >{{phoneReady ? '✓ 重新授权手机号' : '授权手机号，方便店长联系'}}</button>
+      <view wx:if="{{phoneReady && phoneDisplay}}" class="phone-display">
+        <text class="phone-display-label">已授权号码</text>
+        <text class="phone-display-value">{{phoneDisplay}}</text>
+      </view>
+      <text class="field-hint">每次申请需单独授权；不授权则店长侧不显示手机号</text>
+    </view>
+
+    <button
+      class="btn btn-secondary"
+      hover-class="btn-secondary--press"
+      hover-stay-time="80"
+      bindtap="onPreview"
+    >查看门店信息</button>
   </view>
-  <button class="btn primary" loading="{{submitting}}" bindtap="onAccept">申请加入</button>
+
+  <view class="join-hint">
+    <text>填写邀请码与称呼 → 查看门店信息 → 确认并申请</text>
+  </view>
+</view>
+
+<!-- 门店预览遮罩：主操作「确认并申请加入」 -->
+<view
+  wx:if="{{previewVisible && preview}}"
+  class="preview-mask"
+  bindtap="closePreview"
+  catchtouchmove="preventTouchMove"
+>
+  <view class="preview-dialog" catchtap="preventBubble">
+    <text class="preview-dialog-title">确认门店信息</text>
+    <text class="preview-dialog-sub">请核对是否为你要加入的门店</text>
+
+    <view class="preview-info-card">
+      <view class="preview-row preview-row-main">
+        <text class="preview-k">门店名称</text>
+        <text class="preview-v preview-v-name">{{preview.storeName}}</text>
+      </view>
+      <view class="preview-row">
+        <text class="preview-k">联系人</text>
+        <text class="preview-v">{{preview.contactName || '暂未填写'}}</text>
+      </view>
+      <view wx:if="{{preview.contactPhoneMask}}" class="preview-row">
+        <text class="preview-k">联系电话</text>
+        <text class="preview-v">{{preview.contactPhoneMask}}</text>
+      </view>
+      <view wx:if="{{preview.addressBrief}}" class="preview-row preview-row-addr">
+        <text class="preview-k">地址</text>
+        <text class="preview-v preview-v-addr">{{preview.addressBrief}}</text>
+      </view>
+    </view>
+
+    <view class="preview-applicant">
+      <view class="preview-applicant-line">
+        <text class="preview-applicant-k">申请人</text>
+        <text class="preview-applicant-v">{{staffNickName}}</text>
+      </view>
+      <view wx:if="{{phoneDisplay}}" class="preview-applicant-line">
+        <text class="preview-applicant-k">手机号</text>
+        <text class="preview-applicant-v">{{phoneDisplay}}</text>
+      </view>
+    </view>
+
+    <text wx:if="{{previewExpireText}}" class="preview-expire">{{previewExpireText}}</text>
+
+    <button
+      class="btn btn-primary preview-btn-primary"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+      hover-class="btn-primary--press"
+      hover-stay-time="80"
+      bindtap="onAccept"
+    >确认并申请加入</button>
+    <button
+      class="btn btn-ghost"
+      hover-class="btn-ghost--press"
+      hover-stay-time="80"
+      disabled="{{submitting}}"
+      bindtap="closePreview"
+    >返回修改</button>
+  </view>
 </view>

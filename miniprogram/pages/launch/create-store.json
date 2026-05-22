@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "创建门店"
+  "navigationBarTitleText": "创建门店",
+  "navigationBarBackgroundColor": "#fff9f5",
+  "navigationBarTextStyle": "black"
 }

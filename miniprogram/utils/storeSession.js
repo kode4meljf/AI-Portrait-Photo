@@ -81,6 +81,7 @@ function callCustomer(action, data = {}) {
           const result = res.result || {}
           err.code = result.code
           err.storeName = result.storeName
+          err.existingId = result.existingId
           throw err
         }
         throw e

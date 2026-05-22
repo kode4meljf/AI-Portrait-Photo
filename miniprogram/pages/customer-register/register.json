@@ -1,4 +1,9 @@
 {
-  "navigationBarTitleText": "顾客注册",
+  "navigationBarTitleText": "客户注册",
+  "navigationBarBackgroundColor": "#1a1a2e",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#eef0f4",
+  "enablePullDownRefresh": false,
+  "homeButton": false,
   "usingComponents": {}
 }

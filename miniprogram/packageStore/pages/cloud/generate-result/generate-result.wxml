@@ -10,11 +10,14 @@
   </view>
   <view class="result-page">
   <view wx:if="{{phase === 'loading'}}" class="loading-body">
-    <view class="spinner"></view>
-    <text class="loading-title">AI 正在生成写真</text>
-    <text class="loading-desc">预计 8–15 秒，请勿离开页面</text>
-    <view class="loading-preview">
-      <image wx:if="{{originalUrl}}" src="{{originalUrl}}" mode="aspectFit"></image>
+    <view class="loading-main">
+      <view class="spinner"></view>
+      <text class="loading-title">AI 正在生成写真</text>
+      <text class="loading-desc">预计 8–15 秒，请勿离开页面</text>
+      <text class="loading-hint">可稍后在「云相册」查看生成结果</text>
+      <view class="loading-preview">
+        <image wx:if="{{originalUrl}}" src="{{originalUrl}}" mode="aspectFit"></image>
+      </view>
     </view>
   </view>
 

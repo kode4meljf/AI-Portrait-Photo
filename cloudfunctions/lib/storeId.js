@@ -10,11 +10,6 @@ function generateStoreId() {
   return `store_${rand}${Date.now().toString(36).slice(-4)}`
 }
 
-function generateCustomerId() {
-  const rand = Math.random().toString(36).slice(2, 10)
-  return `cust_${rand}${Date.now().toString(36).slice(-4)}`
-}
-
 function generateInviteToken() {
   return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10)
 }
@@ -23,6 +18,5 @@ module.exports = {
   STORE_ID_RE,
   isValidStoreId,
   generateStoreId,
-  generateCustomerId,
   generateInviteToken
 }

@@ -26,8 +26,9 @@
       />
     </view>
     <view class="edit-field">
-      <text class="edit-label">手机号</text>
+      <text class="edit-label">手机号 <text class="edit-required">*</text></text>
       <input
+        wx:if="{{!phoneLocked}}"
         class="edit-input"
         type="number"
         maxlength="11"
@@ -37,6 +38,8 @@
         bindinput="onInput"
         data-key="phone"
       />
+      <text wx:else class="edit-readonly">{{form.phone}}</text>
+      <text wx:if="{{phoneLocked}}" class="edit-field-hint">已绑定微信，手机号仅可由客户在顾客端更换</text>
     </view>
     <view class="edit-field edit-field--textarea">
       <text class="edit-label">备注</text>
@@ -56,7 +59,7 @@
 
   <view class="save-bar">
     <view
-      class="save-btn {{saving || !changed ? 'save-btn--disabled' : ''}}"
+      class="save-btn {{saving || !canSave ? 'save-btn--disabled' : ''}}"
       hover-class="save-btn-hover"
       hover-stay-time="80"
       bindtap="onSave"

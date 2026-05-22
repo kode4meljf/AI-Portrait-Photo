@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "openapi": []
+    "openapi": ["phonenumber.getPhoneNumber", "urllink.generate", "wxacode.getUnlimited"]
   },
   "timeout": 30
 }

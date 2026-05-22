@@ -6,10 +6,14 @@ const db = cloud.database()
 const _ = db.command
 
 const platform = require('./platform')
+const { getPhoneFromCode } = require('./phone')
+const QRCode = require('qrcode')
 
 const MEMBERS = 'store_members'
 const INVITES = 'store_invites'
 const STORES = 'stores'
+/** 手机号 code 一次性：授权时落库，提交时用 phoneAuthId 取用 */
+const PHONE_AUTH = 'member_phone_auth'
 
 async function getActiveMember(openid) {
   const res = await db
@@ -49,6 +53,44 @@ async function getStoreName(storeId) {
   }
 }
 
+/** 手机号脱敏，供邀请预览等场景 */
+function maskPhone(phone) {
+  const p = String(phone || '')
+    .trim()
+    .replace(/\s/g, '')
+  if (!p) return ''
+  if (p.length >= 11) return `${p.slice(0, 3)}****${p.slice(-4)}`
+  if (p.length >= 7) return `${p.slice(0, 2)}****${p.slice(-2)}`
+  return '****'
+}
+
+function briefAddress(store) {
+  const addr = ((store && (store.mapAddress || store.address)) || '').trim()
+  if (!addr) return ''
+  return addr.length > 48 ? `${addr.slice(0, 48)}…` : addr
+}
+
+/** 店员邀请预览：门店名称、联系人、脱敏电话、地址摘要 */
+async function getStoreInvitePreview(storeId) {
+  try {
+    const res = await db.collection(STORES).doc(storeId).get()
+    const store = res.data || {}
+    return {
+      storeName: (store.name || '').trim() || storeId,
+      contactName: (store.contactName || '').trim(),
+      contactPhoneMask: maskPhone(store.contactPhone),
+      addressBrief: briefAddress(store)
+    }
+  } catch (e) {
+    return {
+      storeName: storeId,
+      contactName: '',
+      contactPhoneMask: '',
+      addressBrief: ''
+    }
+  }
+}
+
 async function getCustomerByOpenId(openid) {
   const res = await db.collection('customers').where({ wxOpenId: openid }).limit(1).get()
   return res.data[0] || null
@@ -66,7 +108,8 @@ async function accountResolve(openid) {
       role: member.role,
       status: member.status,
       storeName,
-      memberId: member._id
+      memberId: member._id,
+      approvedAt: member.approvedAt || null
     }
   }
 
@@ -80,10 +123,8 @@ async function accountResolve(openid) {
       storeId: customer.storeId,
       storeName,
       customerDocId: customer._id,
-      customerId: customer.customerId,
       customer: {
         _id: customer._id,
-        customerId: customer.customerId,
         nickName: customer.nickName || '',
         wxNickName: customer.wxNickName || '',
         phone: customer.phone || '',
@@ -104,6 +145,60 @@ async function accountResolve(openid) {
 
 const CUSTOMER_REGISTER_INVITES = 'customer_register_invites'
 
+function resolveInviteEnvVersion(payload) {
+  const v = (payload && payload.envVersion) || ''
+  return v === 'develop' || v === 'trial' || v === 'release' ? v : 'release'
+}
+
+async function generateCustomerRegisterUrlLink(token, expireDays = 7, envVersion = 'release') {
+  try {
+    const res = await cloud.openapi.urllink.generate({
+      path: 'pages/customer-register/register',
+      query: `token=${encodeURIComponent(token)}`,
+      is_expire: true,
+      expire_type: 1,
+      expire_interval: Math.min(30, Math.max(1, Math.ceil(expireDays))),
+      env_version: envVersion
+    })
+    return (res && res.url_link) || ''
+  } catch (err) {
+    console.warn('[customerRegisterInvite] urllink.generate failed', err)
+    return ''
+  }
+}
+
+/** 官方小程序码（scene=token，打开 customer-register/register） */
+async function generateCustomerRegisterWxacode(token, envVersion = 'release') {
+  const scene = (token || '').trim()
+  if (!scene) throw new Error('缺少注册邀请码')
+  if (scene.length > 32) throw new Error('邀请码过长，无法生成小程序码')
+
+  const env = resolveInviteEnvVersion({ envVersion })
+  const result = await cloud.openapi.wxacode.getUnlimited({
+    scene,
+    page: 'pages/customer-register/register',
+    check_path: env === 'release',
+    env_version: env,
+    width: 430
+  })
+
+  const buffer = Buffer.isBuffer(result) ? result : result && result.buffer
+  if (!buffer || !buffer.length) {
+    throw new Error('小程序码生成失败')
+  }
+  if (buffer[0] === 0x7b) {
+    try {
+      const json = JSON.parse(buffer.toString('utf8'))
+      if (json.errcode) {
+        throw new Error(json.errmsg || `微信接口错误 ${json.errcode}`)
+      }
+    } catch (e) {
+      if (!(e instanceof SyntaxError)) throw e
+    }
+  }
+  return buffer
+}
+
 async function customerRegisterInviteCreate(openid, payload) {
   const member = await requireActiveMember(openid)
   const storeId = member.storeId
@@ -111,6 +206,11 @@ async function customerRegisterInviteCreate(openid, payload) {
   const now = Date.now()
   const expireHours = Number(payload.expireHours) || 168
   const expireAt = now + expireHours * 3600 * 1000
+  const registerPath = buildCustomerRegisterQrText(token)
+  const envVersion = resolveInviteEnvVersion(payload)
+  const expireDays = Math.min(30, Math.max(1, Math.ceil(expireHours / 24)))
+  const urlLink = await generateCustomerRegisterUrlLink(token, expireDays, envVersion)
+  const inviteLink = urlLink || registerPath
 
   await db.collection(CUSTOMER_REGISTER_INVITES).add({
     data: {
@@ -119,11 +219,65 @@ async function customerRegisterInviteCreate(openid, payload) {
       createdBy: openid,
       status: 'active',
       expireAt,
+      registerPath,
+      urlLink: urlLink || null,
+      inviteLink,
       createTime: now
     }
   })
 
-  return { token, storeId, expireAt }
+  return { token, storeId, expireAt, registerPath, urlLink, inviteLink, envVersion }
+}
+
+function buildCustomerRegisterQrText(token) {
+  const t = (token || '').trim()
+  return `pages/customer-register/register?token=${encodeURIComponent(t)}`
+}
+
+/** 生成顾客注册小程序码 PNG（wxacode.getUnlimited → 云存储临时链接） */
+async function customerRegisterInviteQrImage(openid, payload) {
+  const member = await requireActiveMember(openid)
+  const storeId = member.storeId
+  const token = (payload.token || '').trim()
+  if (!token) throw new Error('缺少注册邀请码')
+
+  const invRes = await db
+    .collection(CUSTOMER_REGISTER_INVITES)
+    .where({ token, storeId, status: 'active' })
+    .limit(1)
+    .get()
+  if (!invRes.data.length) throw new Error('注册邀请无效或已失效')
+
+  const inv = invRes.data[0]
+  const envVersion = resolveInviteEnvVersion(payload)
+  let buffer
+  try {
+    buffer = await generateCustomerRegisterWxacode(token, envVersion)
+  } catch (err) {
+    console.error('[customerRegisterInvite] wxacode', err)
+    const msg = (err && err.message) || '小程序码生成失败'
+    throw new Error(
+      msg.includes('小程序码') ? msg : `${msg}（未发布时请用体验版/开发版 env，或先发布正式版）`
+    )
+  }
+
+  const cloudPath = `customer-invite-wxacode/${storeId}_${Date.now()}.png`
+  const upload = await cloud.uploadFile({
+    cloudPath,
+    fileContent: buffer
+  })
+  const urlRes = await cloud.getTempFileURL({ fileList: [upload.fileID] })
+  const item = urlRes.fileList && urlRes.fileList[0]
+  const registerPath = inv.registerPath || buildCustomerRegisterQrText(token)
+  return {
+    fileID: upload.fileID,
+    tempFileURL: (item && item.tempFileURL) || '',
+    scene: token,
+    page: 'pages/customer-register/register',
+    envVersion,
+    inviteLink: inv.inviteLink || inv.urlLink || registerPath,
+    registerPath
+  }
 }
 
 async function storeCreate(openid, payload) {
@@ -144,14 +298,37 @@ async function storeCreate(openid, payload) {
   const storeId = generateStoreId()
   const now = Date.now()
   const name = (payload.name || 'AI写真馆').trim()
+  const contactName = (payload.contactName || '').trim()
+  const contactPhone = (payload.contactPhone || '').trim()
+  const mapAddress = (payload.mapAddress || '').trim() || (payload.address || '').trim()
+  const houseNumber = (payload.houseNumber || '').trim()
+
+  if (!contactName) throw new Error('请填写联系人')
+  if (!contactPhone) throw new Error('请填写联系电话')
+  if (!mapAddress) throw new Error('请先地图选点选择门店地址')
+  const lat = payload.latitude
+  const lng = payload.longitude
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    throw new Error('请通过地图选择门店地址')
+  }
+
+  const fullAddress =
+    (payload.address || '').trim() || [mapAddress, houseNumber].filter(Boolean).join(' ')
 
   // stores 主档：业务 ID 仅存在文档 _id（store_xxx），不在正文重复 storeId 字段
   const storeData = {
     accountType: 'store',
     name,
-    contactName: (payload.contactName || '').trim(),
-    contactPhone: (payload.contactPhone || '').trim(),
-    address: (payload.address || '').trim(),
+    contactName,
+    contactPhone,
+    address: fullAddress,
+    mapAddress,
+    addressName: (payload.addressName || '').trim(),
+    addressDetail: (payload.addressDetail || '').trim(),
+    distanceText: (payload.distanceText || '').trim(),
+    houseNumber,
+    latitude: lat,
+    longitude: lng,
     avatarUrl: '',
     level: '普通会员',
     balance: 100,
@@ -171,6 +348,7 @@ async function storeCreate(openid, payload) {
         storeId,
         role: 'owner',
         status: 'active',
+        phone: contactPhone,
         updateTime: now,
         approvedAt: now
       }
@@ -183,6 +361,8 @@ async function storeCreate(openid, payload) {
         role: 'owner',
         status: 'active',
         nickName: (payload.contactName || '').trim(),
+        phone: contactPhone,
+        remark: '',
         createTime: now,
         updateTime: now,
         approvedAt: now
@@ -263,6 +443,43 @@ async function inviteCreate(openid, payload) {
   return { token, storeId, expireAt }
 }
 
+function buildStaffInviteQrText(token) {
+  const t = (token || '').trim()
+  return `pages/join/join?token=${encodeURIComponent(t)}`
+}
+
+/** 生成店员邀请二维码 PNG（云存储临时链接） */
+async function inviteQrImage(openid, payload) {
+  const storeId = payload.storeId
+  if (!isValidStoreId(storeId)) throw new Error('门店ID无效')
+  await requireOwner(openid, storeId)
+  const token = (payload.token || '').trim()
+  if (!token) throw new Error('缺少邀请码')
+
+  const qrText = buildStaffInviteQrText(token)
+  /* 背景与邀请卡藏青一致；码点为金色，便于深色底扫描 */
+  const buffer = await QRCode.toBuffer(qrText, {
+    type: 'png',
+    width: 420,
+    margin: 1,
+    errorCorrectionLevel: 'M',
+    color: { dark: '#e8b86d', light: '#1a1a2e' }
+  })
+
+  const cloudPath = `staff-invite-qr/${storeId}_${Date.now()}.png`
+  const upload = await cloud.uploadFile({
+    cloudPath,
+    fileContent: buffer
+  })
+  const urlRes = await cloud.getTempFileURL({ fileList: [upload.fileID] })
+  const item = urlRes.fileList && urlRes.fileList[0]
+  return {
+    fileID: upload.fileID,
+    tempFileURL: (item && item.tempFileURL) || '',
+    qrContent: qrText
+  }
+}
+
 async function inviteRevoke(openid, payload) {
   const storeId = payload.storeId
   await requireOwner(openid, storeId)
@@ -281,6 +498,53 @@ async function inviteRevoke(openid, payload) {
   return { revoked: true }
 }
 
+/** 消费已保存的手机号授权（提交申请时） */
+async function consumePhoneAuth(openid, phoneAuthId) {
+  const id = (phoneAuthId || '').trim()
+  if (!id) return ''
+  let row
+  try {
+    const res = await db.collection(PHONE_AUTH).doc(id).get()
+    row = res.data
+  } catch (e) {
+    throw new Error('手机号授权已失效，请重新授权')
+  }
+  if (!row || row.memberOpenId !== openid) {
+    throw new Error('手机号授权已失效，请重新授权')
+  }
+  if (row.used) throw new Error('手机号授权已使用，请重新授权')
+  if (row.expireAt && row.expireAt < Date.now()) {
+    throw new Error('手机号授权已过期，请重新授权')
+  }
+  await db.collection(PHONE_AUTH).doc(id).update({
+    data: { used: true, updateTime: Date.now() }
+  })
+  return (row.phone || '').trim()
+}
+
+/**
+ * 店员加入：用 phoneCode 换号并暂存（code 只能用一次，不可在 preview/accept 重复调）
+ */
+async function phoneAuthorizeForJoin(openid, payload) {
+  const phone = await getPhoneFromCode(payload.phoneCode)
+  const authId = `pa_${generateInviteToken()}`
+  const now = Date.now()
+  await db.collection(PHONE_AUTH).doc(authId).set({
+    data: {
+      memberOpenId: openid,
+      phone,
+      used: false,
+      expireAt: now + 10 * 60 * 1000,
+      createTime: now
+    }
+  })
+  return { phoneMask: maskPhone(phone), phoneAuthId: authId }
+}
+
+async function phoneMaskFromCode(openid, payload) {
+  return phoneAuthorizeForJoin(openid, payload)
+}
+
 async function invitePreview(payload) {
   const token = (payload.token || '').trim()
   if (!token) throw new Error('缺少邀请码')
@@ -294,8 +558,15 @@ async function invitePreview(payload) {
   if (invite.expireAt && invite.expireAt < Date.now()) {
     throw new Error('邀请码已过期')
   }
-  const storeName = await getStoreName(invite.storeId)
-  return { storeId: invite.storeId, storeName, expireAt: invite.expireAt }
+  const storePreview = await getStoreInvitePreview(invite.storeId)
+  return {
+    storeId: invite.storeId,
+    storeName: storePreview.storeName,
+    contactName: storePreview.contactName,
+    contactPhoneMask: storePreview.contactPhoneMask,
+    addressBrief: storePreview.addressBrief,
+    expireAt: invite.expireAt
+  }
 }
 
 async function inviteAccept(openid, payload) {
@@ -331,13 +602,25 @@ async function inviteAccept(openid, payload) {
     .limit(1)
     .get()
 
+  const nickName = (payload.nickName || '').trim()
+  if (!nickName) throw new Error('请填写你的称呼')
+
+  let phone = ''
+  if (payload.phoneAuthId) {
+    phone = await consumePhoneAuth(openid, payload.phoneAuthId)
+  } else if (payload.phoneCode) {
+    phone = await getPhoneFromCode(payload.phoneCode)
+  }
+
+  const patch = { status: 'pending', updateTime: now, role: 'staff', nickName, remark: '' }
+  // 本次未重新授权手机号时写入空串，避免沿用上一条申请（如被拒/移出后）留下的 phone
+  patch.phone = phone || ''
+
   if (pending.data.length) {
     const row = pending.data[0]
     if (row.status === 'active') throw new Error('您已是本店成员')
     if (row.status === 'pending') throw new Error('已提交申请，请等待店长审核')
-    await db.collection(MEMBERS).doc(row._id).update({
-      data: { status: 'pending', updateTime: now, role: 'staff' }
-    })
+    await db.collection(MEMBERS).doc(row._id).update({ data: patch })
     return { storeId: invite.storeId, status: 'pending' }
   }
 
@@ -347,7 +630,9 @@ async function inviteAccept(openid, payload) {
       memberOpenId: openid,
       role: 'staff',
       status: 'pending',
-      nickName: (payload.nickName || '').trim(),
+      nickName,
+      phone,
+      remark: '',
       createTime: now,
       updateTime: now
     }
@@ -359,14 +644,49 @@ async function inviteAccept(openid, payload) {
 async function memberList(openid, payload) {
   const storeId = payload.storeId
   if (!isValidStoreId(storeId)) throw new Error('门店ID无效')
-  await requireActiveMember(openid)
   const caller = await requireActiveMember(openid)
   if (caller.storeId !== storeId) throw new Error('无权查看该门店成员')
 
   const status = payload.status
   const where = status ? { storeId, status } : { storeId }
   const res = await db.collection(MEMBERS).where(where).orderBy('createTime', 'desc').limit(100).get()
-  return { list: res.data }
+  const isOwner = caller.role === 'owner'
+  const list = (res.data || []).map((row) => {
+    if (isOwner) return row
+    const { phone, remark, ...rest } = row
+    return rest
+  })
+  return { list, isOwner }
+}
+
+/** 店长维护员工备注、联系电话（不修改 nickName） */
+async function memberUpdateProfile(openid, payload) {
+  const storeId = payload.storeId
+  const memberId = payload.memberId
+  await requireOwner(openid, storeId)
+  if (!memberId) throw new Error('缺少 memberId')
+
+  const doc = await db.collection(MEMBERS).doc(memberId).get()
+  const row = doc.data
+  if (!row || row.storeId !== storeId) throw new Error('成员不存在')
+  if (row.role === 'owner') throw new Error('无法修改店长资料')
+
+  const data = { updateTime: Date.now() }
+  if (payload.remark !== undefined) {
+    data.remark = String(payload.remark || '').trim().slice(0, 200)
+  }
+  if (payload.phone !== undefined) {
+    const phone = String(payload.phone || '').trim().replace(/\s/g, '')
+    if (phone && !/^1\d{10}$/.test(phone)) {
+      throw new Error('请输入正确的 11 位手机号')
+    }
+    data.phone = phone
+  }
+  if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
+
+  await db.collection(MEMBERS).doc(memberId).update({ data })
+  const updated = await db.collection(MEMBERS).doc(memberId).get()
+  return updated.data
 }
 
 async function memberApprove(openid, payload) {
@@ -399,7 +719,13 @@ async function memberReject(openid, payload) {
   if (row.status !== 'pending') throw new Error('仅可拒绝待审核成员')
 
   await db.collection(MEMBERS).doc(memberId).update({
-    data: { status: 'disabled', updateTime: Date.now(), rejectReason: payload.reason || '' }
+    data: {
+      status: 'disabled',
+      updateTime: Date.now(),
+      rejectReason: payload.reason || '',
+      remark: '',
+      phone: ''
+    }
   })
   return { memberId, status: 'disabled' }
 }
@@ -422,7 +748,12 @@ async function memberDisable(openid, payload) {
   }
 
   await db.collection(MEMBERS).doc(memberId).update({
-    data: { status: 'disabled', updateTime: Date.now() }
+    data: {
+      status: 'disabled',
+      updateTime: Date.now(),
+      remark: '',
+      phone: ''
+    }
   })
   return { memberId, status: 'disabled' }
 }
@@ -438,7 +769,7 @@ async function batchLinkCustomer(openid, payload) {
   const member = await requireActiveMember(openid)
   const storeId = member.storeId
   const batchId = String(payload.batchId || '').trim()
-  const customerDocId = String(payload.customerId || payload.customerDocId || '').trim()
+  const customerDocId = String(payload.customerDocId || '').trim()
   if (!batchId) throw new Error('缺少批次 ID')
   if (!customerDocId) throw new Error('请选择客户')
 
@@ -492,10 +823,14 @@ module.exports = {
   storeGet,
   storeUpdate,
   inviteCreate,
+  inviteQrImage,
   inviteRevoke,
+  phoneAuthorizeForJoin,
+  phoneMaskFromCode,
   invitePreview,
   inviteAccept,
   memberList,
+  memberUpdateProfile,
   memberApprove,
   memberReject,
   memberDisable,
@@ -503,5 +838,6 @@ module.exports = {
   getStoreName,
   platformSettingsGet,
   customerRegisterInviteCreate,
+  customerRegisterInviteQrImage,
   batchLinkCustomer
 }

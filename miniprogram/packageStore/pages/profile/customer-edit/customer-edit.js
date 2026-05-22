@@ -1,3 +1,6 @@
+const { callCustomer } = require('../../../../utils/storeSession')
+const { validateStoreCustomerForm, showPhoneConflictModal } = require('../../../../utils/customerForm')
+
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
 function pickAvatarTint(key) {
@@ -18,6 +21,7 @@ Page({
     id: '',
     saving: false,
     changed: false,
+    canSave: false,
     form: {
       nickName: '',
       phone: '',
@@ -31,81 +35,96 @@ Page({
     avatarUrl: '',
     avatarInitial: '客',
     avatarTint: '#4e7cf6',
-    wxNickName: ''
+    wxNickName: '',
+    phoneLocked: false
   },
 
   onLoad(options) {
-    const id = options.id || '';
+    const id = options.id || ''
     if (!id) {
-      wx.showToast({ title: '参数错误', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 400);
-      return;
+      wx.showToast({ title: '参数错误', icon: 'none' })
+      setTimeout(() => wx.navigateBack(), 400)
+      return
     }
-    this.setData({ id });
-    this.loadCustomer();
+    this.setData({ id })
+    this.loadCustomer()
   },
 
   async loadCustomer() {
     try {
-      const db = wx.cloud.database();
-      const res = await db.collection('customers').doc(this.data.id).get();
-      const data = res.data;
-      const nickName = data.nickName || '';
-      const phone = data.phone || '';
-      const remark = data.remark || '';
-      const snapshot = { nickName, phone, remark };
+      const db = wx.cloud.database()
+      const res = await db.collection('customers').doc(this.data.id).get()
+      const data = res.data
+      const nickName = data.nickName || ''
+      const phone = data.phone || ''
+      const remark = data.remark || ''
+      const snapshot = { nickName, phone, remark }
       this.setData({
         form: { ...snapshot },
         snapshot,
         changed: false,
+        canSave: false,
         avatarUrl: data.avatarUrl || '',
         avatarInitial: initialFromName(nickName || data.wxNickName),
         avatarTint: pickAvatarTint(this.data.id || nickName || data.wxNickName),
-        wxNickName: (data.wxNickName || '').trim()
-      });
+        wxNickName: (data.wxNickName || '').trim(),
+        phoneLocked: !!(data.wxOpenId || '').trim()
+      })
     } catch (e) {
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: '加载失败', icon: 'none' })
     }
   },
 
   onInput(e) {
-    const key = e.currentTarget.dataset.key;
-    const value = e.detail.value || '';
-    const patch = { [`form.${key}`]: value };
+    const key = e.currentTarget.dataset.key
+    const value = e.detail.value || ''
+    const patch = { [`form.${key}`]: value }
     if (key === 'nickName') {
-      patch.avatarInitial = initialFromName(value);
+      patch.avatarInitial = initialFromName(value)
     }
-    this.setData(patch, this.refreshChanged);
+    this.setData(patch, this.refreshSaveState)
   },
 
-  refreshChanged() {
-    const { form, snapshot } = this.data;
+  refreshSaveState() {
+    const { form, snapshot } = this.data
     const changed =
       form.nickName !== snapshot.nickName ||
       form.phone !== snapshot.phone ||
-      form.remark !== snapshot.remark;
-    this.setData({ changed });
+      form.remark !== snapshot.remark
+    const valid = validateStoreCustomerForm(form)
+    this.setData({
+      changed,
+      canSave: changed && valid.ok
+    })
   },
 
   async onSave() {
-    if (this.data.saving || !this.data.changed) return;
-    this.setData({ saving: true });
+    if (this.data.saving || !this.data.canSave) return
+
+    const valid = validateStoreCustomerForm(this.data.form)
+    if (!valid.ok) {
+      wx.showToast({ title: valid.error, icon: 'none' })
+      return
+    }
+
+    this.setData({ saving: true })
     try {
-      const db = wx.cloud.database();
-      await db.collection('customers').doc(this.data.id).update({
-        data: {
-          nickName: (this.data.form.nickName || '').trim(),
-          phone: (this.data.form.phone || '').trim(),
-          remark: (this.data.form.remark || '').trim(),
-          updateTime: Date.now()
-        }
-      });
-      wx.showToast({ title: '保存成功', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 400);
+      await callCustomer('updateByStore', {
+        customerDocId: this.data.id,
+        nickName: valid.nickName,
+        phone: valid.phone,
+        remark: valid.remark
+      })
+      wx.showToast({ title: '保存成功', icon: 'success' })
+      setTimeout(() => wx.navigateBack(), 400)
     } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' });
+      if (e.code === 'PHONE_ALREADY_EXISTS') {
+        showPhoneConflictModal(e)
+        return
+      }
+      wx.showToast({ title: e.message || '保存失败', icon: 'none' })
     } finally {
-      this.setData({ saving: false });
+      this.setData({ saving: false })
     }
   }
-});
+})

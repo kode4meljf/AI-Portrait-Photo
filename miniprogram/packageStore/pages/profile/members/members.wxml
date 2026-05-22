@@ -36,6 +36,10 @@
         <text>生成邀请码</text>
       </view>
       <view wx:if="{{inviteToken}}" class="invite-token-box">
+        <view wx:if="{{inviteQrUrl}}" class="invite-qr-block">
+          <image class="invite-qr-img" src="{{inviteQrUrl}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
+          <text class="invite-qr-hint">让员工打开「加入门店」页扫码，或保存二维码转发</text>
+        </view>
         <text class="token-label">当前邀请码</text>
         <view class="token-row">
           <text class="token-value">{{inviteToken}}</text>
@@ -59,10 +63,20 @@
             <view class="avatar avatar-pending">{{item.initial}}</view>
             <view class="member-info">
               <text class="member-name">{{item.displayName}}</text>
-              <text class="member-meta">申请加入门店</text>
+              <text wx:if="{{item.hasPhone && isOwner}}" class="member-meta member-meta-link" data-phone="{{item.phone}}" catchtap="onCallPhone">{{item.phone}} · 点击拨打</text>
+              <text wx:elif="{{isOwner}}" class="member-meta">未留手机号</text>
+              <text wx:else class="member-meta">申请加入门店</text>
+              <text wx:if="{{item.hasRemark && isOwner}}" class="member-remark">备注：{{item.remark}}</text>
             </view>
           </view>
           <view class="member-actions">
+            <view
+              wx:if="{{item.canManage}}"
+              class="action-btn note"
+              hover-class="action-btn-active"
+              data-id="{{item._id}}"
+              bindtap="onEditMember"
+            >备注</view>
             <view
               class="action-btn reject"
               hover-class="action-btn-active"
@@ -101,9 +115,19 @@
                 <text class="member-name">{{item.displayName}}</text>
                 <view class="role-tag {{item.isOwnerRole ? 'owner' : 'staff'}}">{{item.roleLabel}}</view>
               </view>
-              <text class="member-meta">{{item.isOwnerRole ? '门店创建者' : '可协助接待客户与云相册'}}</text>
+              <text wx:if="{{item.hasPhone && isOwner}}" class="member-meta member-meta-link" data-phone="{{item.phone}}" catchtap="onCallPhone">{{item.phone}}</text>
+              <text wx:else class="member-meta">{{item.isOwnerRole ? '门店创建者' : '可协助接待客户与云相册'}}</text>
+              <text wx:if="{{item.hasRemark && isOwner}}" class="member-remark">备注：{{item.remark}}</text>
             </view>
           </view>
+          <view class="member-side-actions">
+            <view
+              wx:if="{{item.canManage}}"
+              class="side-btn note"
+              hover-class="side-btn-active"
+              data-id="{{item._id}}"
+              bindtap="onEditMember"
+            >备注</view>
           <view
             wx:if="{{isOwner && !item.isOwnerRole}}"
             class="remove-btn"
@@ -112,6 +136,7 @@
             data-name="{{item.displayName}}"
             bindtap="onDisable"
           >移出</view>
+          </view>
         </view>
       </view>
 
@@ -124,4 +149,48 @@
 
     <view class="page-footer"></view>
   </scroll-view>
+</view>
+
+<!-- 店长：员工备注 / 电话 -->
+<view
+  wx:if="{{editVisible}}"
+  class="edit-mask"
+  bindtap="closeEdit"
+  catchtouchmove="preventTouchMove"
+>
+  <view class="edit-dialog" catchtap="preventBubble">
+    <text class="edit-title">员工资料</text>
+    <text class="edit-sub">称呼「{{editDisplayName}}」由员工申请时填写，不可修改</text>
+
+    <view class="edit-field">
+      <text class="edit-label">联系电话</text>
+      <input
+        class="edit-input"
+        type="number"
+        maxlength="11"
+        placeholder="11 位手机号，可补录"
+        value="{{editPhone}}"
+        bindinput="onEditPhoneInput"
+      />
+    </view>
+
+    <view class="edit-field">
+      <text class="edit-label">店长备注</text>
+      <textarea
+        class="edit-textarea"
+        placeholder="如：早班、负责收银等（仅店长可见）"
+        maxlength="200"
+        value="{{editRemark}}"
+        bindinput="onEditRemarkInput"
+      />
+    </view>
+
+    <button
+      class="edit-save"
+      loading="{{editSaving}}"
+      disabled="{{editSaving}}"
+      bindtap="onSaveEdit"
+    >保存</button>
+    <button class="edit-cancel" disabled="{{editSaving}}" bindtap="closeEdit">取消</button>
+  </view>
 </view>

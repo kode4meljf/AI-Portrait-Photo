@@ -1,14 +1,21 @@
 const app = getApp()
 const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession')
 
-function decorateMember(row) {
+function decorateMember(row, isOwner) {
   const name = (row.nickName || '').trim() || '微信用户'
+  const phone = (row.phone || '').trim()
+  const remark = (row.remark || '').trim()
   return {
     ...row,
     displayName: name,
     initial: name.charAt(0) || '员',
     roleLabel: row.role === 'owner' ? '店长' : '员工',
-    isOwnerRole: row.role === 'owner'
+    isOwnerRole: row.role === 'owner',
+    phone,
+    hasPhone: !!phone,
+    remark,
+    hasRemark: !!remark,
+    canManage: isOwner && row.role !== 'owner'
   }
 }
 
@@ -25,10 +32,17 @@ Page({
     storeId: '',
     isOwner: false,
     inviteToken: '',
+    inviteQrUrl: '',
     pending: [],
     active: [],
     loading: true,
-    refreshing: false
+    refreshing: false,
+    editVisible: false,
+    editMemberId: '',
+    editDisplayName: '',
+    editRemark: '',
+    editPhone: '',
+    editSaving: false
   },
 
   onShow() {
@@ -55,12 +69,79 @@ Page({
   },
 
   async loadMembers() {
-    const list = await callStoreMember('member.list', { storeId: this.data.storeId })
-    const rows = (list.list || []).map(decorateMember)
+    const res = await callStoreMember('member.list', { storeId: this.data.storeId })
+    const isOwner = !!(res.isOwner || this.data.isOwner)
+    const rows = (res.list || []).map((r) => decorateMember(r, isOwner))
     this.setData({
+      isOwner,
       pending: rows.filter((r) => r.status === 'pending'),
       active: sortActive(rows.filter((r) => r.status === 'active'))
     })
+  },
+
+  findMember(memberId) {
+    return (
+      this.data.pending.find((r) => r._id === memberId) ||
+      this.data.active.find((r) => r._id === memberId) ||
+      null
+    )
+  },
+
+  onEditMember(e) {
+    if (!this.data.isOwner) return
+    const memberId = e.currentTarget.dataset.id
+    const row = this.findMember(memberId)
+    if (!row || !row.canManage) return
+    this.setData({
+      editVisible: true,
+      editMemberId: memberId,
+      editDisplayName: row.displayName,
+      editRemark: row.remark || '',
+      editPhone: row.phone || ''
+    })
+  },
+
+  closeEdit() {
+    if (this.data.editSaving) return
+    this.setData({ editVisible: false })
+  },
+
+  preventTouchMove() {},
+
+  preventBubble() {},
+
+  onEditRemarkInput(e) {
+    this.setData({ editRemark: e.detail.value || '' })
+  },
+
+  onEditPhoneInput(e) {
+    this.setData({ editPhone: (e.detail.value || '').trim() })
+  },
+
+  async onSaveEdit() {
+    if (!this.data.editMemberId || this.data.editSaving) return
+    this.setData({ editSaving: true })
+    try {
+      await callStoreMember('member.updateProfile', {
+        storeId: this.data.storeId,
+        memberId: this.data.editMemberId,
+        remark: this.data.editRemark,
+        phone: this.data.editPhone
+      })
+      wx.showToast({ title: '已保存', icon: 'success' })
+      this.setData({ editVisible: false })
+      await this.loadMembers()
+    } catch (err) {
+      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+    } finally {
+      this.setData({ editSaving: false })
+    }
+  },
+
+  onCallPhone(e) {
+    const phone = (e.currentTarget.dataset.phone || '').trim()
+    if (!phone) return
+    wx.makePhoneCall({ phoneNumber: phone })
   },
 
   async onCreateInvite() {
@@ -72,9 +153,19 @@ Page({
         expireHours: 24
       })
       wx.hideLoading()
-      this.setData({ inviteToken: res.token })
+      let inviteQrUrl = ''
+      try {
+        const qr = await callStoreMember('invite.qrImage', {
+          storeId: this.data.storeId,
+          token: res.token
+        })
+        inviteQrUrl = (qr && qr.tempFileURL) || ''
+      } catch (qrErr) {
+        console.warn('[members] invite.qrImage', qrErr)
+      }
+      this.setData({ inviteToken: res.token, inviteQrUrl })
       wx.setClipboardData({ data: res.token })
-      wx.showToast({ title: '邀请码已复制', icon: 'success' })
+      wx.showToast({ title: inviteQrUrl ? '邀请码已复制' : '邀请码已复制（二维码生成失败）', icon: 'success' })
     } catch (e) {
       wx.hideLoading()
       wx.showToast({ title: e.message || '生成失败', icon: 'none' })

@@ -16,7 +16,7 @@
         class="seg-tab {{activeTabIndex === 1 ? 'on' : ''}}"
         bindtap="switchTab"
         data-index="1"
-      >有收藏</view>
+      >按收藏</view>
     </view>
     <view wx:if="{{autoRefreshing}}" class="auto-hint">生成中，自动更新中…</view>
     <view wx:elif="{{autoRefreshStopped}}" class="auto-hint muted">已停止自动更新，可下拉刷新</view>

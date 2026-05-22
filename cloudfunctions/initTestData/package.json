@@ -1,9 +1,0 @@
-{
-  "name": "initTestData",
-  "version": "1.0.0",
-  "description": "初始化测试数据：向 customers 集合插入10条模拟客户记录",
-  "main": "index.js",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
-}

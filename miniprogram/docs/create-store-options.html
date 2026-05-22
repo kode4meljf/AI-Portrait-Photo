@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>创建门店页 · 5 款设计方案</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #e8eaef;
+      color: #1a1a2e;
+      padding: 32px 24px 56px;
+    }
+    h1 { text-align: center; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .page-desc {
+      text-align: center; font-size: 14px; color: #555;
+      margin-bottom: 12px; line-height: 1.65; max-width: 720px; margin-left: auto; margin-right: auto;
+    }
+    .path-box {
+      max-width: 720px; margin: 0 auto 28px; padding: 12px 16px;
+      background: #fff; border-radius: 8px; font-size: 13px; color: #333;
+      border: 1px solid #ddd; word-break: break-all;
+    }
+    .path-box code { font-size: 12px; color: #0f3460; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 28px; max-width: 1400px; margin: 0 auto;
+    }
+    .option-wrap { display: flex; flex-direction: column; align-items: center; }
+    .option-label { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .option-tag {
+      font-size: 12px; color: #666; margin-bottom: 12px;
+      text-align: center; max-width: 280px; line-height: 1.45;
+    }
+    .phone {
+      width: 300px; height: 640px; border-radius: 36px; overflow: hidden;
+      box-shadow: 0 20px 56px rgba(26,26,46,0.14); border: 8px solid #1a1a2e;
+      display: flex; flex-direction: column; background: #f5f5f5;
+    }
+    .nav {
+      height: 44px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 600; flex-shrink: 0;
+    }
+    .body { flex: 1; overflow-y: auto; padding: 12px 14px 20px; }
+    .card {
+      background: #fff; border-radius: 12px; margin-bottom: 10px; overflow: hidden;
+    }
+    .card-hd {
+      padding: 12px 14px 8px; font-size: 13px; font-weight: 600;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .row {
+      display: flex; align-items: center; padding: 12px 14px; min-height: 44px;
+    }
+    .row + .row { border-top: 1px solid #f5f5f5; }
+    .lbl { width: 72px; font-size: 12px; color: #999; flex-shrink: 0; }
+    .lbl .req { color: #e91e8c; }
+    .val { flex: 1; font-size: 13px; color: #1a1a2e; text-align: right; }
+    .val.ph { color: #bbb; }
+    .addr-panel {
+      margin: 0 10px 8px; padding: 12px; border-radius: 10px;
+      display: flex; align-items: center; gap: 10px; min-height: 56px;
+    }
+    .addr-main { flex: 1; min-width: 0; }
+    .addr-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .addr-sub { font-size: 11px; color: #999; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .addr-arrow { font-size: 20px; color: #bbb; transform: rotate(180deg); }
+    .btn {
+      margin: 14px 4px 0; height: 44px; border-radius: 22px; border: none;
+      font-size: 14px; font-weight: 600; width: calc(100% - 8px); display: block; cursor: pointer;
+    }
+
+    .v1 .nav { background: #fff; color: #1a1a2e; border-bottom: 1px solid #eee; }
+    .v1 .card { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .v1 .addr-panel { background: #faf7f2; }
+    .v1 .btn { background: linear-gradient(135deg, #ff69b4, #e91e8c); color: #fff; }
+
+    .v2 { background: linear-gradient(180deg, #fff9f5, #faf6f0); }
+    .v2 .nav { background: transparent; color: #3d3429; }
+    .v2 .card { border: 1px solid #f0e8dc; box-shadow: none; }
+    .v2 .card-hd { color: #3d3429; border-color: #f0e8dc; }
+    .v2 .addr-panel { background: #fff; border: 2px solid #e8b86d; margin: 0 10px 10px; }
+    .v2 .btn { background: linear-gradient(135deg, #e8b86d, #c9922a); color: #3d3429; }
+
+    .v3 { background: #fff; }
+    .v3 .nav { border-bottom: 2px solid #000; }
+    .v3 .card { border-radius: 0; border: 1px solid #000; margin-bottom: 8px; }
+    .v3 .card-hd { border-bottom: 1px solid #000; }
+    .v3 .row + .row { border-color: #eee; }
+    .v3 .addr-panel { border: 1px dashed #000; border-radius: 0; background: #fff; }
+    .v3 .btn { background: #000; color: #fff; border-radius: 0; }
+
+    .v4 { background: #f3f4f6; }
+    .v4 .nav { background: #1a1a2e; color: #fff; }
+    .v4 .steps {
+      display: flex; padding: 10px 14px; gap: 6px; background: #fff; margin-bottom: 10px; border-radius: 12px;
+    }
+    .v4 .step { flex: 1; text-align: center; font-size: 10px; color: #999; }
+    .v4 .step.on { color: #ff69b4; font-weight: 600; }
+    .v4 .step-dot {
+      width: 20px; height: 20px; border-radius: 50%; background: #eee; color: #666;
+      font-size: 10px; line-height: 20px; margin: 0 auto 4px;
+    }
+    .v4 .step.on .step-dot { background: #ff69b4; color: #fff; }
+    .v4 .addr-panel { background: #f8fafc; border: 1px solid #e8eef4; }
+    .v4 .btn { background: linear-gradient(135deg, #1a1a2e, #0f3460); color: #fff; }
+
+    .v5 { background: #fff; }
+    .v5 .nav { background: #fff; font-size: 18px; }
+    .v5 .body { padding: 16px; }
+    .v5 .field-block { margin-bottom: 16px; }
+    .v5 .field-lbl { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .v5 .field-lbl .req { color: #e91e8c; }
+    .v5 .field-input {
+      width: 100%; padding: 12px 14px; font-size: 14px; border: 1px solid #e5e7eb;
+      border-radius: 10px; background: #fafafa; color: #bbb;
+    }
+    .v5 .field-input.addr {
+      min-height: 64px; display: flex; align-items: center; justify-content: space-between;
+      background: #faf7f2; border-color: #f0e6d8; color: inherit;
+    }
+    .v5 .addr-text { flex: 1; }
+    .v5 .addr-text .t { font-size: 14px; font-weight: 500; color: #1a1a2e; }
+    .v5 .addr-text .s { font-size: 11px; color: #999; margin-top: 4px; }
+    .v5 .btn { background: #ff69b4; color: #fff; border-radius: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>创建门店页 · 5 款设计方案</h1>
+  <p class="page-desc">
+    字段：门店名称、联系人、电话（必填）；地址（地图选点必填 + 门牌号选填）。<br />
+    与 <code>pages/launch/create-store</code> 及 <code>edit-store</code> 地址交互一致。
+  </p>
+  <div class="path-box">
+    <strong>设计稿文件路径</strong><br />
+    相对路径：<code>miniprogram/docs/create-store-options.html</code><br />
+    绝对路径：<code>/Users/kode4meljf/.qclaw/workspace/AI-Portrait/miniprogram/docs/create-store-options.html</code>
+  </div>
+
+  <div class="grid">
+
+    <div class="option-wrap">
+      <div class="option-label">方案 1 · 标准白卡</div>
+      <div class="option-tag">与当前 create-store 接近：灰底 + 白卡片 + 粉色渐变按钮</div>
+      <div class="phone v1">
+        <div class="nav">创建门店</div>
+        <div class="body">
+          <div class="card">
+            <div class="card-hd">门店信息</div>
+            <div class="row"><span class="lbl"><span class="req">*</span>门店名称</span><span class="val ph">请输入门店名称</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">联系方式</div>
+            <div class="row"><span class="lbl"><span class="req">*</span>联系人</span><span class="val ph">请输入联系人</span></div>
+            <div class="row"><span class="lbl"><span class="req">*</span>电话</span><span class="val ph">请输入联系电话</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">地址</div>
+            <div class="addr-panel">
+              <div class="addr-main">
+                <div class="addr-title ph">点击选择地图位置</div>
+                <div class="addr-sub">门牌号选填</div>
+              </div>
+              <span class="addr-arrow">‹</span>
+            </div>
+            <div class="row"><span class="lbl">门牌号</span><span class="val ph">楼栋、单元、房号（选填）</span></div>
+          </div>
+          <button type="button" class="btn">创建门店</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="option-wrap">
+      <div class="option-label">方案 2 · 暖杏纸感</div>
+      <div class="option-tag">与 Launch 方案 2 统一：暖杏渐变、金边地址区、琥珀色按钮</div>
+      <div class="phone v2">
+        <div class="nav">创建门店</div>
+        <div class="body">
+          <div class="card">
+            <div class="card-hd">门店信息</div>
+            <div class="row"><span class="lbl"><span class="req">*</span>门店名称</span><span class="val ph">请输入门店名称</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">联系方式</div>
+            <div class="row"><span class="lbl"><span class="req">*</span>联系人</span><span class="val ph">请输入联系人</span></div>
+            <div class="row"><span class="lbl"><span class="req">*</span>电话</span><span class="val ph">请输入联系电话</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">地址</div>
+            <div class="addr-panel">
+              <div class="addr-main">
+                <div class="addr-title ph">点击选择地图位置</div>
+                <div class="addr-sub">门牌号选填</div>
+              </div>
+              <span class="addr-arrow">‹</span>
+            </div>
+            <div class="row"><span class="lbl">门牌号</span><span class="val ph">选填</span></div>
+          </div>
+          <button type="button" class="btn">创建门店</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="option-wrap">
+      <div class="option-label">方案 3 · 线框极简</div>
+      <div class="option-tag">黑白线框、无圆角、虚线地址框，偏编辑/工具感</div>
+      <div class="phone v3">
+        <div class="nav">创建门店</div>
+        <div class="body">
+          <div class="card">
+            <div class="card-hd">STORE</div>
+            <div class="row"><span class="lbl">NAME *</span><span class="val ph">门店名称</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">CONTACT</div>
+            <div class="row"><span class="lbl">NAME *</span><span class="val ph">联系人</span></div>
+            <div class="row"><span class="lbl">TEL *</span><span class="val ph">电话</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">ADDRESS</div>
+            <div class="addr-panel">
+              <div class="addr-main">
+                <div class="addr-title ph">MAP · 选择位置</div>
+                <div class="addr-sub">门牌号 optional</div>
+              </div>
+              <span class="addr-arrow">‹</span>
+            </div>
+          </div>
+          <button type="button" class="btn">CREATE</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="option-wrap">
+      <div class="option-label">方案 4 · 步骤引导</div>
+      <div class="option-tag">深色导航 + 三步进度条，强调「信息 → 联系 → 地址」流程</div>
+      <div class="phone v4">
+        <div class="nav">创建门店</div>
+        <div class="body">
+          <div class="steps">
+            <div class="step on"><div class="step-dot">1</div>门店</div>
+            <div class="step on"><div class="step-dot">2</div>联系</div>
+            <div class="step"><div class="step-dot">3</div>地址</div>
+          </div>
+          <div class="card">
+            <div class="row"><span class="lbl"><span class="req">*</span>门店名称</span><span class="val ph">请输入</span></div>
+            <div class="row"><span class="lbl"><span class="req">*</span>联系人</span><span class="val ph">请输入</span></div>
+            <div class="row"><span class="lbl"><span class="req">*</span>电话</span><span class="val ph">请输入</span></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">地图地址 <span class="req">*</span></div>
+            <div class="addr-panel">
+              <div class="addr-main">
+                <div class="addr-title ph">点击在地图上选点</div>
+                <div class="addr-sub">上海市浦东新区示例路 100 号附近</div>
+              </div>
+              <span class="addr-arrow">‹</span>
+            </div>
+            <div class="row"><span class="lbl">门牌号</span><span class="val ph">选填</span></div>
+          </div>
+          <button type="button" class="btn">下一步 / 创建</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="option-wrap">
+      <div class="option-label">方案 5 · 单栏大输入</div>
+      <div class="option-tag">标签在上、大块输入框，地址独立大卡，适合少分组场景</div>
+      <div class="phone v5">
+        <div class="nav">创建门店</div>
+        <div class="body">
+          <div class="field-block">
+            <div class="field-lbl"><span class="req">*</span> 门店名称</div>
+            <div class="field-input">请输入门店名称</div>
+          </div>
+          <div class="field-block">
+            <div class="field-lbl"><span class="req">*</span> 联系人</div>
+            <div class="field-input">请输入联系人</div>
+          </div>
+          <div class="field-block">
+            <div class="field-lbl"><span class="req">*</span> 联系电话</div>
+            <div class="field-input">请输入手机号</div>
+          </div>
+          <div class="field-block">
+            <div class="field-lbl"><span class="req">*</span> 地图位置</div>
+            <div class="field-input addr">
+              <div class="addr-text">
+                <div class="t" style="color:#bbb;font-weight:400;">点击选择地图位置</div>
+                <div class="s">门牌号可在下方补充</div>
+              </div>
+              <span class="addr-arrow">‹</span>
+            </div>
+          </div>
+          <div class="field-block">
+            <div class="field-lbl">门牌号（选填）</div>
+            <div class="field-input">楼栋、单元、房号</div>
+          </div>
+          <button type="button" class="btn">创建门店</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

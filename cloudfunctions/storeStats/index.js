@@ -23,20 +23,20 @@ async function getTodayUnchecked(storeId, dateStr, checkedIds) {
   const customersRes = await db
     .collection('customers')
     .where({ storeId })
-    .field({ customerId: true, _id: true })
+    .field({ _id: true })
     .limit(1000)
     .get()
 
   let unchecked = 0
   for (const c of customersRes.data || []) {
-    const key = (c.customerId || c._id || '').trim()
+    const key = (c._id || '').trim()
     if (!key || checkedIds.has(key)) continue
     unchecked += 1
   }
   return unchecked
 }
 
-/** 当日打卡记录按 customerId 去重 */
+/** 当日打卡记录按 customerDocId 去重 */
 async function fetchCheckedIdSet(storeId, dateStr) {
   const { startMs, endMs } = dayRangeMs(dateStr)
 
@@ -46,13 +46,13 @@ async function fetchCheckedIdSet(storeId, dateStr) {
       storeId,
       createTime: _.gte(startMs).and(_.lte(endMs))
     })
-    .field({ customerId: true, customerDocId: true })
+    .field({ customerDocId: true })
     .limit(1000)
     .get()
 
   const ids = new Set()
   for (const row of res.data || []) {
-    const id = (row.customerId || row.customerDocId || '').trim()
+    const id = (row.customerDocId || '').trim()
     if (id) ids.add(id)
   }
   return ids

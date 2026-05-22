@@ -1,17 +1,12 @@
 /**
  * @file 客户列表页面（工作台）
- * @description 展示与首页「选择客户」一致的列表；支持搜索、编辑、选择模式（云相册关联等）
+ * @description 列表与编辑 UI 与首页 customer-picker 共用样式与 customer-edit-panel 组件
  */
 
 const app = getApp();
 const { getCustomerDisplayName } = require('../../../../utils/customerDisplay');
-const {
-  initialFromName,
-  pickAvatarTint,
-  mapCustomerRow,
-  calcListStats
-} = require('../../../../utils/customerListDisplay');
-const { callStoreMember } = require('../../../../utils/storeSession');
+const { mapCustomerRow, calcListStats } = require('../../../../utils/customerListDisplay');
+const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession');
 
 Page({
   data: {
@@ -31,14 +26,8 @@ Page({
     totalCheckins: 0,
     editPanelVisible: false,
     editingId: '',
-    editForm: { nickName: '', phone: '', remark: '' },
-    editSnapshot: { nickName: '', phone: '', remark: '' },
-    editAvatarUrl: '',
-    editAvatarInitial: '客',
-    editAvatarTint: '#4e7cf6',
-    editWxNickName: '',
-    editChanged: false,
-    editSaving: false
+    storeReady: false,
+    loadError: ''
   },
 
   onLoad(options) {
@@ -55,9 +44,29 @@ Page({
       wx.setNavigationBarTitle({ title: '选择客户' });
     }
     this.loadCustomers();
-    if (options.seedMock === 'true') {
-      this.onSeedMockCustomers();
+  },
+
+  onShow() {
+    if (this.data.editPanelVisible) {
+      wx.setNavigationBarTitle({ title: '编辑客户' });
+      return;
     }
+    if (
+      isValidStoreId(app.globalData.storeId) &&
+      this.data.customers.length === 0 &&
+      !this.data.loading
+    ) {
+      this.loadCustomers();
+    }
+  },
+
+  /** 编辑态拦截系统返回，回到列表而非退出页面 */
+  onBackPress() {
+    if (this.data.editPanelVisible) {
+      this.onEditBack();
+      return true;
+    }
+    return false;
   },
 
   debounce(fn, delay = 300) {
@@ -73,12 +82,20 @@ Page({
     if (isLoadMore && !this.data.hasMore) return;
 
     const storeId = app.globalData.storeId;
-    if (!storeId) {
-      wx.showToast({ title: '请先登录门店', icon: 'none' });
+    const storeReady = isValidStoreId(storeId);
+    if (!storeReady) {
+      this.setData({
+        loading: false,
+        refreshing: false,
+        storeReady: false,
+        loadError: '请先登录门店',
+        customers: [],
+        ...calcListStats([])
+      });
       return;
     }
 
-    this.setData({ loading: true });
+    this.setData({ loading: true, storeReady: true, loadError: '' });
 
     try {
       const db = wx.cloud.database();
@@ -116,9 +133,15 @@ Page({
       });
     } catch (error) {
       console.error('加载客户列表失败:', error);
+      const msg = (error && (error.errMsg || error.message)) || '加载失败';
       if (!isLoadMore) {
-        this.setData({ customers: [], ...calcListStats([]) });
+        this.setData({
+          customers: [],
+          loadError: msg.includes('ok') ? '加载失败' : msg,
+          ...calcListStats([])
+        });
       }
+      wx.showToast({ title: '加载客户失败', icon: 'none' });
     } finally {
       this.setData({ loading: false, refreshing: false });
     }
@@ -138,111 +161,32 @@ Page({
     this.loadCustomers();
   },
 
-  avatarMetaFromCustomer(customer, id) {
-    const nick = customer?.nickName || customer?.wxNickName || '';
-    return {
-      editAvatarUrl: customer?.avatarUrl || '',
-      editAvatarInitial: customer?.avatarInitial || initialFromName(nick),
-      editAvatarTint: customer?.avatarTint || pickAvatarTint(id || nick)
-    };
-  },
-
-  openEditPanel(customer) {
-    if (!customer || !customer._id) return;
-    const nickName = customer.nickName || '';
-    const phone = customer.phone || '';
-    const remark = customer.remark || '';
-    const snapshot = { nickName, phone, remark };
-    wx.setNavigationBarTitle({ title: '编辑客户' });
-    this.setData({
-      editPanelVisible: true,
-      editingId: customer._id,
-      editWxNickName: (customer.wxNickName || '').trim(),
-      editForm: { ...snapshot },
-      editSnapshot: { ...snapshot },
-      ...this.avatarMetaFromCustomer(customer, customer._id),
-      editChanged: false,
-      editSaving: false
-    });
-  },
-
   onEditCustomer(e) {
     const id = e.currentTarget.dataset.id;
-    const customer = this.data.customers.find((c) => c._id === id);
-    if (customer) {
-      this.openEditPanel(customer);
-      return;
-    }
-    wx.cloud
-      .database()
-      .collection('customers')
-      .doc(id)
-      .get()
-      .then((res) => this.openEditPanel(mapCustomerRow(res.data)))
-      .catch(() => wx.showToast({ title: '加载失败', icon: 'none' }));
+    if (!id) return;
+    wx.hideKeyboard();
+    this.setData({ editPanelVisible: true, editingId: id });
+    wx.setNavigationBarTitle({ title: '编辑客户' });
   },
 
   onEditBack() {
     wx.hideKeyboard();
-    wx.setNavigationBarTitle({
-      title: this.data.forBatchLink ? '选择客户' : '客户列表'
-    });
-    this.setData({
-      editPanelVisible: false,
-      editingId: '',
-      editChanged: false,
-      editSaving: false
-    });
+    const title = this.data.forBatchLink ? '选择客户' : '客户列表';
+    wx.setNavigationBarTitle({ title });
+    this.setData({ editPanelVisible: false, editingId: '' });
   },
 
-  onEditInput(e) {
-    const key = e.currentTarget.dataset.key;
-    const value = e.detail.value || '';
-    const editForm = { ...this.data.editForm, [key]: value };
-    const { editSnapshot } = this.data;
-    const editChanged =
-      editForm.nickName !== editSnapshot.nickName ||
-      editForm.phone !== editSnapshot.phone ||
-      editForm.remark !== editSnapshot.remark;
-    const patch = { editForm, editChanged };
-    if (key === 'nickName') {
-      patch.editAvatarInitial = initialFromName(value);
-    }
-    this.setData(patch);
-  },
-
-  async onEditSave() {
-    if (this.data.editSaving || !this.data.editChanged || !this.data.editingId) return;
-    this.setData({ editSaving: true });
-    try {
-      const db = wx.cloud.database();
-      const nickName = (this.data.editForm.nickName || '').trim();
-      const phone = (this.data.editForm.phone || '').trim();
-      const remark = (this.data.editForm.remark || '').trim();
-      await db.collection('customers').doc(this.data.editingId).update({
-        data: { nickName, phone, remark, updateTime: Date.now() }
-      });
-      if (app.globalData.selectedCustomerId === this.data.editingId) {
-        const latest = await db.collection('customers').doc(this.data.editingId).get();
-        app.globalData.selectedCustomer = latest.data;
-      }
-      wx.showToast({ title: '保存成功', icon: 'success' });
-      this.onEditBack();
-      this.setData({ customers: [], hasMore: true, currentPage: 0 });
-      await this.loadCustomers();
-    } catch (err) {
-      console.error('保存客户失败:', err);
-      wx.showToast({ title: '保存失败', icon: 'none' });
-    } finally {
-      this.setData({ editSaving: false });
-    }
+  async onEditSaved() {
+    this.onEditBack();
+    this.setData({ customers: [], hasMore: true, currentPage: 0 });
+    await this.loadCustomers();
   },
 
   async linkBatchToCustomer(batchId, customer) {
     if (!batchId) throw new Error('缺少批次 ID');
     return callStoreMember('batch.linkCustomer', {
       batchId,
-      customerId: customer._id
+      customerDocId: customer._id
     });
   },
 
@@ -280,7 +224,7 @@ Page({
       wx.navigateBack();
       return;
     }
-    this.openEditPanel(customer);
+    this.onEditCustomer({ currentTarget: { dataset: { id: customer._id } } });
   },
 
   onReachBottom() {
@@ -292,41 +236,5 @@ Page({
   onPullDownRefresh() {
     this.setData({ customers: [], hasMore: true, currentPage: 0, refreshing: true });
     this.loadCustomers().then(() => wx.stopPullDownRefresh());
-  },
-
-  async onSeedMockCustomers() {
-    const storeId = app.globalData.storeId;
-    if (!storeId) {
-      wx.showToast({ title: '请先登录门店', icon: 'none' });
-      return;
-    }
-    wx.showLoading({ title: '插入中...' });
-    try {
-      const res = await wx.cloud.callFunction({
-        name: 'initTestData',
-        data: { action: 'insertSample4', storeId }
-      });
-      wx.hideLoading();
-      const result = res.result || {};
-      if (result.success) {
-        wx.showToast({ title: result.message || '已插入', icon: 'none', duration: 2500 });
-        this.setData({ customers: [], hasMore: true, currentPage: 0 });
-        this.loadCustomers();
-      } else {
-        wx.showToast({
-          title: result.message || result.error || '插入失败',
-          icon: 'none',
-          duration: 3000
-        });
-      }
-    } catch (err) {
-      wx.hideLoading();
-      console.error('insertSample4 failed:', err);
-      wx.showToast({
-        title: err.errMsg || err.message || '云函数未部署',
-        icon: 'none',
-        duration: 3000
-      });
-    }
   }
 });

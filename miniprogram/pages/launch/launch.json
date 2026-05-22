@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "AI写真馆"
+  "navigationBarTitleText": "AI写真馆",
+  "navigationBarBackgroundColor": "#fff9f5",
+  "navigationBarTextStyle": "black"
 }

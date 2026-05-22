@@ -1,4 +1,5 @@
 const { callStoreMember } = require('../../../../utils/storeSession')
+const { getInviteEnvVersion } = require('../../../../utils/inviteEnv')
 
 function formatExpire(ts) {
   if (!ts) return ''
@@ -10,36 +11,66 @@ function formatExpire(ts) {
 Page({
   data: {
     loading: false,
-    registerPath: '',
+    generated: false,
+    inviteQrUrl: '',
+    inviteLink: '',
     expireAtStr: ''
   },
 
-  async onGenerate() {
+  async onCreateInvite() {
     if (this.data.loading) return
     this.setData({ loading: true })
+    const envVersion = getInviteEnvVersion()
     try {
-      const data = await callStoreMember('customerRegisterInvite.create', { expireHours: 168 })
-      const path = `/pages/customer-register/register?token=${encodeURIComponent(data.token)}`
+      wx.showLoading({ title: '生成中' })
+      const res = await callStoreMember('customerRegisterInvite.create', {
+        expireHours: 168,
+        envVersion
+      })
+      const token = res.token
+      const inviteLink = (res.inviteLink || res.urlLink || '').trim()
+
+      let inviteQrUrl = ''
+      try {
+        const qr = await callStoreMember('customerRegisterInvite.qrImage', { token, envVersion })
+        inviteQrUrl = (qr && qr.tempFileURL) || ''
+      } catch (qrErr) {
+        console.warn('[customer-invite] wxacode', qrErr)
+        wx.showToast({
+          title: qrErr.message || '小程序码生成失败',
+          icon: 'none',
+          duration: 2800
+        })
+      }
+
+      wx.hideLoading()
       this.setData({
-        registerPath: path,
-        expireAtStr: formatExpire(data.expireAt)
+        generated: true,
+        inviteLink,
+        inviteQrUrl,
+        expireAtStr: formatExpire(res.expireAt)
+      })
+      wx.showToast({
+        title: inviteQrUrl ? '小程序码已生成' : '链接已生成（小程序码失败）',
+        icon: inviteQrUrl ? 'success' : 'none'
       })
     } catch (e) {
+      wx.hideLoading()
       wx.showToast({ title: e.message || '生成失败', icon: 'none' })
     } finally {
       this.setData({ loading: false })
     }
   },
 
-  onCopyPath() {
-    const path = this.data.registerPath
-    if (!path) {
-      wx.showToast({ title: '请先生成链接', icon: 'none' })
+  onCopyLink() {
+    const link = this.data.inviteLink
+    if (!link) {
+      wx.showToast({ title: '暂无链接，请重新生成', icon: 'none' })
       return
     }
     wx.setClipboardData({
-      data: path,
-      success: () => wx.showToast({ title: '已复制小程序路径', icon: 'success' })
+      data: link,
+      success: () => wx.showToast({ title: '已复制邀请链接', icon: 'success' })
     })
   }
 })

@@ -206,28 +206,6 @@ Page({
     wx.previewImage({ current: url, urls: [url] });
   },
 
-  // 初始化测试客户数据（开发调试用）
-  async onInitTestData() {
-    wx.showLoading({ title: '插入中...' });
-    try {
-      const res = await wx.cloud.callFunction({
-        name: 'initTestData',
-        data: { action: 'insertSample4', storeId: app.globalData.storeId }
-      });
-      wx.hideLoading();
-      console.log('[initTestData] result:', res);
-      if (res.result && res.result.success) {
-        wx.showToast({ title: res.result.message, icon: 'none' });
-      } else {
-        wx.showToast({ title: res.result?.message || res.errMsg || '失败', icon: 'none', duration: 3000 });
-      }
-    } catch (err) {
-      wx.hideLoading();
-      console.error('[initTestData] error:', err);
-      wx.showToast({ title: err.message || err.errMsg || '云函数调用失败', icon: 'none', duration: 3000 });
-    }
-  },
-
   onEditStore() {
     safeNavigateTo({
       url: '/packageStore/pages/profile/edit-store/edit-store',

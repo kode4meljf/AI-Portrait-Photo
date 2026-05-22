@@ -4,12 +4,7 @@
  */
 
 const app = getApp()
-const {
-  initialFromName,
-  pickAvatarTint,
-  mapCustomerRow,
-  calcListStats
-} = require('../../utils/customerListDisplay')
+const { mapCustomerRow, calcListStats } = require('../../utils/customerListDisplay')
 
 const STORE_OPTION_ID = '__all_store__'
 
@@ -59,15 +54,7 @@ Component({
     totalCustomers: 0,
     totalCheckins: 0,
     editPanelVisible: false,
-    editingId: '',
-    editForm: { nickName: '', phone: '', remark: '' },
-    editSnapshot: { nickName: '', phone: '', remark: '' },
-    editAvatarUrl: '',
-    editAvatarInitial: '客',
-    editAvatarTint: '#4e7cf6',
-    editWxNickName: '',
-    editChanged: false,
-    editSaving: false,
+    editingId: ''
   },
 
   methods: {
@@ -239,110 +226,31 @@ Component({
       }, 150)
     },
 
-    avatarMetaFromCustomer(customer, id) {
-      const nick = customer?.nickName || customer?.wxNickName || ''
-      return {
-        editAvatarUrl: customer?.avatarUrl || '',
-        editAvatarInitial: customer?.avatarInitial || initialFromName(nick),
-        editAvatarTint: customer?.avatarTint || pickAvatarTint(id || nick),
-      }
-    },
-
-    async onEditCustomer(e) {
+    onEditCustomer(e) {
       const id = e.currentTarget.dataset.id
       if (!id) return
       wx.hideKeyboard()
-      let customer = this.data.filteredCustomers.find((c) => c._id === id)
-      if (!customer) {
-        try {
-          const db = wx.cloud.database()
-          const res = await db.collection('customers').doc(id).get()
-          customer = res.data
-        } catch (err) {
-          wx.showToast({ title: '加载失败', icon: 'none' })
-          return
-        }
-      }
-      const nickName = customer.nickName || ''
-      const phone = customer.phone || ''
-      const remark = customer.remark || ''
-      const snapshot = { nickName, phone, remark }
-      this.setData({
-        editPanelVisible: true,
-        editingId: id,
-        editWxNickName: (customer.wxNickName || '').trim(),
-        editForm: { ...snapshot },
-        editSnapshot: { ...snapshot },
-        ...this.avatarMetaFromCustomer(customer, id),
-        editChanged: false,
-        editSaving: false,
-      })
+      this.setData({ editPanelVisible: true, editingId: id })
     },
 
     onEditBack() {
-      wx.hideKeyboard()
+      this.setData({ editPanelVisible: false, editingId: '' })
+    },
+
+    async onEditSaved(e) {
+      const { customer } = e.detail || {}
+      if (customer && app.globalData.selectedCustomerId === customer._id) {
+        this.triggerEvent('customerUpdated', { customer })
+      }
       this.setData({
         editPanelVisible: false,
         editingId: '',
-        editChanged: false,
-        editSaving: false,
+        customers: [],
+        filteredCustomers: [],
+        hasMore: true,
+        currentPage: 0
       })
-    },
-
-    onEditInput(e) {
-      const key = e.currentTarget.dataset.key
-      const value = e.detail.value || ''
-      const editForm = { ...this.data.editForm, [key]: value }
-      const { editSnapshot } = this.data
-      const editChanged =
-        editForm.nickName !== editSnapshot.nickName ||
-        editForm.phone !== editSnapshot.phone ||
-        editForm.remark !== editSnapshot.remark
-      const patch = { editForm, editChanged }
-      if (key === 'nickName') {
-        patch.editAvatarInitial = initialFromName(value)
-      }
-      this.setData(patch)
-    },
-
-    async onEditSave() {
-      if (this.data.editSaving || !this.data.editChanged || !this.data.editingId) return
-      this.setData({ editSaving: true })
-      try {
-        const db = wx.cloud.database()
-        const nickName = (this.data.editForm.nickName || '').trim()
-        const phone = (this.data.editForm.phone || '').trim()
-        const remark = (this.data.editForm.remark || '').trim()
-        await db.collection('customers').doc(this.data.editingId).update({
-          data: {
-            nickName,
-            phone,
-            remark,
-            updateTime: Date.now(),
-          },
-        })
-        if (app.globalData.selectedCustomerId === this.data.editingId) {
-          const latest = await db.collection('customers').doc(this.data.editingId).get()
-          app.globalData.selectedCustomer = latest.data
-          this.triggerEvent('customerUpdated', { customer: latest.data })
-        }
-        wx.showToast({ title: '保存成功', icon: 'success' })
-        this.setData({
-          editPanelVisible: false,
-          editingId: '',
-          editChanged: false,
-          customers: [],
-          filteredCustomers: [],
-          hasMore: true,
-          currentPage: 0,
-        })
-        await this.loadCustomers()
-      } catch (err) {
-        console.error('[customer-picker] 保存客户失败:', err)
-        wx.showToast({ title: '保存失败', icon: 'none' })
-      } finally {
-        this.setData({ editSaving: false })
-      }
+      await this.loadCustomers()
     },
   }
 })

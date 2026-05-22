@@ -1,15 +1,56 @@
-<view class="page">
-  <view class="card">
-    <view class="title">生成顾客注册链接</view>
-    <view class="hint">顾客注册时可填写微信昵称（写入 wxNickName）；每次到店打卡会再次同步昵称。门店称呼 nickName 由店长在客户资料中维护</view>
-    <view class="btn primary" bindtap="onGenerate">{{loading ? '生成中…' : '生成新链接'}}</view>
-  </view>
+<view class="invite-page">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="invite-card">
+      <view class="invite-head">
+        <view class="invite-icon-wrap">
+          <image class="invite-icon" src="/assets/icons/ws-customer-add.svg" mode="aspectFit" />
+        </view>
+        <view class="invite-text">
+          <text class="invite-title">邀请客户注册</text>
+          <text class="invite-desc">生成 7 天有效小程序码，客户微信扫码进入注册页</text>
+        </view>
+      </view>
+      <view
+        class="invite-action {{loading ? 'invite-action--disabled' : ''}}"
+        hover-class="{{loading ? '' : 'invite-action-active'}}"
+        bindtap="onCreateInvite"
+      >
+        <text>{{loading ? '生成中…' : '生成小程序码'}}</text>
+      </view>
 
-  <view class="card" wx:if="{{registerPath}}">
-    <view class="label">小程序路径（可配置到公众号/短信）</view>
-    <text class="path" selectable>{{registerPath}}</text>
-    <view class="expire" wx:if="{{expireAtStr}}">有效期至 {{expireAtStr}}</view>
-    <view class="btn outline" bindtap="onCopyPath">复制路径</view>
-    <view class="tip">也可将路径生成小程序码，张贴在店内供顾客扫码注册</view>
-  </view>
+      <view wx:if="{{generated}}" class="invite-token-box">
+        <view wx:if="{{inviteQrUrl}}" class="invite-qr-block">
+          <image
+            class="invite-qr-img invite-qr-img--wxacode"
+            src="{{inviteQrUrl}}"
+            mode="aspectFit"
+            show-menu-by-longpress="{{true}}"
+          />
+          <text class="invite-qr-hint">请用微信扫一扫，进入客户注册页</text>
+        </view>
+        <view wx:else class="invite-qr-fail">
+          <text>小程序码生成失败，请重新生成或复制下方链接转发</text>
+        </view>
+
+        <view wx:if="{{inviteLink}}" class="link-block">
+          <text class="token-label">转发链接（可选）</text>
+          <view class="path-row">
+            <text class="path-value" selectable>{{inviteLink}}</text>
+          </view>
+          <view class="path-copy" hover-class="token-copy-active" bindtap="onCopyLink">复制链接</view>
+        </view>
+
+        <text wx:if="{{expireAtStr}}" class="expire-line">有效期至 {{expireAtStr}}</text>
+      </view>
+    </view>
+
+    <view class="hint-card">
+      <text class="hint-title">说明</text>
+      <text class="hint-line">· 客户用微信扫小程序码即可进入注册页</text>
+      <text class="hint-line">· 需要时可复制下方链接发到聊天</text>
+      <text class="hint-line">· 客户须授权手机号才能完成注册</text>
+    </view>
+
+    <view class="page-footer"></view>
+  </scroll-view>
 </view>

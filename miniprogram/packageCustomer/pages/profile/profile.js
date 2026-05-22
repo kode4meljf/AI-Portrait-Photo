@@ -64,7 +64,7 @@ Page({
       const profile = await callCustomer('profile.update', { phoneCode })
       app.globalData.customer = profile
       this.setData({ profile, phone: profile.phone || '' })
-      wx.showToast({ title: '手机号已更新', icon: 'success' })
+      wx.showToast({ title: '手机号已更新，请重新复制打卡码', icon: 'none', duration: 2800 })
     } catch (err) {
       wx.showToast({ title: err.message || '授权失败', icon: 'none' })
     } finally {

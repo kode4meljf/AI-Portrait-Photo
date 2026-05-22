@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "顾客注册链接",
-  "usingComponents": {}
+  "navigationBarTitleText": "邀请客户",
+  "navigationBarBackgroundColor": "#1a1a2e",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f3f4f6"
 }

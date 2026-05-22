@@ -1,5 +1,7 @@
 const app = getApp()
 const { callCustomer, isValidStoreId } = require('../../../../utils/storeSession')
+const { normalizeMobilePhone } = require('../../../../utils/phone')
+const { validateStoreCustomerForm, showPhoneConflictModal } = require('../../../../utils/customerForm')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -28,7 +30,7 @@ Page({
     canSave: false,
     submitting: false,
     created: false,
-    customerId: '',
+    customerDocId: '',
     qrPayload: ''
   },
 
@@ -44,7 +46,8 @@ Page({
   },
 
   refreshCanSave() {
-    const canSave = !!(this.data.form.nickName || '').trim()
+    const valid = validateStoreCustomerForm(this.data.form)
+    const canSave = valid.ok
     if (canSave !== this.data.canSave) {
       this.setData({ canSave })
     }
@@ -53,9 +56,9 @@ Page({
   async onSubmit() {
     if (this.data.submitting || !this.data.canSave || this.data.created) return
 
-    const nickName = (this.data.form.nickName || '').trim()
-    if (!nickName) {
-      wx.showToast({ title: '请填写客户昵称', icon: 'none' })
+    const valid = validateStoreCustomerForm(this.data.form)
+    if (!valid.ok) {
+      wx.showToast({ title: valid.error, icon: 'none' })
       return
     }
     if (!isValidStoreId(app.globalData.storeId)) {
@@ -66,23 +69,24 @@ Page({
     this.setData({ submitting: true })
     try {
       const res = await callCustomer('createByStore', {
-        nickName,
-        phone: (this.data.form.phone || '').trim(),
-        remark: (this.data.form.remark || '').trim()
+        nickName: valid.nickName,
+        phone: valid.phone,
+        remark: valid.remark
       })
-      const tintKey = res.customerId || nickName
+      const tintKey = res._id || valid.nickName
       this.setData({
         created: true,
-        customerId: res.customerId || '',
+        customerDocId: res._id || '',
         qrPayload: res.qrPayload || '',
         avatarTint: pickAvatarTint(tintKey),
-        avatarInitial: initialFromName(nickName)
+        avatarInitial: initialFromName(valid.nickName)
       })
-      wx.setNavigationBarTitle({ title: res.merged ? '已有档案' : '添加成功' })
-      if (res.merged) {
-        wx.showToast({ title: '该手机号已有客户，已合并', icon: 'none', duration: 2500 })
-      }
+      wx.setNavigationBarTitle({ title: '添加成功' })
     } catch (e) {
+      if (e.code === 'PHONE_ALREADY_EXISTS') {
+        showPhoneConflictModal(e, { title: '手机号已登记' })
+        return
+      }
       wx.showToast({ title: e.message || '创建失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
@@ -90,9 +94,9 @@ Page({
   },
 
   onCopyId() {
-    if (!this.data.customerId) return
+    if (!this.data.customerDocId) return
     wx.setClipboardData({
-      data: this.data.customerId,
+      data: this.data.customerDocId,
       success: () => wx.showToast({ title: '已复制', icon: 'success' })
     })
   },
@@ -100,7 +104,7 @@ Page({
   onAddAnother() {
     this.setData({
       created: false,
-      customerId: '',
+      customerDocId: '',
       qrPayload: '',
       form: { nickName: '', phone: '', remark: '' },
       avatarInitial: '客',

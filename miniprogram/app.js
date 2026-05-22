@@ -34,7 +34,7 @@ App({
       return;
     }
     wx.cloud.init({
-      env: 'ai-photo-0g22lzk94d0b6846',
+      env: 'ai-ymcx-d0gcwabfjd375ffae',
       traceUser: true
     });
 

@@ -2,13 +2,34 @@
   "description": "项目配置文件 - AI写真馆",
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "/minitest" },
-      { "type": "folder", "value": "assets/styles-raw" },
-      { "type": "folder", "value": "assets/styles" },
-      { "type": "folder", "value": "assets/styles-34" },
-      { "type": "folder", "value": "assets/styles-generated" },
-      { "type": "folder", "value": "docs" },
-      { "type": "folder", "value": "cloudfunctions" }
+      {
+        "type": "folder",
+        "value": "/minitest"
+      },
+      {
+        "type": "folder",
+        "value": "assets/styles-raw"
+      },
+      {
+        "type": "folder",
+        "value": "assets/styles"
+      },
+      {
+        "type": "folder",
+        "value": "assets/styles-34"
+      },
+      {
+        "type": "folder",
+        "value": "assets/styles-generated"
+      },
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "folder",
+        "value": "cloudfunctions"
+      }
     ],
     "include": []
   },
@@ -57,7 +78,7 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.15.2",
-  "appid": "wxa17b6104ffe25221",
+  "appid": "wxbc4084214eb2bd53",
   "projectname": "ai-photo-studio",
   "cloudfunctionRoot": "../cloudfunctions/",
   "condition": {},

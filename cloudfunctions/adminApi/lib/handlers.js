@@ -277,7 +277,7 @@ async function listCheckins(query) {
   const allCustomers = allCustomersRes.data
 
   const checkinsRes = await db.collection('checkins').where({ storeId, checkinDate: date }).get()
-  const checkedIds = new Set(checkinsRes.data.map((c) => c.customerId))
+  const checkedIds = new Set(checkinsRes.data.map((c) => c.customerDocId).filter(Boolean))
 
   let list = []
   if (type === 'checked') {

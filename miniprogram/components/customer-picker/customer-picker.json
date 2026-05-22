@@ -1,4 +1,6 @@
 {
   "component": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "customer-edit-panel": "/components/customer-edit-panel/customer-edit-panel"
+  }
 }

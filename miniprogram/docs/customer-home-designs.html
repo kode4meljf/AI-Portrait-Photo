@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>顾客首页 · 8 套设计稿（注册成功后）</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #e8eaef;
+      color: #1a1a2e;
+      padding: 28px 16px 56px;
+    }
+
+    h1 { text-align: center; font-size: 22px; margin-bottom: 8px; }
+
+    .intro {
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      line-height: 1.7;
+      max-width: 820px;
+      margin: 0 auto 20px;
+    }
+
+    .spec {
+      max-width: 960px;
+      margin: 0 auto 28px;
+      padding: 16px 20px;
+      background: #fff;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.75;
+      color: #444;
+      box-shadow: 0 4px 18px rgba(26, 26, 46, 0.06);
+    }
+
+    .spec h2 { font-size: 15px; margin: 12px 0 8px; color: #1a1a2e; }
+    .spec h2:first-child { margin-top: 0; }
+    .spec ul { padding-left: 18px; }
+    .spec code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 28px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .option-wrap { display: flex; flex-direction: column; align-items: center; }
+    .option-label { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .option-tag {
+      font-size: 12px; color: #888; margin-bottom: 12px;
+      text-align: center; max-width: 290px; line-height: 1.45;
+    }
+
+    .phone {
+      width: 300px;
+      height: 640px;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 22px 56px rgba(26, 26, 46, 0.16);
+      border: 8px solid #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      background: #f5f5f5;
+    }
+
+    .nav {
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .nav--dark { background: #1a1a2e; color: #fff; }
+    .nav--light { background: #fff; color: #1a1a2e; border-bottom: 1px solid #eee; }
+
+    .screen {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen::-webkit-scrollbar { width: 0; }
+
+    /* 底部 Tab（对齐 customer-nav） */
+    .tabbar {
+      flex-shrink: 0;
+      display: flex;
+      background: #fff;
+      border-top: 1px solid #f0f0f0;
+      padding: 6px 0 10px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: #999;
+      padding: 2px 0;
+    }
+
+    .tab-icon { display: block; font-size: 14px; line-height: 1.2; }
+    .tab.active { color: #ff69b4; }
+    .tab.active.gold { color: #c9922a; }
+    .tab.active.navy { color: #0f3460; }
+
+    /* 样品占位图 */
+    .sample {
+      border-radius: 10px;
+      background: linear-gradient(145deg, #e8eaf0, #d1d5db);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sample::after {
+      content: attr(data-name);
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 18px 6px 6px;
+      font-size: 10px;
+      color: #fff;
+      text-align: center;
+      background: linear-gradient(transparent, rgba(0,0,0,0.55));
+    }
+
+    .sample.s1 { background: linear-gradient(145deg, #2c3e50, #4a6741); }
+    .sample.s2 { background: linear-gradient(145deg, #6b4c9a, #c45c8a); }
+    .sample.s3 { background: linear-gradient(145deg, #8b6914, #d4a574); }
+    .sample.s4 { background: linear-gradient(145deg, #1a5f7a, #57c5c6); }
+    .sample.s5 { background: linear-gradient(145deg, #3d2914, #8b7355); }
+
+    /* ========== V1 当前线上 + 首页内嵌样品 ========== */
+    .v1 .screen { padding: 14px 14px 8px; }
+    .v1 .store-tag { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .v1 .code-card {
+      background: #fff; border-radius: 16px; padding: 16px 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.05); margin-bottom: 10px;
+    }
+    .v1 .code-title { font-size: 17px; font-weight: 700; display: block; }
+    .v1 .code-hint { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.45; display: block; }
+    .v1 .nick-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; padding: 8px 10px; background: #fafafa; border-radius: 8px;
+      font-size: 12px; color: #71717a;
+    }
+    .v1 .code-box {
+      margin: 12px 0; padding: 14px; text-align: center;
+      background: linear-gradient(135deg, #fff5f9, #f3f0ff); border-radius: 10px;
+    }
+    .v1 .code-id { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; word-break: break-all; }
+    .v1 .copy { text-align: center; font-size: 13px; color: #0f3460; font-weight: 600; padding: 6px; }
+    .v1 .copy.sub { font-size: 11px; color: #888; font-weight: 500; }
+    .v1 .section-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 4px 2px 8px; font-size: 14px; font-weight: 600;
+    }
+    .v1 .section-more { font-size: 11px; color: #0f3460; font-weight: 500; }
+    .v1 .samples {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .v1 .sample { aspect-ratio: 3/4; }
+
+    /* ========== V2 藏青顶栏 + 二维码顾客码 ========== */
+    .v2 .screen { background: #eef0f4; }
+    .v2 .hero {
+      padding: 14px 16px 20px;
+      background: linear-gradient(145deg, #1a1a2e, #0f3460);
+      border-radius: 0 0 18px 18px;
+      color: #fff;
+    }
+    .v2 .greet { font-size: 18px; font-weight: 700; }
+    .v2 .store { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .v2 .stats {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    .v2 .stat {
+      flex: 1; padding: 8px; border-radius: 10px;
+      background: rgba(255,255,255,0.08); text-align: center;
+    }
+    .v2 .stat-n { font-size: 16px; font-weight: 700; color: #f0cc72; }
+    .v2 .stat-l { font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+    .v2 .body { padding: 12px 14px; }
+    .v2 .qr-card {
+      background: #fff; border-radius: 14px; padding: 16px; text-align: center;
+      box-shadow: 0 6px 20px rgba(26,26,46,0.08); margin-bottom: 10px;
+    }
+    .v2 .qr {
+      width: 120px; height: 120px; margin: 0 auto 10px;
+      background: repeating-linear-gradient(45deg, #1a1a2e 0 4px, #fff 4px 8px);
+      border: 6px solid #fff; outline: 1px solid #e5e7eb; border-radius: 8px;
+    }
+    .v2 .qr-label { font-size: 12px; color: #6b7280; }
+    .v2 .qr-id { font-size: 11px; color: #1a1a2e; font-weight: 600; margin-top: 6px; word-break: break-all; }
+    .v2 .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .v2 .btn {
+      flex: 1; padding: 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      text-align: center;
+    }
+    .v2 .btn-p { background: linear-gradient(135deg, #1a1a2e, #0f3460); color: #fff; }
+    .v2 .btn-s { background: #f3f4f6; color: #374151; }
+    .v2 .showcase-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .v2 .h-scroll {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    }
+    .v2 .h-scroll .sample { flex: 0 0 72px; height: 96px; }
+
+    /* ========== V3 仪表盘分区 ========== */
+    .v3 .screen { padding: 12px 14px; }
+    .v3 .top-bar {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .v3 .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #fce4ec, #e8b86d);
+    }
+    .v3 .name { font-size: 16px; font-weight: 700; }
+    .v3 .meta { font-size: 11px; color: #888; margin-top: 2px; }
+    .v3 .tiles {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
+    }
+    .v3 .tile {
+      background: #fff; border-radius: 12px; padding: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .v3 .tile--code { grid-column: 1 / -1; }
+    .v3 .tile-t { font-size: 12px; color: #6b7280; }
+    .v3 .tile-v { font-size: 15px; font-weight: 700; margin-top: 4px; word-break: break-all; }
+    .v3 .tile-actions { display: flex; gap: 12px; margin-top: 8px; }
+    .v3 .tile-a { font-size: 11px; color: #0f3460; font-weight: 600; }
+    .v3 .samples-title { font-size: 13px; font-weight: 600; margin: 8px 0; }
+    .v3 .samples {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .v3 .sample { aspect-ratio: 3/4; }
+    .v3 .quick {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .v3 .quick-item {
+      flex: 1; background: #fff; border-radius: 10px; padding: 10px 6px;
+      text-align: center; font-size: 11px; color: #374151;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .v3 .quick-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+    /* ========== V4 杂志风 · 大图样品首屏 ========== */
+    .v4 .screen { background: #fafafa; }
+    .v4 .mag-hero {
+      height: 140px; padding: 16px;
+      background: linear-gradient(160deg, #1a1a2e 0%, #2d1f3d 60%, #0f3460 100%);
+      color: #fff; position: relative;
+    }
+    .v4 .mag-kicker { font-size: 10px; letter-spacing: 0.2em; color: #e8b86d; }
+    .v4 .mag-title { font-size: 20px; font-weight: 700; margin-top: 6px; }
+    .v4 .mag-store { font-size: 11px; opacity: 0.65; margin-top: 4px; }
+    .v4 .mag-body { padding: 0 14px 12px; margin-top: -24px; }
+    .v4 .code-float {
+      background: #fff; border-radius: 14px; padding: 14px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.1);
+    }
+    .v4 .code-row { display: flex; gap: 12px; align-items: center; }
+    .v4 .mini-qr {
+      width: 64px; height: 64px; flex-shrink: 0;
+      background: repeating-linear-gradient(45deg, #333 0 3px, #fff 3px 6px);
+      border-radius: 6px;
+    }
+    .v4 .code-info { flex: 1; min-width: 0; }
+    .v4 .code-info h3 { font-size: 14px; font-weight: 700; }
+    .v4 .code-info p { font-size: 10px; color: #888; margin-top: 4px; line-height: 1.4; }
+    .v4 .code-id { font-size: 10px; color: #1a1a2e; margin-top: 6px; font-weight: 600; }
+    .v4 .showcase-block { margin-top: 12px; }
+    .v4 .showcase-h {
+      font-size: 15px; font-weight: 700; margin-bottom: 2px;
+    }
+    .v4 .showcase-sub { font-size: 11px; color: #888; margin-bottom: 8px; }
+    .v4 .feat-sample {
+      height: 100px; border-radius: 12px; margin-bottom: 8px;
+    }
+    .v4 .thumb-row { display: flex; gap: 6px; }
+    .v4 .thumb-row .sample { flex: 1; height: 56px; }
+
+    /* ========== V5 极简 · 顾客码大卡 ========== */
+    .v5 .screen { padding: 16px 18px; background: #fff; }
+    .v5 .store { font-size: 12px; color: #9ca3af; text-align: center; }
+    .v5 .hello { font-size: 22px; font-weight: 700; text-align: center; margin-top: 8px; }
+    .v5 .code-main {
+      margin: 20px 0 16px; padding: 24px 16px; text-align: center;
+      border: 2px solid #1a1a2e; border-radius: 16px;
+    }
+    .v5 .code-main .label { font-size: 11px; color: #6b7280; letter-spacing: 0.15em; }
+    .v5 .code-main .id { font-size: 15px; font-weight: 700; margin-top: 10px; line-height: 1.4; }
+    .v5 .actions { display: flex; flex-direction: column; gap: 8px; }
+    .v5 .act {
+      height: 40px; line-height: 40px; border-radius: 20px; text-align: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .v5 .act-p { background: #1a1a2e; color: #fff; }
+    .v5 .act-s { border: 1px solid #e5e7eb; color: #374151; }
+    .v5 .divider { height: 1px; background: #f0f0f0; margin: 18px 0 14px; }
+    .v5 .samples-h { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .v5 .samples { display: flex; gap: 8px; overflow-x: auto; }
+    .v5 .samples .sample { flex: 0 0 80px; height: 108px; }
+
+    /* ========== V6 步骤卡片 + 到店引导 ========== */
+    .v6 .screen { padding: 12px 14px; background: #f3f4f6; }
+    .v6 .banner {
+      background: linear-gradient(135deg, #f0cc72, #e8b86d);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+      color: #3d2914;
+    }
+    .v6 .banner-t { font-size: 14px; font-weight: 700; }
+    .v6 .banner-s { font-size: 11px; margin-top: 4px; opacity: 0.85; }
+    .v6 .steps {
+      display: flex; gap: 6px; margin-bottom: 10px;
+    }
+    .v6 .step-card {
+      flex: 1; background: #fff; border-radius: 10px; padding: 10px 6px;
+      text-align: center; font-size: 10px; color: #6b7280;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .v6 .step-n {
+      width: 22px; height: 22px; border-radius: 50%; background: #1a1a2e;
+      color: #e8b86d; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 6px;
+    }
+    .v6 .code-card {
+      background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px;
+    }
+    .v6 .code-card h3 { font-size: 14px; font-weight: 700; }
+    .v6 .code-box {
+      margin-top: 10px; padding: 12px; background: #f9fafb; border-radius: 8px;
+      font-size: 12px; font-weight: 600; text-align: center; word-break: break-all;
+    }
+    .v6 .nick { margin-top: 8px; font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .v6 .samples-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .v6 .sample { aspect-ratio: 1; border-radius: 10px; }
+    .v6 .samples-label { font-size: 13px; font-weight: 600; margin: 10px 0 8px; }
+
+    /* ========== V7 门店工作台风 · 打卡码主视觉 ========== */
+    .v7 .screen { background: #eef0f4; }
+    .v7 .header {
+      padding: 12px 14px; background: #fff;
+      border-bottom: 1px solid #eee;
+    }
+    .v7 .header-row { display: flex; align-items: center; gap: 10px; }
+    .v7 .store-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      color: #e8b86d; display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .v7 .store-name { font-size: 15px; font-weight: 700; }
+    .v7 .store-sub { font-size: 11px; color: #888; }
+    .v7 .checkin-hero {
+      margin: 12px 14px; padding: 16px; border-radius: 14px;
+      background: #fff; box-shadow: 0 4px 16px rgba(26,26,46,0.06);
+    }
+    .v7 .tag { font-size: 10px; color: #c9922a; font-weight: 600; letter-spacing: 0.1em; }
+    .v7 .checkin-title { font-size: 17px; font-weight: 700; margin-top: 4px; }
+    .v7 .checkin-hint { font-size: 11px; color: #888; margin-top: 6px; line-height: 1.45; }
+    .v7 .payload-box {
+      margin: 12px 0; padding: 10px; background: linear-gradient(135deg, #fff5f9, #f3f0ff);
+      border-radius: 8px; font-size: 10px; color: #52525b; line-height: 1.4;
+      max-height: 48px; overflow: hidden;
+    }
+    .v7 .scan-btns { display: flex; gap: 8px; }
+    .v7 .scan-btn {
+      flex: 1; padding: 10px; border-radius: 22px; text-align: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .v7 .scan-p { background: linear-gradient(135deg, #1a1a2e, #0f3460); color: #fff; }
+    .v7 .scan-s { border: 1px solid #d1d5db; color: #374151; }
+    .v7 .section { padding: 0 14px 10px; }
+    .v7 .section-h {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .v7 .section-h span:first-child { font-size: 14px; font-weight: 600; }
+    .v7 .section-h span:last-child { font-size: 11px; color: #0f3460; }
+    .v7 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .v7 .sample { aspect-ratio: 3/4; }
+
+    /* ========== V8 单页沉浸 · 样品瀑布 + 底部码条 ========== */
+    .v8 .screen { position: relative; background: #111; }
+    .v8 .gallery-top {
+      padding: 12px 14px 8px; color: #fff;
+      background: linear-gradient(180deg, rgba(0,0,0,0.6), transparent);
+      position: sticky; top: 0; z-index: 2;
+    }
+    .v8 .gallery-top h2 { font-size: 16px; font-weight: 700; }
+    .v8 .gallery-top p { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+    .v8 .masonry { padding: 0 10px 100px; column-count: 2; column-gap: 8px; }
+    .v8 .masonry .sample {
+      break-inside: avoid; margin-bottom: 8px;
+      height: 100px;
+    }
+    .v8 .masonry .sample.tall { height: 130px; }
+    .v8 .code-bar {
+      position: absolute; left: 10px; right: 10px; bottom: 8px;
+      background: rgba(255,255,255,0.96); border-radius: 16px;
+      padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    }
+    .v8 .code-bar .qr-mini {
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: repeating-linear-gradient(45deg, #1a1a2e 0 3px, #fff 3px 6px);
+      border-radius: 6px;
+    }
+    .v8 .code-bar .info { flex: 1; min-width: 0; }
+    .v8 .code-bar .info strong { font-size: 12px; display: block; }
+    .v8 .code-bar .info em { font-size: 10px; color: #888; font-style: normal; display: block; margin-top: 2px; }
+    .v8 .code-bar .go {
+      padding: 8px 14px; border-radius: 18px; background: #1a1a2e;
+      color: #f0cc72; font-size: 11px; font-weight: 600; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>顾客首页 · 8 套设计稿</h1>
+  <p class="intro">
+    注册成功跳转页 <code>packageCustomer/pages/home/home</code> 的探索方案。
+    必选：<strong>顾客码</strong>、<strong>风格样品展示</strong>（对齐门店端/写真展 grid）；
+    可选扩展：打卡引导、昵称同步、相册/订单快捷入口、累计打卡等。
+  </p>
+
+  <div class="spec">
+    <h2>当前编码能力（需保留）</h2>
+    <ul>
+      <li>顾客文档 ID 展示 + 复制顾客码</li>
+      <li>复制完整打卡码 JSON（含手机号、昵称）</li>
+      <li>微信昵称同步（<code>profile.syncWx</code>）</li>
+      <li>跳转写真展 <code>showcase</code>（全量样品列表）</li>
+      <li>底部 <code>customer-nav</code>：首页 / 写真展 / 相册 / 订单 / 我的</li>
+    </ul>
+    <h2>各方案侧重点</h2>
+    <ul>
+      <li><strong>方案一</strong>：现状 + 首页内嵌 4 格样品，减少一次跳转</li>
+      <li><strong>方案二</strong>：藏青品牌 + 二维码视觉，样品横滑</li>
+      <li><strong>方案三</strong>：仪表盘：头像、打卡统计、码、快捷入口、样品 3 列</li>
+      <li><strong>方案四</strong>：杂志风，大图样品 + 紧凑码卡</li>
+      <li><strong>方案五</strong>：极简黑白线框，码为主、样品横滑</li>
+      <li><strong>方案六</strong>：三步到店引导 + 码 + 样品 grid</li>
+      <li><strong>方案七</strong>：对齐门店首页「今日服务」打卡卡片语气</li>
+      <li><strong>方案八</strong>：沉浸样品墙，底部浮动顾客码条（适合重展示）</li>
+    </ul>
+  </div>
+
+  <div class="grid">
+    <!-- V1 -->
+    <div class="option-wrap">
+      <div class="option-label">方案一 · 现状增强</div>
+      <div class="option-tag">保留现有码卡 + 首页 2×2 样品预览，「查看更多」进写真展</div>
+      <div class="phone v1">
+        <div class="nav nav--light">首页</div>
+        <div class="screen v1">
+          <text class="store-tag">所属门店 · 光影写真 · 滨江店</text>
+          <div class="code-card">
+            <span class="code-title">我的顾客码</span>
+            <span class="code-hint">到店前请同步微信昵称；打卡码含手机号</span>
+            <div class="nick-row"><span>微信昵称</span><span>林思琪 ›</span></div>
+            <div class="code-box"><span class="code-id">cust_8f2a9b1c3d4e</span></div>
+            <div class="copy">复制顾客码</div>
+            <div class="copy sub">复制完整打卡码</div>
+          </div>
+          <div class="section-head"><span>风格样品</span><span class="section-more">查看全部 ›</span></div>
+          <div class="samples">
+            <div class="sample s1" data-name="机长照"></div>
+            <div class="sample s2" data-name="港风街拍"></div>
+            <div class="sample s3" data-name="法式复古"></div>
+            <div class="sample s4" data-name="韩系清新"></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V2 -->
+    <div class="option-wrap">
+      <div class="option-label">方案二 · 藏青 + 二维码</div>
+      <div class="option-tag">顶栏问候与统计，中部 QR，样品横滑（与注册页同色系）</div>
+      <div class="phone v2">
+        <div class="nav nav--dark">首页</div>
+        <div class="screen v2">
+          <div class="hero">
+            <div class="greet">你好，林思琪</div>
+            <div class="store">光影写真 · 滨江店</div>
+            <div class="stats">
+              <div class="stat"><div class="stat-n">6</div><div class="stat-l">累计打卡</div></div>
+              <div class="stat"><div class="stat-n">12</div><div class="stat-l">相册权益</div></div>
+              <div class="stat"><div class="stat-n">3</div><div class="stat-l">摆台权益</div></div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="qr-card">
+              <div class="qr"></div>
+              <div class="qr-label">到店出示 · 扫码打卡</div>
+              <div class="qr-id">cust_8f2a9b1c3d4e</div>
+              <div class="btn-row">
+                <div class="btn btn-p">复制顾客码</div>
+                <div class="btn btn-s">复制打卡码</div>
+              </div>
+            </div>
+            <div class="showcase-title">AI 写真风格样品</div>
+            <div class="h-scroll">
+              <div class="sample s1" data-name="机长照"></div>
+              <div class="sample s2" data-name="港风"></div>
+              <div class="sample s3" data-name="法式"></div>
+              <div class="sample s4" data-name="韩系"></div>
+              <div class="sample s5" data-name="职场"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active navy"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V3 -->
+    <div class="option-wrap">
+      <div class="option-label">方案三 · 仪表盘</div>
+      <div class="option-tag">头像问候、权益/打卡瓦片、码区、相册订单快捷、3 列样品</div>
+      <div class="phone v3">
+        <div class="nav nav--light">首页</div>
+        <div class="screen v3">
+          <div class="top-bar">
+            <div class="avatar"></div>
+            <div>
+              <div class="name">林思琪</div>
+              <div class="meta">光影写真 · 滨江店 · 今日可打卡</div>
+            </div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><div class="tile-t">累计打卡</div><div class="tile-v">6 次</div></div>
+            <div class="tile"><div class="tile-t">相册权益</div><div class="tile-v">12 张</div></div>
+            <div class="tile tile--code">
+              <div class="tile-t">我的顾客码</div>
+              <div class="tile-v">cust_8f2a9b1c3d4e</div>
+              <div class="tile-actions">
+                <span class="tile-a">复制码</span>
+                <span class="tile-a">复制打卡码</span>
+                <span class="tile-a">同步昵称</span>
+              </div>
+            </div>
+          </div>
+          <div class="quick">
+            <div class="quick-item"><span class="quick-icon">▦</span>我的相册</div>
+            <div class="quick-item"><span class="quick-icon">☰</span>我的订单</div>
+            <div class="quick-item"><span class="quick-icon">✦</span>全部样品</div>
+          </div>
+          <div class="samples-title">风格样品预览</div>
+          <div class="samples">
+            <div class="sample s1" data-name="机长照"></div>
+            <div class="sample s2" data-name="港风"></div>
+            <div class="sample s3" data-name="法式"></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V4 -->
+    <div class="option-wrap">
+      <div class="option-label">方案四 · 杂志风</div>
+      <div class="option-tag">大图主样品 + 缩略图条，顾客码压缩为侧栏 QR 卡</div>
+      <div class="phone v4">
+        <div class="nav nav--dark">首页</div>
+        <div class="screen v4">
+          <div class="mag-hero">
+            <div class="mag-kicker">WELCOME</div>
+            <div class="mag-title">林思琪</div>
+            <div class="mag-store">光影写真 · 滨江店</div>
+          </div>
+          <div class="mag-body">
+            <div class="code-float">
+              <div class="code-row">
+                <div class="mini-qr"></div>
+                <div class="code-info">
+                  <h3>我的顾客码</h3>
+                  <p>到店扫码打卡 · 请先同步微信昵称</p>
+                  <div class="code-id">cust_8f2a9b1c3d4e</div>
+                </div>
+              </div>
+            </div>
+            <div class="showcase-block">
+              <div class="showcase-h">AI 写真样品</div>
+              <div class="showcase-sub">浏览门店风格，拍摄由门店为您服务</div>
+              <div class="sample s2 feat-sample" data-name="港风街拍"></div>
+              <div class="thumb-row">
+                <div class="sample s1" data-name="机长照"></div>
+                <div class="sample s3" data-name="法式"></div>
+                <div class="sample s4" data-name="韩系"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active gold"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V5 -->
+    <div class="option-wrap">
+      <div class="option-label">方案五 · 极简码优先</div>
+      <div class="option-tag">白底、线框大卡展示 ID，样品为辅横滑</div>
+      <div class="phone v5">
+        <div class="nav nav--light">首页</div>
+        <div class="screen v5">
+          <div class="store">光影写真 · 滨江店</div>
+          <div class="hello">林思琪</div>
+          <div class="code-main">
+            <div class="label">MY CUSTOMER ID</div>
+            <div class="id">cust_8f2a9b1c3d4e</div>
+          </div>
+          <div class="actions">
+            <div class="act act-p">复制顾客码</div>
+            <div class="act act-s">复制完整打卡码</div>
+            <div class="act act-s">同步微信昵称</div>
+          </div>
+          <div class="divider"></div>
+          <div class="samples-h">风格样品</div>
+          <div class="samples">
+            <div class="sample s1" data-name="机长照"></div>
+            <div class="sample s2" data-name="港风"></div>
+            <div class="sample s3" data-name="法式"></div>
+            <div class="sample s4" data-name="韩系"></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active navy"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V6 -->
+    <div class="option-wrap">
+      <div class="option-label">方案六 · 到店三步</div>
+      <div class="option-tag">金色欢迎条 + 同步昵称/出示码/门店扫码 + 样品 2×2</div>
+      <div class="phone v6">
+        <div class="nav nav--light">首页</div>
+        <div class="screen v6">
+          <div class="banner">
+            <div class="banner-t">欢迎加入门店</div>
+            <div class="banner-s">注册成功 · 下次到店请出示下方顾客码</div>
+          </div>
+          <div class="steps">
+            <div class="step-card"><div class="step-n">1</div>同步昵称</div>
+            <div class="step-card"><div class="step-n">2</div>复制码</div>
+            <div class="step-card"><div class="step-n">3</div>到店打卡</div>
+          </div>
+          <div class="code-card">
+            <h3>我的顾客码</h3>
+            <div class="code-box">cust_8f2a9b1c3d4e</div>
+            <div class="nick"><span>微信昵称</span><span>林思琪 ›</span></div>
+          </div>
+          <div class="samples-label">风格样品 · 点击预览</div>
+          <div class="samples-grid">
+            <div class="sample s1" data-name="机长照"></div>
+            <div class="sample s2" data-name="港风"></div>
+            <div class="sample s3" data-name="法式"></div>
+            <div class="sample s4" data-name="韩系"></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active gold"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V7 -->
+    <div class="option-wrap">
+      <div class="option-label">方案七 · 门店打卡风</div>
+      <div class="option-tag">白顶栏门店信息 +「今日到店」式打卡码卡 + 2×2 样品（语气对齐门店端）</div>
+      <div class="phone v7">
+        <div class="nav nav--light">首页</div>
+        <div class="screen v7">
+          <div class="header">
+            <div class="header-row">
+              <div class="store-icon">🏪</div>
+              <div>
+                <div class="store-name">光影写真 · 滨江店</div>
+                <div class="store-sub">您的专属 AI 写真门店</div>
+              </div>
+            </div>
+          </div>
+          <div class="checkin-hero">
+            <div class="tag">到店服务</div>
+            <div class="checkin-title">我的打卡码</div>
+            <div class="checkin-hint">请向店员出示或复制完整打卡码，用于扫码关联与记录到店</div>
+            <div class="payload-box">{"type":"customer_checkin","customerDocId":"cust_…","wxNickName":"林思琪"}</div>
+            <div class="scan-btns">
+              <div class="scan-btn scan-p">复制顾客码</div>
+              <div class="scan-btn scan-s">复制打卡码</div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-h"><span>AI 写真风格样品</span><span>全部 ›</span></div>
+            <div class="grid">
+              <div class="sample s1" data-name="机长照"></div>
+              <div class="sample s2" data-name="港风街拍"></div>
+              <div class="sample s3" data-name="法式复古"></div>
+              <div class="sample s4" data-name="韩系清新"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V8 -->
+    <div class="option-wrap">
+      <div class="option-label">方案八 · 沉浸样品墙</div>
+      <div class="option-tag">深色瀑布流样品为主，底部浮动条展示顾客码（重展示、轻文案）</div>
+      <div class="phone v8">
+        <div class="nav nav--dark">写真样品</div>
+        <div class="screen v8">
+          <div class="gallery-top">
+            <h2>AI 写真风格展</h2>
+            <p>光影写真 · 滨江店 · 公开展示样板</p>
+          </div>
+          <div class="masonry">
+            <div class="sample s2 tall" data-name="港风街拍"></div>
+            <div class="sample s1" data-name="机长照"></div>
+            <div class="sample s3 tall" data-name="法式复古"></div>
+            <div class="sample s4" data-name="韩系清新"></div>
+            <div class="sample s5" data-name="职场形象"></div>
+            <div class="sample s1" data-name="胶片"></div>
+          </div>
+          <div class="code-bar">
+            <div class="qr-mini"></div>
+            <div class="info">
+              <strong>我的顾客码</strong>
+              <em>cust_8f2a9b1c3d4e · 点击复制</em>
+            </div>
+            <div class="go">到店打卡</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><span class="tab-icon">⌂</span>首页</div>
+          <div class="tab active"><span class="tab-icon">✦</span>写真展</div>
+          <div class="tab"><span class="tab-icon">▦</span>相册</div>
+          <div class="tab"><span class="tab-icon">☰</span>订单</div>
+          <div class="tab"><span class="tab-icon">○</span>我的</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

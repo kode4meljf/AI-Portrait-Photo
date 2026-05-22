@@ -75,12 +75,6 @@
           </view>
           <text class="ws-label">门店资料</text>
         </view>
-        <view class="ws-item" hover-class="ws-item-active" bindtap="onCreateCustomer">
-          <view class="ws-icon purple">
-            <image class="ws-icon-img" src="/assets/icons/ws-customer-add.svg" mode="aspectFit"></image>
-          </view>
-          <text class="ws-label">添加客户</text>
-        </view>
         <view class="ws-item" hover-class="ws-item-active" bindtap="onManageMembers">
           <view class="ws-icon orange">
             <image class="ws-icon-img" src="/assets/icons/ws-staff.svg" mode="aspectFit"></image>
@@ -93,11 +87,17 @@
           </view>
           <text class="ws-label">客户列表</text>
         </view>
+        <view class="ws-item" hover-class="ws-item-active" bindtap="onCreateCustomer">
+          <view class="ws-icon purple">
+            <image class="ws-icon-img" src="/assets/icons/ws-customer-add.svg" mode="aspectFit"></image>
+          </view>
+          <text class="ws-label">代客建档</text>
+        </view>
         <view class="ws-item" hover-class="ws-item-active" bindtap="onCustomerInvite">
           <view class="ws-icon teal">
             <text class="ws-icon-emoji">🔗</text>
           </view>
-          <text class="ws-label">顾客注册</text>
+          <text class="ws-label">邀请客户</text>
         </view>
       </view>
     </view>

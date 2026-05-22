@@ -17,6 +17,7 @@ Page({
   data: {
     orderId: '',
     scrollIntoView: '',
+    scrollViewHeight: 600,
     loading: true,
     view: null,
     platformSupportPhone: ''
@@ -30,8 +31,22 @@ Page({
     }
     const scrollIntoView = options.scrollTo === 'logistics' ? 'logistics-anchor' : '';
     this.setData({ orderId, scrollIntoView });
+    this.updateScrollViewHeight();
     this.loadPlatformPhone();
     this.loadOrderDetail();
+  },
+
+  onReady() {
+    this.updateScrollViewHeight();
+  },
+
+  /** 真机上 flex+height:0 的 scroll-view 易高度为 0，需显式像素高度 */
+  updateScrollViewHeight() {
+    const sys = wx.getWindowInfo();
+    const h = sys.windowHeight || 600;
+    if (h !== this.data.scrollViewHeight) {
+      this.setData({ scrollViewHeight: h });
+    }
   },
 
   async loadPlatformPhone() {
@@ -56,6 +71,7 @@ Page({
         }),
         loading: false
       });
+      this.updateScrollViewHeight();
     } catch (error) {
       console.error('加载订单详情失败:', error);
       this.setData({ loading: false, view: null });
@@ -159,7 +175,7 @@ Page({
     if (view.shippingNo) {
       wx.showModal({
         title: '物流信息',
-        content: `运单号：${view.shippingNo}\n物流公司：${LOGISTICS_COMPANY}\n${view.stripLatest || '运输中，请稍后查询最新状态'}`,
+        content: `运单号：${view.shippingNo}\n物流公司：${view.logisticsCompany || '顺丰速运'}\n${view.stripLatest || '运输中，请稍后查询最新状态'}`,
         showCancel: false
       });
       return;

@@ -1,0 +1,30 @@
+---
+description: 微信小程序真机页面布局——避免 scroll-view 高度塌缩白屏
+globs:
+  - miniprogram/**/*.wxml
+  - miniprogram/**/*.wxss
+  - miniprogram/**/*.js
+---
+
+# 小程序真机布局（必读）
+
+修改或新增 `miniprogram` 页面时，遵守 `miniprogram/docs/page-layout-realdevice.md`。
+
+## 禁止
+
+- 在 `scroll-view` 上使用 `flex: 1` + `height: 0`（或仅靠 min-height:0）且**没有** JS 显式像素高度
+- 假设「模拟器能滚 = 真机正常」
+
+## 默认方案
+
+- **表单页 / 中等长度内容**：页面级滚动（`min-height: 100vh` 根容器，不用 scroll-view），参考 `pages/join/join`
+
+## scroll-view 仅当必要时
+
+- `onReady` 中 `wx.getWindowInfo().windowHeight` 绑定 `scroll-view` 的 `style="height:{{h}}px"`
+- 或 `flex:1` + `overflow-y:auto` 的普通 `view`（非 scroll-view 组件）
+
+## 防回归
+
+- 新建/大改首屏表单页：在 `onReady` 调用 `auditPageLayout`（`utils/pageLayoutGuard.js`）
+- 将页面路由登记到 `page-layout-realdevice.md` 的「已接入审计」表

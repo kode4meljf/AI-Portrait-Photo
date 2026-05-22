@@ -1,8 +1,8 @@
 <view class="page" wx:if="{{!loading && view}}">
   <scroll-view
     class="scroll-area"
+    style="height: {{scrollViewHeight}}px;"
     scroll-y
-    enhanced
     show-scrollbar="{{false}}"
     scroll-into-view="{{scrollIntoView}}"
     scroll-with-animation

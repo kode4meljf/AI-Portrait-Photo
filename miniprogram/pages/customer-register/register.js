@@ -1,15 +1,20 @@
 const app = getApp()
 const { callCustomer } = require('../../utils/customerApi')
 const { applySessionToApp } = require('../../utils/storeSession')
+const { parseCustomerRegisterFromScan } = require('../../utils/inviteCode')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
+const RESCAN_TOAST = '请重新扫描门店注册小程序码'
 
 Page({
   data: {
     token: '',
+    tokenInvalid: false,
     loading: true,
     submitting: false,
     storeName: '',
+    storePreview: null,
+    storeInfoVisible: false,
     avatarUrl: '',
     wxNickName: '',
     phoneReady: false,
@@ -17,33 +22,90 @@ Page({
   },
 
   onLoad(options) {
-    const token = (options.token || '').trim()
+    const raw = (options && (options.token || options.scene)) || ''
+    const token = parseCustomerRegisterFromScan(raw) || String(raw).trim()
     if (!token) {
-      wx.showToast({ title: '注册链接无效', icon: 'none' })
-      this.setData({ loading: false })
+      this.setData({ loading: false, tokenInvalid: true })
+      this.toastNeedRescan()
       return
     }
     this.setData({ token })
     this.loadPreview()
   },
 
+  onShow() {
+    if (typeof wx.hideHomeButton === 'function') {
+      wx.hideHomeButton()
+    }
+    wx.stopPullDownRefresh()
+  },
+
+  /** 扫码进入时微信可能仍展示「主页」；默认会进 tabBar 门店首页，此处拦截 */
+  onHomeIconButtonTap() {
+    if (this.data.tokenInvalid || !this.data.token) {
+      this.toastNeedRescan()
+      return
+    }
+    wx.showToast({ title: '请完成注册', icon: 'none' })
+  },
+
+  toastNeedRescan() {
+    wx.showToast({ title: RESCAN_TOAST, icon: 'none', duration: 2800 })
+  },
+
+  requireToken() {
+    if (this.data.tokenInvalid || !(this.data.token || '').trim()) {
+      this.toastNeedRescan()
+      return false
+    }
+    return true
+  },
+
   async loadPreview() {
     this.setData({ loading: true })
     try {
       const data = await callCustomer('register.preview', { token: this.data.token })
-      this.setData({ storeName: data.storeName || '', loading: false })
+      const storeName = data.storeName || ''
+      this.setData({
+        storeName,
+        storePreview: {
+          storeName,
+          contactName: data.contactName || '暂未填写',
+          address: data.address || '暂未填写'
+        },
+        loading: false
+      })
     } catch (e) {
       this.setData({ loading: false })
       wx.showModal({
         title: '无法注册',
         content: e.message || '链接无效',
         showCancel: false,
-        success: () => wx.navigateBack({ fail: () => {} })
+        success: () => wx.exitMiniProgram({ fail: () => {} })
       })
     }
   },
 
+  onStoreChipTap() {
+    if (!this.requireToken()) return
+    if (!this.data.storePreview) return
+    this.setData({ storeInfoVisible: true })
+  },
+
+  onBlockedTap() {
+    this.toastNeedRescan()
+  },
+
+  closeStoreInfo() {
+    this.setData({ storeInfoVisible: false })
+  },
+
+  preventTouchMove() {},
+
+  preventBubble() {},
+
   onChooseAvatar(e) {
+    if (!this.requireToken()) return
     const url = e.detail.avatarUrl || ''
     if (url) this.setData({ avatarUrl: url })
   },
@@ -67,6 +129,7 @@ Page({
   },
 
   async onSubmit() {
+    if (!this.requireToken()) return
     if (this.data.submitting) return
     if (!this.data.phoneReady || !this.data.phoneCode) {
       wx.showToast({ title: '请先授权手机号', icon: 'none' })

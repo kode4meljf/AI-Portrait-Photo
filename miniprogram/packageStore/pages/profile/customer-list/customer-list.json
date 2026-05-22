@@ -3,7 +3,9 @@
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
   "backgroundColor": "#ffffff",
-  "usingComponents": {},
+  "usingComponents": {
+    "customer-edit-panel": "/components/customer-edit-panel/customer-edit-panel"
+  },
   "enablePullDownRefresh": true,
   "onReachBottomDistance": 100
 }

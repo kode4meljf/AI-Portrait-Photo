@@ -87,6 +87,18 @@
   box-sizing: border-box;
 }
 
+.edit-required {
+  color: #e85d75;
+}
+
+.edit-field-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9a8b7a;
+  line-height: 1.45;
+}
+
 .edit-input {
   display: block;
   width: 100%;

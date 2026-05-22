@@ -58,6 +58,22 @@ Page({
           })
           return
         }
+        if (account.status === 'disabled' && account.approvedAt) {
+          this.setData({
+            loading: false,
+            status: 'removed',
+            storeName: account.storeName || ''
+          })
+          return
+        }
+        if (account.status === 'disabled') {
+          this.setData({
+            loading: false,
+            status: 'rejected',
+            storeName: account.storeName || ''
+          })
+          return
+        }
         this.setData({ loading: false, status: 'entry' })
         return
       }
@@ -84,9 +100,13 @@ Page({
     wx.navigateTo({ url: '/pages/join/join' })
   },
 
+  showEntry() {
+    this.setData({ status: 'entry', storeName: '' })
+  },
+
   goCustomerRegisterHint() {
     wx.showModal({
-      title: '顾客注册',
+      title: '客户注册',
       content: '请使用门店发给您的注册链接或二维码完成注册。若已有账号，请确认链接未过期。',
       showCancel: false
     })

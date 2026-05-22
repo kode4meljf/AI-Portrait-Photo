@@ -47,15 +47,15 @@ Page({
 
       const checkedIds = new Set();
       [...(byDateRes.data || []), ...(byTimeRes.data || [])].forEach((c) => {
-        const id = c.customerId || c.customerDocId;
+        const id = c.customerDocId;
         if (id) checkedIds.add(id);
       });
 
       let filteredCustomers = [];
       if (this.data.type === "checked") {
-        filteredCustomers = allCustomers.filter((c) => checkedIds.has(c.customerId || c._id));
+        filteredCustomers = allCustomers.filter((c) => checkedIds.has(c._id));
       } else {
-        filteredCustomers = allCustomers.filter((c) => !checkedIds.has(c.customerId || c._id));
+        filteredCustomers = allCustomers.filter((c) => !checkedIds.has(c._id));
       }
 
       this.setData({ customers: filteredCustomers });

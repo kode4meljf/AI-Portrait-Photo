@@ -1,10 +1,22 @@
-/** 打卡二维码 / 扫码内容：携带 customerId 与当前微信资料，供 scan.bindCheckin 更新 */
+const { normalizeMobilePhone } = require('./phone')
+
+/** 打卡二维码：须含 customers._id 与手机号，供 scan.bindCheckin 校验 */
 function buildCheckinQrPayload(row) {
-  const customerId = row.customerId || row.id
-  if (!customerId) return ''
+  const customerDocId = (row && (row._id || row.id)) || ''
+  const phoneRaw = (row && row.phone) || ''
+  if (!customerDocId) return ''
+
+  let phone
+  try {
+    phone = normalizeMobilePhone(phoneRaw)
+  } catch (e) {
+    return ''
+  }
+
   const payload = {
     type: 'customer_checkin',
-    customerId
+    customerDocId,
+    phone
   }
   const wxNickName = (row.wxNickName || '').trim()
   const avatarUrl = (row.avatarUrl || '').trim()

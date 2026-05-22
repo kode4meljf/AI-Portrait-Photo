@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk')
 const handlers = require('./lib/handlers')
 const register = require('./lib/register')
+const { checkinQrImage } = require('./lib/checkinQr')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -31,6 +32,14 @@ exports.main = async (event) => {
         if (!openid) return { success: false, error: '未登录' }
         data = await register.syncWxProfile(openid, event)
         break
+      case 'profile.checkinQrImage':
+        if (!openid) return { success: false, error: '未登录' }
+        {
+          const row = await register.getCustomerByOpenId(openid)
+          if (!row || !row.storeId) throw new Error('您尚未注册为顾客')
+          data = await checkinQrImage(row)
+        }
+        break
       case 'orders.list':
         if (!openid) return { success: false, error: '未登录' }
         data = await register.listMyOrders(openid)
@@ -42,6 +51,10 @@ exports.main = async (event) => {
       case 'createByStore':
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.createByStore(openid, event)
+        break
+      case 'updateByStore':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await handlers.updateByStore(openid, event)
         break
       case 'scan.bindCheckin':
         if (!openid) return { success: false, error: '未登录' }
@@ -57,7 +70,8 @@ exports.main = async (event) => {
       success: false,
       error: err.message || '操作失败',
       code: err.code || 'ERROR',
-      storeName: err.storeName
+      storeName: err.storeName,
+      existingId: err.existingId || ''
     }
   }
 }

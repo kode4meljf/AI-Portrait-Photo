@@ -287,14 +287,15 @@ Page({
       });
 
       const payload = this.parseCheckinPayload(scanRes.result);
-      if (!payload || !payload.customerId) {
+      const customerDocId = payload && payload.customerDocId;
+      if (!customerDocId) {
         wx.showToast({ title: '二维码无效', icon: 'none' });
         return;
       }
 
       const { callCustomer } = require('../../utils/storeSession');
       const customer = await callCustomer('scan.bindCheckin', {
-        customerId: payload.customerId,
+        customerDocId,
         wxNickName: payload.wxNickName,
         avatarUrl: payload.avatarUrl,
         wxOpenId: payload.wxOpenId,
@@ -328,6 +329,14 @@ Page({
         });
         return;
       }
+      if (e.code === 'PHONE_QR_STALE' || e.code === 'WX_OPENID_MISMATCH') {
+        wx.showModal({
+          title: '无法打卡',
+          content: e.message || '请让顾客刷新顾客码后再试',
+          showCancel: false
+        });
+        return;
+      }
       wx.showToast({ title: e.message || '扫码失败', icon: 'none' });
     }
   },
@@ -341,7 +350,7 @@ Page({
     } catch (e) {
       const id = `${raw}`.trim();
       if (!id) return null;
-      return { customerId: id };
+      return { customerDocId: id };
     }
   },
 

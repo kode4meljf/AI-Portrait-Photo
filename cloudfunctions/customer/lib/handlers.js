@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
-const { isValidStoreId, generateCustomerId } = require('./storeId')
+const { isValidStoreId } = require('./storeId')
+const { normalizeMobilePhone } = require('./phone')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -49,6 +50,22 @@ function pickClientProfile(payload) {
   return out
 }
 
+function customerDisplayName(row) {
+  const alias = (row.nickName || '').trim()
+  if (alias) return alias
+  const wx = (row.wxNickName || '').trim()
+  return wx || '匿名用户'
+}
+
+function phoneConflictError(existing) {
+  const err = new Error(
+    `该手机号已登记客户「${customerDisplayName(existing)}」，请勿重复建档`
+  )
+  err.code = 'PHONE_ALREADY_EXISTS'
+  err.existingId = existing._id
+  return err
+}
+
 async function findByPhone(storeId, phone) {
   const p = (phone || '').trim()
   if (!p) return null
@@ -59,7 +76,6 @@ async function findByPhone(storeId, phone) {
 function formatCustomerResponse(row, extra = {}) {
   return {
     _id: row._id,
-    customerId: row.customerId,
     storeId: row.storeId,
     nickName: row.nickName || '',
     wxNickName: row.wxNickName || '',
@@ -72,35 +88,23 @@ function formatCustomerResponse(row, extra = {}) {
 }
 
 /**
- * 门店预建档：nickName = 店长称呼；不写 wxNickName
- * 同门店同手机号合并到已有档案
+ * 门店预建档：nickName = 店长称呼；不写 wxNickName；同店同号拒绝重复建档
  */
 async function createByStore(openid, payload) {
   const member = await requireStoreOperator(openid)
   const storeId = member.storeId
   const nickName = (payload.nickName || '').trim() || '新客户'
-  const phone = (payload.phone || '').trim()
+  const phone = normalizeMobilePhone(payload.phone)
   const remark = (payload.remark || '').trim()
   const now = Date.now()
 
-  if (phone) {
-    const existing = await findByPhone(storeId, phone)
-    if (existing) {
-      const patch = { updateTime: now }
-      if (nickName && nickName !== '新客户') patch.nickName = nickName
-      if (remark) patch.remark = remark
-      if (Object.keys(patch).length > 1) {
-        await db.collection('customers').doc(existing._id).update({ data: patch })
-      }
-      const latest = await db.collection('customers').doc(existing._id).get()
-      return formatCustomerResponse(latest.data, { merged: true })
-    }
+  const existing = await findByPhone(storeId, phone)
+  if (existing) {
+    throw phoneConflictError(existing)
   }
 
-  const customerId = generateCustomerId()
   const addRes = await db.collection('customers').add({
     data: {
-      customerId,
       storeId,
       source: 'store_create',
       nickName,
@@ -119,28 +123,91 @@ async function createByStore(openid, payload) {
   })
 
   const created = await db.collection('customers').doc(addRes._id).get()
-  return formatCustomerResponse(created.data, { merged: false })
+  return formatCustomerResponse(created.data)
 }
 
 /**
- * 店员扫客户码打卡：以码上客户资料为准更新头像/微信昵称
+ * 门店编辑客户：手机号必填，同店同号不可占用（排除本人）
+ */
+async function updateByStore(openid, payload) {
+  const member = await requireStoreOperator(openid)
+  const storeId = member.storeId
+  const customerDocId = String(payload.customerDocId || payload.id || '').trim()
+  if (!customerDocId) throw new Error('缺少客户 ID')
+
+  let customer
+  try {
+    const docRes = await db.collection('customers').doc(customerDocId).get()
+    customer = docRes.data
+  } catch (e) {
+    customer = null
+  }
+  if (!customer || customer.storeId !== storeId) {
+    throw new Error('无权编辑该客户')
+  }
+
+  const nickName = (payload.nickName || '').trim()
+  if (!nickName) throw new Error('请填写客户称呼')
+
+  const phone = normalizeMobilePhone(payload.phone)
+  const remark = (payload.remark || '').trim()
+  const now = Date.now()
+  const storedOpenId = (customer.wxOpenId || '').trim()
+  const storedPhone = (customer.phone || '').trim()
+
+  if (storedOpenId && phone !== storedPhone) {
+    throw new Error('该客户已绑定微信，手机号仅可由客户在顾客端更换')
+  }
+
+  const dup = await findByPhone(storeId, phone)
+  if (dup && dup._id !== customerDocId) {
+    const err = new Error(`该手机号已被客户「${customerDisplayName(dup)}」使用`)
+    err.code = 'PHONE_ALREADY_EXISTS'
+    err.existingId = dup._id
+    throw err
+  }
+
+  await db.collection('customers').doc(customerDocId).update({
+    data: { nickName, phone, remark, updateTime: now }
+  })
+
+  const latest = await db.collection('customers').doc(customerDocId).get()
+  return formatCustomerResponse(latest.data)
+}
+
+/**
+ * 店员扫客户码打卡：已认领客户校验 openId，不以旧码覆盖手机号
  */
 async function scanBindCheckin(openid, payload) {
   const member = await requireStoreOperator(openid)
   const storeId = member.storeId
-  const customerId = (payload.customerId || '').trim()
-  if (!customerId) throw new Error('无效的客户码')
+  const customerDocId = (payload.customerDocId || '').trim()
+  if (!customerDocId) throw new Error('无效的客户码')
 
   const now = Date.now()
   const today = todayDateString()
   const clientProfile = pickClientProfile(payload)
 
-  const found = await db.collection('customers').where({ customerId }).limit(1).get()
-  if (!found.data.length) {
+  let customer
+  try {
+    const docRes = await db.collection('customers').doc(customerDocId).get()
+    customer = docRes.data
+  } catch (e) {
+    customer = null
+  }
+  if (!customer) {
     throw new Error('客户不存在，请确认二维码有效')
   }
 
-  const customer = found.data[0]
+  const qrPhoneRaw = (clientProfile.phone || '').trim()
+  const storedPhone = (customer.phone || '').trim()
+  const storedOpenId = (customer.wxOpenId || '').trim()
+  const payloadOpenId = (clientProfile.wxOpenId || '').trim()
+
+  if (!storedPhone) {
+    throw new Error('客户未绑定手机号，请让顾客完成注册并授权手机号后再打卡')
+  }
+
   const existingStoreId = customer.storeId || ''
 
   if (existingStoreId && existingStoreId !== storeId) {
@@ -152,6 +219,40 @@ async function scanBindCheckin(openid, payload) {
     err.code = 'CUSTOMER_BOUND_OTHER_STORE'
     err.storeName = otherName
     throw err
+  }
+
+  if (storedOpenId) {
+    if (!payloadOpenId || payloadOpenId !== storedOpenId) {
+      const err = new Error('请让客户使用本人微信下的最新顾客码打卡')
+      err.code = 'WX_OPENID_MISMATCH'
+      throw err
+    }
+    if (qrPhoneRaw) {
+      let qrPhoneNorm
+      try {
+        qrPhoneNorm = normalizeMobilePhone(qrPhoneRaw)
+      } catch (e) {
+        const err = new Error('打卡码手机号无效，请让顾客在顾客端刷新顾客码后再试')
+        err.code = 'PHONE_QR_STALE'
+        throw err
+      }
+      if (qrPhoneNorm !== storedPhone) {
+        const err = new Error(
+          '客户手机号已更新，与打卡码不一致，请让顾客在「我的顾客码」刷新后再出示'
+        )
+        err.code = 'PHONE_QR_STALE'
+        throw err
+      }
+    }
+  } else if (payloadOpenId) {
+    const dupOpen = await db
+      .collection('customers')
+      .where({ wxOpenId: payloadOpenId })
+      .limit(1)
+      .get()
+    if (dupOpen.data.length && dupOpen.data[0]._id !== customer._id) {
+      throw new Error('该微信已绑定其他客户档案')
+    }
   }
 
   const updateData = {
@@ -170,15 +271,25 @@ async function scanBindCheckin(openid, payload) {
   if (clientProfile.avatarUrl) {
     updateData.avatarUrl = clientProfile.avatarUrl
   }
-  // 每次打卡：扫码 payload 中的微信昵称写入库（与注册时写入字段一致）
   if (clientProfile.wxNickName) {
     updateData.wxNickName = clientProfile.wxNickName
   }
-  if (clientProfile.wxOpenId) {
-    updateData.wxOpenId = clientProfile.wxOpenId
+
+  if (!storedOpenId && payloadOpenId) {
+    updateData.wxOpenId = payloadOpenId
   }
-  if (clientProfile.phone && !customer.phone) {
-    updateData.phone = clientProfile.phone
+
+  if (!storedOpenId) {
+    if (qrPhoneRaw) {
+      const normalized = normalizeMobilePhone(qrPhoneRaw)
+      const dup = await findByPhone(storeId, normalized)
+      if (dup && dup._id !== customer._id) {
+        throw phoneConflictError(dup)
+      }
+      updateData.phone = normalized
+    } else if (!storedPhone) {
+      throw new Error('打卡码缺少手机号，请让顾客注册授权后再打卡')
+    }
   }
 
   await db.collection('customers').doc(customer._id).update({ data: updateData })
@@ -186,7 +297,6 @@ async function scanBindCheckin(openid, payload) {
   await db.collection('checkins').add({
     data: {
       storeId,
-      customerId,
       customerDocId: customer._id,
       checkinDate: today,
       operatorOpenId: openid,
@@ -200,5 +310,6 @@ async function scanBindCheckin(openid, payload) {
 
 module.exports = {
   createByStore,
+  updateByStore,
   scanBindCheckin
 }

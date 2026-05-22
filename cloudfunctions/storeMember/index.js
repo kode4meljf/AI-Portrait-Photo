@@ -26,8 +26,17 @@ exports.main = async (event) => {
       case 'invite.create':
         data = await member.inviteCreate(openid, event)
         break
+      case 'invite.qrImage':
+        data = await member.inviteQrImage(openid, event)
+        break
       case 'invite.revoke':
         data = await member.inviteRevoke(openid, event)
+        break
+      case 'phone.authorizeForJoin':
+        data = await member.phoneAuthorizeForJoin(openid, event)
+        break
+      case 'phone.maskFromCode':
+        data = await member.phoneMaskFromCode(openid, event)
         break
       case 'invite.preview':
         data = await member.invitePreview(event)
@@ -37,6 +46,9 @@ exports.main = async (event) => {
         break
       case 'member.list':
         data = await member.memberList(openid, event)
+        break
+      case 'member.updateProfile':
+        data = await member.memberUpdateProfile(openid, event)
         break
       case 'member.approve':
         data = await member.memberApprove(openid, event)
@@ -52,6 +64,9 @@ exports.main = async (event) => {
         break
       case 'customerRegisterInvite.create':
         data = await member.customerRegisterInviteCreate(openid, event)
+        break
+      case 'customerRegisterInvite.qrImage':
+        data = await member.customerRegisterInviteQrImage(openid, event)
         break
       case 'batch.linkCustomer':
         data = await member.batchLinkCustomer(openid, event)

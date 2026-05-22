@@ -1,17 +1,84 @@
 <view class="launch-page">
-  <view wx:if="{{loading}}" class="hint">正在加载…</view>
+  <view class="launch-safe">
+    <view wx:if="{{loading}}" class="state-block">
+      <view class="loader-ring"></view>
+      <text class="state-text">正在加载…</text>
+    </view>
 
-  <view wx:elif="{{status === 'pending'}}" class="panel">
-    <text class="title">等待店长审核</text>
-    <text class="desc">您已申请加入{{storeName || '门店'}}，请店长在「员工管理」中通过后再使用。</text>
-    <button class="btn" bindtap="bootstrap">刷新状态</button>
-  </view>
+    <view wx:elif="{{status === 'pending'}}" class="state-block">
+      <view class="pending-badge">审核中</view>
+      <text class="pending-title">等待店长通过</text>
+      <text class="pending-desc">您已申请加入「{{storeName || '门店'}}」，请店长在「员工管理」中审核通过。</text>
+      <button class="btn-gold" bindtap="bootstrap">刷新状态</button>
+    </view>
 
-  <view wx:else class="panel">
-    <text class="title">AI 写真馆</text>
-    <text class="desc">门店人员请创建或加入门店；顾客请通过门店提供的注册链接进入</text>
-    <button class="btn primary" bindtap="goCreateStore">创建门店</button>
-    <button class="btn" bindtap="goJoin">店员邀请码加入</button>
-    <text class="link" bindtap="goCustomerRegisterHint">我是顾客，已有注册链接？</text>
+    <view wx:elif="{{status === 'rejected'}}" class="state-block">
+      <view class="pending-badge pending-badge--rejected">未通过</view>
+      <text class="pending-title">申请未通过</text>
+      <text class="pending-desc">店长未通过您加入「{{storeName || '门店'}}」的申请。如有疑问请联系店长，或使用新的邀请码再次申请。</text>
+      <view class="state-actions">
+        <button class="btn-gold" bindtap="goJoin">再次申请</button>
+        <button class="btn-ghost" bindtap="showEntry">返回</button>
+      </view>
+    </view>
+
+    <view wx:elif="{{status === 'removed'}}" class="state-block">
+      <view class="pending-badge pending-badge--rejected">已移出</view>
+      <text class="pending-title">已离开门店</text>
+      <text class="pending-desc">您已不再是「{{storeName || '门店'}}」的成员。如需重新加入，请向店长索取邀请码后再次申请。</text>
+      <view class="state-actions">
+        <button class="btn-gold" bindtap="goJoin">再次申请</button>
+        <button class="btn-ghost" bindtap="showEntry">返回</button>
+      </view>
+    </view>
+
+    <block wx:else>
+      <view class="brand">
+        <view class="logo-ring">
+          <image class="logo-img" src="/assets/icons/shoot-hero.svg" mode="aspectFit" />
+        </view>
+        <text class="brand-cn">AI 写真馆</text>
+        <text class="brand-tag">为每一位客人，定格专属光影</text>
+      </view>
+
+      <view class="role-section">
+        <view class="section-label">
+          <view class="label-line"></view>
+          <text>门店端</text>
+          <view class="label-line"></view>
+        </view>
+
+        <view
+          class="entry-card entry-card--primary"
+          hover-class="entry-card--active"
+          bindtap="goCreateStore"
+        >
+          <view class="entry-icon">🏪</view>
+          <view class="entry-body">
+            <text class="entry-title">创建门店</text>
+            <text class="entry-sub">我是店长，开通新门店</text>
+          </view>
+          <text class="entry-arrow">›</text>
+        </view>
+
+        <view class="entry-card" hover-class="entry-card--active" bindtap="goJoin">
+          <view class="entry-icon entry-icon--muted">🪪</view>
+          <view class="entry-body">
+            <text class="entry-title">邀请码加入</text>
+            <text class="entry-sub">我是店员，输入邀请码</text>
+          </view>
+          <text class="entry-arrow">›</text>
+        </view>
+      </view>
+
+      <view class="customer-strip" bindtap="goCustomerRegisterHint">
+        <text class="customer-icon">✦</text>
+        <view class="customer-text">
+          <text class="customer-title">我是顾客</text>
+          <text class="customer-sub">通过门店注册链接进入</text>
+        </view>
+        <text class="customer-link">了解 ›</text>
+      </view>
+    </block>
   </view>
 </view>

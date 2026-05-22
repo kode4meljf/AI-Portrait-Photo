@@ -1,19 +1,89 @@
-<view class="form-page">
-  <view class="field">
-    <text class="label">门店名称</text>
-    <input value="{{name}}" data-key="name" bindinput="onInput" placeholder="门店名称" />
+<!-- 页面级滚动：真机避免 scroll-view + flex + height:0 塌缩白屏，见 docs/page-layout-realdevice.md -->
+<view class="create-page">
+  <view class="create-page-body">
+    <view class="section-card">
+      <view class="section-header">
+        <text class="section-title">门店信息</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">门店名称</text>
+        <input
+          class="info-input"
+          placeholder="请输入门店名称"
+          value="{{name}}"
+          data-key="name"
+          bindinput="onInput"
+        />
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-header">
+        <text class="section-title">联系方式</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">联系人<text class="required">*</text></text>
+        <input
+          class="info-input"
+          placeholder="请输入联系人"
+          value="{{contactName}}"
+          data-key="contactName"
+          bindinput="onInput"
+        />
+      </view>
+      <view class="info-divider"></view>
+      <view class="info-row">
+        <text class="info-label">联系电话<text class="required">*</text></text>
+        <input
+          class="info-input"
+          type="number"
+          placeholder="请输入电话"
+          value="{{contactPhone}}"
+          data-key="contactPhone"
+          bindinput="onInput"
+        />
+      </view>
+    </view>
+
+    <view class="section-card address-section-card">
+      <view class="section-header section-header-no-border">
+        <text class="section-title">门店地址<text class="required">*</text></text>
+      </view>
+      <view class="address-panel" bindtap="chooseAddressOnMap">
+        <text class="address-side-label">地址</text>
+        <view class="address-main">
+          <text wx:if="{{address}}" class="address-title">{{addressName || address}}</text>
+          <text wx:else class="address-title placeholder">选择门店地址</text>
+          <text wx:if="{{address && addressDetail && distanceText}}" class="address-sub">{{distanceText}} | {{addressDetail}}</text>
+          <text wx:elif="{{address && addressDetail}}" class="address-sub">{{addressDetail}}</text>
+        </view>
+        <text class="address-arrow">‹</text>
+      </view>
+      <view class="info-divider"></view>
+      <view class="info-row info-row-address">
+        <text class="info-label">门牌号</text>
+        <view class="address-field">
+          <input
+            class="info-input info-input-address"
+            placeholder="楼栋、单元、房号（选填）"
+            value="{{houseNumber}}"
+            data-key="houseNumber"
+            bindinput="onInput"
+          />
+        </view>
+      </view>
+    </view>
+
+    <view class="btn-wrap">
+      <button
+        class="submit"
+        hover-class="submit--active"
+        hover-stay-time="80"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+        bindtap="onSubmit"
+      >创建并进入工作台</button>
+    </view>
   </view>
-  <view class="field">
-    <text class="label">联系人</text>
-    <input value="{{contactName}}" data-key="contactName" bindinput="onInput" placeholder="选填" />
-  </view>
-  <view class="field">
-    <text class="label">联系电话</text>
-    <input value="{{contactPhone}}" data-key="contactPhone" bindinput="onInput" placeholder="选填" />
-  </view>
-  <view class="field">
-    <text class="label">地址</text>
-    <input value="{{address}}" data-key="address" bindinput="onInput" placeholder="选填" />
-  </view>
-  <button class="submit" loading="{{submitting}}" bindtap="onSubmit">创建并进入工作台</button>
+  <view class="page-foot"></view>
 </view>

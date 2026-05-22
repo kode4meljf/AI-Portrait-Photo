@@ -39,6 +39,10 @@
   line-height: 1;
 }
 
+.edit-required {
+  color: #e85d75;
+}
+
 .edit-avatar-hint {
   width: 100%;
   margin-top: 12rpx;

@@ -1,5 +1,5 @@
 const cloud = require('wx-server-sdk')
-const { isValidStoreId, generateCustomerId } = require('./storeId')
+const { isValidStoreId } = require('./storeId')
 const { getPhoneFromCode } = require('./phone')
 const { buildCheckinQrPayload } = require('./qrPayload')
 
@@ -8,12 +8,60 @@ const db = cloud.database()
 
 const INVITES = 'customer_register_invites'
 
-async function getStoreName(storeId) {
+async function getStoreDoc(storeId) {
   try {
     const res = await db.collection('stores').doc(storeId).get()
-    return (res.data && res.data.name) || storeId
+    return res.data || null
   } catch (e) {
-    return storeId
+    return null
+  }
+}
+
+async function getStoreName(storeId) {
+  const store = await getStoreDoc(storeId)
+  return (store && store.name) || storeId
+}
+
+function maskPhone(phone) {
+  const p = String(phone || '')
+    .trim()
+    .replace(/\s/g, '')
+  if (!p) return ''
+  if (p.length >= 11) return `${p.slice(0, 3)}****${p.slice(-4)}`
+  if (p.length >= 7) return `${p.slice(0, 2)}****${p.slice(-2)}`
+  return '****'
+}
+
+/** 联系人脱敏：单字保留；两字「张*」；三字及以上首尾保留 */
+function maskContactName(name) {
+  const n = (name || '').trim()
+  if (!n) return ''
+  if (n.length === 1) return n
+  if (n.length === 2) return `${n[0]}*`
+  return `${n[0]}${'*'.repeat(n.length - 2)}${n[n.length - 1]}`
+}
+
+function formatStoreAddress(store) {
+  if (!store) return ''
+  const parts = [(store.addressName || '').trim(), (store.addressDetail || '').trim()]
+  const joined = parts.filter(Boolean).join(' ')
+  if (joined) return joined
+  return ((store.mapAddress || store.address) || '').trim()
+}
+
+function buildStoreRegisterPreview(store, storeId) {
+  const storeName = ((store && store.name) || '').trim() || storeId
+  const contactRaw = (store && store.contactName) || ''
+  const phoneMask = maskPhone(store && store.contactPhone)
+  let contactDisplay = maskContactName(contactRaw)
+  if (!contactDisplay && phoneMask) contactDisplay = phoneMask
+  else if (contactDisplay && phoneMask) contactDisplay = `${contactDisplay} · ${phoneMask}`
+  const address = formatStoreAddress(store)
+
+  return {
+    storeName,
+    contactName: contactDisplay || '暂未填写',
+    address: address || '暂未填写'
   }
 }
 
@@ -34,13 +82,14 @@ async function getCustomerByOpenId(openid) {
 function formatCustomer(row) {
   return {
     _id: row._id,
-    customerId: row.customerId,
     storeId: row.storeId,
     nickName: row.nickName || '',
     wxNickName: row.wxNickName || '',
     phone: row.phone || '',
     avatarUrl: row.avatarUrl || '',
     totalCheckins: row.totalCheckins || 0,
+    equityAlbum: row.equityAlbum != null ? row.equityAlbum : 0,
+    equityFrame: row.equityFrame != null ? row.equityFrame : 0,
     qrPayload: buildCheckinQrPayload(row)
   }
 }
@@ -58,11 +107,18 @@ async function loadInvite(token) {
   return invite
 }
 
-/** 注册页预览门店（无需登录） */
+/** 注册页预览门店（无需登录；联系人/电话脱敏） */
 async function registerPreview(payload) {
   const invite = await loadInvite(payload.token)
-  const storeName = await getStoreName(invite.storeId)
-  return { storeId: invite.storeId, storeName, expireAt: invite.expireAt || null }
+  const store = await getStoreDoc(invite.storeId)
+  const preview = buildStoreRegisterPreview(store, invite.storeId)
+  return {
+    storeId: invite.storeId,
+    storeName: preview.storeName,
+    contactName: preview.contactName,
+    address: preview.address,
+    expireAt: invite.expireAt || null
+  }
 }
 
 /** 完成注册：必授权手机号，绑定邀请门店 */
@@ -131,10 +187,8 @@ async function registerComplete(openid, payload) {
     return formatCustomer(latest.data)
   }
 
-  const customerId = generateCustomerId()
   const addRes = await db.collection('customers').add({
     data: {
-      customerId,
       storeId: targetStoreId,
       source: 'link_register',
       nickName: '',
@@ -188,7 +242,18 @@ async function updateMyProfile(openid, payload) {
   if (payload.avatarUrl !== undefined) data.avatarUrl = (payload.avatarUrl || '').trim()
 
   if (payload.phoneCode) {
-    data.phone = await getPhoneFromCode(payload.phoneCode)
+    const phone = await getPhoneFromCode(payload.phoneCode)
+    if (phone !== (row.phone || '').trim()) {
+      const dup = await db
+        .collection('customers')
+        .where({ storeId: row.storeId, phone })
+        .limit(1)
+        .get()
+      if (dup.data.length && dup.data[0]._id !== row._id) {
+        throw new Error('该手机号已被其他客户使用')
+      }
+    }
+    data.phone = phone
   }
 
   if (Object.keys(data).length <= 1) throw new Error('没有可更新内容')

@@ -4,7 +4,7 @@
       <view class="edit-avatar edit-avatar--initial" style="background-color: {{avatarTint}};">
         <text class="edit-avatar-initial">{{avatarInitial}}</text>
       </view>
-      <text class="edit-avatar-hint">保存后生成客户码；客户出示码打卡后，头像与微信昵称将自动同步</text>
+      <text class="edit-avatar-hint">手机号必填；保存后生成客户码。客户注册授权手机后，打卡码将含手机号</text>
     </view>
 
     <view class="edit-form">
@@ -20,7 +20,7 @@
         />
       </view>
       <view class="edit-field">
-        <text class="edit-label">手机号</text>
+        <text class="edit-label">手机号 <text class="edit-required">*</text></text>
         <input
           class="edit-input"
           type="number"
@@ -74,7 +74,7 @@
         <text wx:if="{{form.phone}}" class="success-phone">{{form.phone}}</text>
         <view class="success-id-row">
           <text class="success-id-label">客户 ID</text>
-          <text class="success-id-value">{{customerId}}</text>
+          <text class="success-id-value">{{customerDocId}}</text>
         </view>
         <view
           class="copy-btn"

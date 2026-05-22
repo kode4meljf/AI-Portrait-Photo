@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "加入门店"
+  "navigationBarTitleText": "加入门店",
+  "navigationBarBackgroundColor": "#fff9f5",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#faf6f0"
 }

@@ -9,18 +9,16 @@
 | 概念 | 格式 / 位置 | 说明 |
 |------|-------------|------|
 | 门店 ID | `store_` + 8–32 位字母数字 | **仅作为 `stores` 文档的 `_id`**，正文一般不重复写 `storeId` 字段 |
-| 顾客文档 ID | 云数据库自动 `_id` | 订单、批次、照片等关联顾客时用 **`customers._id`** |
-| 顾客业务码 | `customerId` 字段（如 `C…`） | 仅存在于 **`customers` 集合**，用于打卡二维码、扫码识别 |
+| 顾客文档 ID | 云数据库自动 `_id` | **唯一顾客标识**：打卡码、扫码、订单、批次、照片、打卡记录均用 **`customers._id`** |
 | 风格业务 ID | `style_templates.id`（如 `S01`） | AI 任务 `ai_tasks.templateId`、提交任务时引用 |
 | 相框业务 ID | `frame_templates.id` | 摆台订单 `frame_orders.frameTemplateId` |
 
-**易混点：`customerId` 在不同集合含义不同**
+**关联字段命名**
 
-| 集合 | `customerId` 含义 |
-|------|-------------------|
-| `customers` | 顾客业务码（打卡码），非文档 `_id` |
-| `batches` / `photos` / `frame_orders` | 指向 `customers` 文档的 **`_id`** |
-| `checkins` | 通常为顾客**业务码**；同时建议写 `customerDocId` = `customers._id` |
+| 集合 | 字段 | 含义 |
+|------|------|------|
+| `batches` / `photos` / `frame_orders` | `customerId` | 指向 `customers._id`（历史字段名，值为文档 ID） |
+| `checkins` | `customerDocId` | 指向 `customers._id` |
 
 ---
 
@@ -91,7 +89,9 @@
 | `memberOpenId` | string | 是 | 成员微信 openId |
 | `role` | string | 是 | `owner` 店长 / `staff` 店员 |
 | `status` | string | 是 | `active` 已激活 / `pending` 待审核 / `disabled` 已禁用 |
-| `nickName` | string | 否 | 成员昵称（申请时填写） |
+| `nickName` | string | 否 | 成员称呼（店员申请时填写，店长不可改） |
+| `phone` | string | 否 | 联系电话（申请时可选授权；店长可补录/修改） |
+| `remark` | string | 否 | 店长备注（仅店长可见、可编辑；移出员工时清空） |
 | `createTime` | number | 是 | 创建时间戳 |
 | `updateTime` | number | 否 | 更新时间戳 |
 | `approvedAt` | number | 否 | 审核通过时间 |
@@ -131,13 +131,12 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `_id` | string | 自动 | 文档 ID；**批次/订单关联用此字段** |
-| `customerId` | string | 是 | 顾客业务码（打卡/二维码） |
 | `storeId` | string | 是 | 所属门店 `store_xxx` |
 | `wxOpenId` | string | 否 | 微信 openId；链接注册、打卡绑定 |
 | `wxNickName` | string | 否 | 微信昵称；**注册可写入**；**每次打卡**由扫码 payload 更新；小程序内不可手改 |
 | `nickName` | string | 否 | **仅门店**称呼（店长备注）；链接注册时为空，顾客端不展示 |
 | `avatarUrl` | string | 否 | 头像云文件 ID |
-| `phone` | string | 否 | 手机号；链接注册必填 |
+| `phone` | string | 是 | 11 位手机号；门店建档必填；链接注册须微信授权 |
 | `source` | string | 否 | 来源：`store_create` / `link_register` / `self_register` 等 |
 | `remark` | string | 否 | 门店备注 |
 | `equityAlbum` | number | 否 | 相册权益次数 |
@@ -162,14 +161,16 @@
 3. **打卡前同步** `profile.syncWx`：顾客首页点击同步微信昵称（刷新打卡码内容）  
 4. **门店建档** `createByStore`：不写 `wxNickName`，待客户打卡同步  
 
-打卡码 JSON 示例：`{"type":"customer_checkin","customerId":"C…","wxNickName":"…","avatarUrl":"…"}`
+打卡码 JSON 示例：`{"type":"customer_checkin","customerDocId":"<customers._id>","phone":"13800138000","wxNickName":"…","avatarUrl":"…"}`（无有效 `phone` 不生成打卡码）
 
 **业务约束**
 
 - 同一 `wxOpenId` 只能绑定一个 `storeId`
 - 已是 `store_members` 的微信不能走顾客注册
+- **手机号归属**：`wxOpenId` 为空（未认领）时门店可改 `phone`；已有 `wxOpenId` 时仅顾客端 `getPhoneNumber` 可改，`nickName`/`remark` 仍由门店维护
+- **打卡**：已认领客户校验码内 `wxOpenId` 与档案一致；不以旧码覆盖库内 `phone`；码内手机号与库不一致时提示顾客刷新顾客码
 
-**建议索引**：`wxOpenId`；`storeId` + `phone`；`customerId`；`storeId` + `createTime`
+**建议索引**：`wxOpenId`；`storeId` + `phone`；`storeId` + `createTime`
 
 ---
 
@@ -200,8 +201,7 @@
 |------|------|------|------|
 | `_id` | string | 自动 | 文档 ID |
 | `storeId` | string | 是 | 门店 ID |
-| `customerId` | string | 是 | 顾客**业务码**（`customers.customerId`） |
-| `customerDocId` | string | 否 | 顾客文档 `_id`（推荐同时写入） |
+| `customerDocId` | string | 是 | 顾客文档 `_id`（`customers._id`） |
 | `checkinDate` | string | 否 | 打卡日期 `YYYY-MM-DD`（部分统计按此字段） |
 | `operatorOpenId` | string | 否 | 操作店员 openId |
 | `createTime` | number | 是 | 打卡时间戳 |
@@ -424,7 +424,6 @@ erDiagram
 | `customer_register_invites` | `token` | 注册链接 |
 | `customers` | `wxOpenId` | 注册/登录去重 |
 | `customers` | `storeId`, `phone` | 门店内查重 |
-| `customers` | `customerId` | 扫码打卡 |
 | `checkins` | `storeId`, `checkinDate` | 打卡统计 |
 | `batches` | `storeId`, `createTime` | 云相册列表 |
 | `photos` | `batchId` | 批次照片 |
@@ -441,6 +440,7 @@ erDiagram
 |--------|----------------|----------|
 | `storeMember` | `store.create` / `store.get` / `store.update` | `stores`, `store_members` |
 | `storeMember` | `invite.*` / `member.*` | `store_invites`, `store_members` |
+| `storeMember` | `member.updateProfile` | `store_members`（`remark` / `phone`，仅店长） |
 | `storeMember` | `customerRegisterInvite.create` | `customer_register_invites` |
 | `storeMember` | `batch.linkCustomer` | `batches`, `photos`, `customers` |
 | `storeMember` | `account.resolve` | `store_members`, `customers` |
