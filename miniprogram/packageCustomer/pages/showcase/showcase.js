@@ -2,6 +2,8 @@ const { ensureCustomerPage } = require('../../../utils/customerGuard')
 const { fetchStyleTemplates } = require('../../../config/styles')
 
 Page({
+  behaviors: [require('../../../behaviors/customerPageNav')],
+
   data: { templates: [] },
 
   async onShow() {

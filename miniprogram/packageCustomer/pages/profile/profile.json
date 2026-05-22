@@ -1,5 +1,9 @@
 {
   "navigationBarTitleText": "我的",
+  "navigationBarBackgroundColor": "#1a1a2e",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#eef0f4",
+  "homeButton": false,
   "usingComponents": {
     "customer-nav": "/components/customer-nav/customer-nav"
   }

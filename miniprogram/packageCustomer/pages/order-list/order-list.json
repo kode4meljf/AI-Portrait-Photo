@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "我的订单",
+  "homeButton": false,
   "usingComponents": {
     "customer-nav": "/components/customer-nav/customer-nav"
   }

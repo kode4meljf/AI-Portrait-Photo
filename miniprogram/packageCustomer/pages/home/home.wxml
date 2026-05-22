@@ -20,20 +20,24 @@
 
   <view class="qr-section">
     <view class="qr-card">
-      <view wx:if="{{checkinQrReady && checkinQrUrl}}" class="qr-wrap">
+      <view wx:if="{{checkinQrReady && checkinQrFileId}}" class="qr-wrap">
         <image
           class="qr-img"
-          src="{{checkinQrUrl}}"
+          src="{{checkinQrFileId}}"
           mode="aspectFit"
           show-menu-by-longpress="{{true}}"
         />
       </view>
+      <view wx:elif="{{checkinQrReady}}" class="qr-placeholder">
+        <text class="qr-placeholder-text">…</text>
+      </view>
       <view wx:else class="qr-placeholder">
         <text class="qr-placeholder-text">?</text>
       </view>
+      <text wx:if="{{checkinQrReady}}" class="qr-tip">长按二维码可保存到相册</text>
       <text class="qr-label">到店出示 · 扫码打卡</text>
-      <text wx:if="{{checkinQrReady && checkinQrUrl}}" class="qr-tip">长按二维码可保存到相册</text>
-      <text wx:if="{{!checkinQrReady}}" class="code-warn">未检测到有效手机号，无法生成打卡码，请联系门店</text>
+      <text wx:if="{{checkinQrReady && !checkinQrFileId && codeWarn}}" class="code-warn">{{codeWarn}}</text>
+      <text wx:elif="{{!checkinQrReady}}" class="code-warn">{{codeWarn || '未检测到有效手机号，无法生成打卡码，请到「我的」重新授权手机号或联系门店'}}</text>
     </view>
   </view>
 

@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk')
 const { isValidStoreId } = require('./storeId')
 const { getPhoneFromCode } = require('./phone')
 const { buildCheckinQrPayload } = require('./qrPayload')
+const { ensureCheckinQr } = require('./checkinQr')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -90,8 +91,16 @@ function formatCustomer(row) {
     totalCheckins: row.totalCheckins || 0,
     equityAlbum: row.equityAlbum != null ? row.equityAlbum : 0,
     equityFrame: row.equityFrame != null ? row.equityFrame : 0,
+    checkinQrFileId: row.checkinQrFileId || '',
+    checkinQrPayloadHash: row.checkinQrPayloadHash || '',
     qrPayload: buildCheckinQrPayload(row)
   }
+}
+
+async function finalizeCustomerProfile(row, openid) {
+  const ensured = await ensureCheckinQr(row, { openId: openid })
+  const storeName = await getStoreName(ensured.storeId)
+  return { ...formatCustomer(ensured), storeName }
 }
 
 async function loadInvite(token) {
@@ -162,7 +171,7 @@ async function registerComplete(openid, payload) {
 
     await db.collection('customers').doc(existing._id).update({ data: patch })
     const latest = await db.collection('customers').doc(existing._id).get()
-    return formatCustomer(latest.data)
+    return finalizeCustomerProfile(latest.data, openid)
   }
 
   const dupPhone = await db
@@ -184,7 +193,7 @@ async function registerComplete(openid, payload) {
     if (avatarUrl) patch.avatarUrl = avatarUrl
     await db.collection('customers').doc(row._id).update({ data: patch })
     const latest = await db.collection('customers').doc(row._id).get()
-    return formatCustomer(latest.data)
+    return finalizeCustomerProfile(latest.data, openid)
   }
 
   const addRes = await db.collection('customers').add({
@@ -207,15 +216,14 @@ async function registerComplete(openid, payload) {
   })
 
   const created = await db.collection('customers').doc(addRes._id).get()
-  return formatCustomer(created.data)
+  return finalizeCustomerProfile(created.data, openid)
 }
 
 async function getMyProfile(openid) {
   const row = await getCustomerByOpenId(openid)
   if (!row || !row.storeId) throw new Error('您尚未注册为顾客')
   if (!(row.phone || '').trim()) throw new Error('请完成手机号授权')
-  const storeName = await getStoreName(row.storeId)
-  return { ...formatCustomer(row), storeName }
+  return finalizeCustomerProfile(row, openid)
 }
 
 /** 顾客端：仅同步微信昵称/头像（注册、到店打卡前；不可改 nickName） */
@@ -231,7 +239,8 @@ async function syncWxProfile(openid, payload) {
   if (Object.keys(data).length <= 1) throw new Error('请提供微信昵称或头像')
 
   await db.collection('customers').doc(row._id).update({ data })
-  return getMyProfile(openid)
+  const latest = await db.collection('customers').doc(row._id).get()
+  return finalizeCustomerProfile(latest.data, openid)
 }
 
 async function updateMyProfile(openid, payload) {
@@ -240,6 +249,14 @@ async function updateMyProfile(openid, payload) {
 
   const data = { updateTime: Date.now() }
   if (payload.avatarUrl !== undefined) data.avatarUrl = (payload.avatarUrl || '').trim()
+
+  if (payload.wxNickName !== undefined) {
+    const wxNickName = String(payload.wxNickName || '').trim()
+    if (wxNickName.length < 2 || wxNickName.length > 20) {
+      throw new Error('昵称需为 2～20 字')
+    }
+    data.wxNickName = wxNickName
+  }
 
   if (payload.phoneCode) {
     const phone = await getPhoneFromCode(payload.phoneCode)
@@ -258,7 +275,8 @@ async function updateMyProfile(openid, payload) {
 
   if (Object.keys(data).length <= 1) throw new Error('没有可更新内容')
   await db.collection('customers').doc(row._id).update({ data })
-  return getMyProfile(openid)
+  const latest = await db.collection('customers').doc(row._id).get()
+  return finalizeCustomerProfile(latest.data, openid)
 }
 
 async function listMyOrders(openid) {

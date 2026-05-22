@@ -2,6 +2,8 @@ const { ensureCustomerPage } = require('../../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
 
 Page({
+  behaviors: [require('../../../behaviors/customerPageNav')],
+
   data: { orders: [] },
 
   async onShow() {

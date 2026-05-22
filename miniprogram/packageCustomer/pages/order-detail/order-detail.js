@@ -4,6 +4,8 @@ const { callCustomer } = require('../../../utils/customerApi')
 const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../../utils/frameOrderDetailView')
 
 Page({
+  behaviors: [require('../../../behaviors/customerPageNav')],
+
   data: {
     orderId: '',
     scrollIntoView: '',

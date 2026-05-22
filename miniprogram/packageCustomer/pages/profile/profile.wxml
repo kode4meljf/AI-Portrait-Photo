@@ -1,26 +1,72 @@
 <view class="page">
-  <view class="card profile-head">
-    <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-      <image wx:if="{{profile.avatarUrl}}" class="avatar" src="{{profile.avatarUrl}}" mode="aspectFill" />
-      <view wx:else class="avatar placeholder">我</view>
-    </button>
-    <view class="meta">
-      <text class="name">{{wxNickName}}</text>
-      <text class="store">所属 · {{storeName}}</text>
+  <view class="navy-top">
+    <view class="top-row">
+      <view class="avatar-shell">
+        <image
+          wx:if="{{profile.avatarUrl}}"
+          class="avatar-img"
+          src="{{profile.avatarUrl}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="avatar-img avatar-placeholder">{{avatarInitial}}</view>
+        <button
+          class="avatar-hit"
+          open-type="chooseAvatar"
+          bind:chooseavatar="onChooseAvatar"
+        />
+      </view>
+      <view class="top-main">
+        <view class="top-name-row">
+          <view class="name-tap" bindtap="onOpenNickModal">
+            <text class="name-text">{{wxNickName}}</text>
+          </view>
+          <text class="role-tag">顾客</text>
+        </view>
+        <text class="tap-hint" bindtap="onOpenNickModal">点击修改昵称</text>
+        <view class="store-chip">
+          <text class="chip-prefix">所属·</text>
+          <text class="chip-name">{{storeName}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="qr-strip" bindtap="onGoHome">
+      <text class="qr-strip-t">到店出示打卡码</text>
+      <text class="qr-strip-a">去首页 ›</text>
     </view>
   </view>
 
-  <view class="card form">
-    <view class="row row-readonly">
-      <text class="label">微信昵称</text>
-      <text class="readonly-val">{{wxNickName}}</text>
-    </view>
-    <text class="readonly-hint">由微信同步，不可修改；到店打卡后会自动更新</text>
-    <view class="row phone-row">
-      <text class="label">手机号</text>
-      <text class="phone-val">{{phone || '未绑定'}}</text>
+  <view class="white-card">
+    <view class="phone-row">
+      <text class="row-k">手机号</text>
+      <text class="row-v">{{phoneMasked}}</text>
       <button class="link-btn" open-type="getPhoneNumber" bindgetphonenumber="onChangePhone">更换</button>
     </view>
   </view>
 </view>
+
+<view
+  wx:if="{{showNickModal}}"
+  class="nick-mask"
+  catchtouchmove="preventMove"
+  bindtap="onCloseNickModal"
+>
+  <view class="nick-dialog" catchtap="preventMove">
+    <text class="dialog-title">修改昵称</text>
+    <text class="dialog-label">昵称</text>
+    <input
+      class="dialog-input"
+      value="{{nickDraft}}"
+      placeholder="请输入昵称"
+      maxlength="20"
+      focus="{{showNickModal}}"
+      bindinput="onNickDraftInput"
+    />
+    <text class="dialog-hint">2～20 字，保存后顶区名称同步更新</text>
+    <view class="dialog-btns">
+      <view class="dialog-cancel" bindtap="onCloseNickModal">取消</view>
+      <view class="dialog-ok" bindtap="onConfirmNick">确定</view>
+    </view>
+  </view>
+</view>
+
 <customer-nav current="profile" />

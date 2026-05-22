@@ -14,4 +14,3 @@
   </view>
   <view wx:if="{{!templates.length}}" class="empty">暂无风格展示</view>
 </view>
-<customer-nav current="showcase" />

@@ -1,19 +1,30 @@
 const { applySessionToApp } = require('./storeSession')
+const { isDevCustomerPreview } = require('./devCustomerPreview')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const LAUNCH = '/pages/launch/launch'
 
+function hideWechatHomeButton() {
+  if (typeof wx.hideHomeButton === 'function') {
+    wx.hideHomeButton()
+  }
+}
+
 async function ensureCustomerPage(pageInstance) {
+  hideWechatHomeButton()
   const app = getApp()
   if (!app.globalData.openId) {
     await app.ensureLogin()
   }
   const account = await applySessionToApp(app)
+  const devPreview = isDevCustomerPreview()
   if (account.accountKind === 'store' && account.canUseStore) {
+    if (devPreview) return true
     wx.reLaunch({ url: '/pages/index/index' })
     return false
   }
   if (account.accountKind !== 'customer') {
+    if (devPreview) return true
     wx.reLaunch({ url: LAUNCH })
     return false
   }

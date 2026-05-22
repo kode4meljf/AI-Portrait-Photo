@@ -6,7 +6,6 @@
     data-path="{{item.path}}"
     bindtap="onTap"
   >
-    <text class="nav-icon">{{item.icon}}</text>
     <text class="nav-text">{{item.text}}</text>
   </view>
 </view>

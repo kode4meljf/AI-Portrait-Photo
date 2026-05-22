@@ -5,16 +5,41 @@
     "miniprogram": {
       "list": [
         {
+          "name": "客户我的页面",
+          "pathName": "packageCustomer/pages/profile/profile",
+          "query": "devPreview=1",
+          "scene": null,
+          "launchMode": "default"
+        },
+        {
+          "name": "客户首页",
+          "pathName": "packageCustomer/pages/home/home",
+          "query": "devPreview=1",
+          "launchMode": "default",
+          "scene": null,
+          "partialCompile": {
+            "enabled": true,
+            "pages": []
+          }
+        },
+        {
           "name": "顾客注册",
           "pathName": "pages/customer-register/register",
           "query": "",
-          "scene": null,
-          "launchMode": "default"
+          "launchMode": "default",
+          "scene": null
         },
         {
           "name": "客户端",
           "pathName": "pages/customer-register/register",
           "query": "ecllp0ey4zxg6g8o",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
+          "name": "顾客首页-开发预览",
+          "pathName": "packageCustomer/pages/home/home",
+          "query": "devPreview=1",
           "launchMode": "default",
           "scene": null
         }

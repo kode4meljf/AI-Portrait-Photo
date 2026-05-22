@@ -1,5 +1,9 @@
 {
-  "navigationBarTitleText": "AI 写真展",
+  "navigationBarTitleText": "风格样品",
+  "navigationBarBackgroundColor": "#1a1a2e",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f5f5f5",
+  "homeButton": false,
   "usingComponents": {
     "customer-nav": "/components/customer-nav/customer-nav"
   }

@@ -2,6 +2,8 @@ const app = getApp()
 const { ensureCustomerPage } = require('../../../utils/customerGuard')
 
 Page({
+  behaviors: [require('../../../behaviors/customerPageNav')],
+
   data: { batches: [] },
 
   async onShow() {

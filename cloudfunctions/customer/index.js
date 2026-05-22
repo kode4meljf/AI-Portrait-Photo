@@ -37,7 +37,7 @@ exports.main = async (event) => {
         {
           const row = await register.getCustomerByOpenId(openid)
           if (!row || !row.storeId) throw new Error('您尚未注册为顾客')
-          data = await checkinQrImage(row)
+          data = await checkinQrImage(row, { openId: openid })
         }
         break
       case 'orders.list':
