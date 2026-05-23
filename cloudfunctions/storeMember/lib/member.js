@@ -381,7 +381,8 @@ async function storeCreate(openid, payload) {
 
   const storeId = generateStoreId()
   const now = Date.now()
-  const name = normalizeStoreName(payload.name || 'AI写真馆')
+  const name = normalizeStoreName(payload.name)
+  if (!name) throw new Error('请填写门店名称')
   const contactName = (payload.contactName || '').trim()
   const contactPhone = normalizeMobilePhone(payload.contactPhone)
   const mapAddress = (payload.mapAddress || '').trim() || (payload.address || '').trim()

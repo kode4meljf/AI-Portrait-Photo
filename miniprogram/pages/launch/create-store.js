@@ -5,7 +5,7 @@ const { auditPageLayout } = require('../../utils/pageLayoutGuard')
 
 Page({
   data: {
-    name: 'AI写真馆',
+    name: '',
     contactName: '',
     contactPhone: '',
     address: '',

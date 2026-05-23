@@ -6,7 +6,7 @@
         <text class="section-title">门店信息</text>
       </view>
       <view class="info-row">
-        <text class="info-label">门店名称</text>
+        <text class="info-label">门店名称<text class="required">*</text></text>
         <input
           class="info-input"
           placeholder="请输入门店名称"
