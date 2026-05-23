@@ -89,7 +89,8 @@ Page({
     await app.ensureLogin();
     await applySessionToApp(app);
     if (!isValidStoreId(app.globalData.storeId)) {
-      wx.reLaunch({ url: '/pages/launch/launch' });
+      const { reLaunchLaunch } = require('../../utils/sessionDirty');
+      reLaunchLaunch();
       return false;
     }
     return true;

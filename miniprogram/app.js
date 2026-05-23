@@ -26,7 +26,11 @@ App({
     /** 云相册：从客户列表返回后展示关联成功提示 */
     pendingGalleryToast: '',
     /** 云相册：刚关联的批次与客户（列表即时展示，刷新后以库为准） */
-    galleryBatchLinked: null
+    galleryBatchLinked: null,
+    /** launch 页用户已主动关闭的门店成员结果（未通过/已移出），按 storeId 匹配 */
+    launchDismissStoreId: null,
+    /** launch 网关：true 时 onShow 需重新 account.resolve */
+    sessionDirty: true
   },
 
   async onLaunch() {

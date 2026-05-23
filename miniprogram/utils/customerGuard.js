@@ -1,4 +1,5 @@
 const { applySessionToApp } = require('./storeSession')
+const { reLaunchLaunch } = require('./sessionDirty')
 const { isDevCustomerPreview } = require('./devCustomerPreview')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
@@ -25,7 +26,7 @@ async function ensureCustomerPage(pageInstance) {
   }
   if (account.accountKind !== 'customer') {
     if (devPreview) return true
-    wx.reLaunch({ url: LAUNCH })
+    reLaunchLaunch()
     return false
   }
   return true

@@ -9,7 +9,7 @@
       <view class="pending-badge">审核中</view>
       <text class="pending-title">等待店长通过</text>
       <text class="pending-desc">您已申请加入「{{storeName || '门店'}}」，请店长在「员工管理」中审核通过。</text>
-      <button class="btn-gold" bindtap="bootstrap">刷新状态</button>
+      <button class="btn-gold" bindtap="onForceBootstrap">刷新状态</button>
     </view>
 
     <view wx:elif="{{status === 'rejected'}}" class="state-block">

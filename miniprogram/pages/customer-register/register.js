@@ -1,6 +1,7 @@
 const app = getApp()
 const { callCustomer } = require('../../utils/customerApi')
 const { applySessionToApp } = require('../../utils/storeSession')
+const { markSessionDirty } = require('../../utils/sessionDirty')
 const { parseCustomerRegisterFromScan } = require('../../utils/inviteCode')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
@@ -160,6 +161,7 @@ Page({
       })
 
       await applySessionToApp(app)
+      markSessionDirty(app)
       wx.showToast({ title: '注册成功', icon: 'success' })
       setTimeout(() => {
         wx.reLaunch({ url: CUSTOMER_HOME })

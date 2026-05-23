@@ -1,4 +1,5 @@
 const { callStoreMember, applySessionToApp } = require('../../utils/storeSession')
+const { markSessionDirty } = require('../../utils/sessionDirty')
 const { auditPageLayout } = require('../../utils/pageLayoutGuard')
 
 Page({
@@ -160,6 +161,7 @@ Page({
       }
 
       const account = await applySessionToApp(app)
+      markSessionDirty(app)
       if (!account.canUseStore) {
         throw new Error('门店已创建，但成员状态异常，请返回上一页刷新')
       }

@@ -76,8 +76,8 @@ Page({
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
-        wx.reLaunch({
-          url: '/pages/launch/launch',
+        const { reLaunchLaunch } = require('../../utils/sessionDirty');
+        reLaunchLaunch({
           complete: () => {
             this._relaunching = false;
           }

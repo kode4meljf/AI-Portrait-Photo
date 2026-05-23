@@ -1,4 +1,5 @@
 const { callStoreMember, applySessionToApp } = require('../../utils/storeSession')
+const { markSessionDirty, reLaunchLaunch } = require('../../utils/sessionDirty')
 const { parseInviteFromScan } = require('../../utils/inviteCode')
 
 function formatExpireText(expireAt) {
@@ -172,7 +173,9 @@ Page({
       }
       const res = await callStoreMember('invite.accept', payload)
       const app = getApp()
+      app.globalData.launchDismissStoreId = null
       await applySessionToApp(app)
+      markSessionDirty(app)
       this.setData({ previewVisible: false })
 
       if (res.status === 'pending') {
@@ -180,7 +183,7 @@ Page({
           title: '已提交申请',
           content: `已向「${this.data.preview.storeName || '门店'}」提交申请，请等待店长在「员工管理」中审核通过。`,
           showCancel: false,
-          success: () => wx.reLaunch({ url: '/pages/launch/launch' })
+          success: () => reLaunchLaunch()
         })
         return
       }

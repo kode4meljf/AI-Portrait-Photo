@@ -1,9 +1,15 @@
 const { applySessionToApp, isValidStoreId } = require('../../utils/storeSession')
+const { clearSessionDirty, isSessionDirty } = require('../../utils/sessionDirty')
 
 const STORE_HOME = '/pages/index/index'
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const REGISTER_PAGE = '/pages/customer-register/register'
-const ENTRY = '/pages/launch/launch'
+
+function shouldShowEntryInsteadOfDisabled(app, account) {
+  const dismissedStoreId = app.globalData.launchDismissStoreId
+  if (!dismissedStoreId || !account || account.status !== 'disabled') return false
+  return dismissedStoreId === account.storeId
+}
 
 Page({
   data: {
@@ -21,14 +27,35 @@ Page({
   },
 
   onShow() {
+    if (this.data.registerToken) {
+      this.bootstrap()
+      return
+    }
+    const app = getApp()
+    if (!isSessionDirty(app) && this.data.status) {
+      return
+    }
     this.bootstrap()
   },
 
-  async bootstrap() {
+  onForceBootstrap() {
+    this.bootstrap({ force: true })
+  },
+
+  async bootstrap(options = {}) {
+    const force = !!(options && options.force)
     if (this._bootstrapping) return
-    this._bootstrapping = true
+
     const app = getApp()
-    this.setData({ loading: true })
+    if (!force && !isSessionDirty(app) && this.data.status) {
+      return
+    }
+
+    this._bootstrapping = true
+    const showFullLoading = force || isSessionDirty(app) || !this.data.status
+    if (showFullLoading) {
+      this.setData({ loading: true })
+    }
 
     try {
       if (!app.globalData.openId) {
@@ -47,46 +74,65 @@ Page({
 
       if (account.accountKind === 'store') {
         if (account.canUseStore && isValidStoreId(account.storeId)) {
+          clearSessionDirty(app)
           wx.reLaunch({ url: STORE_HOME })
           return
         }
         if (account.status === 'pending') {
+          app.globalData.launchDismissStoreId = null
           this.setData({
             loading: false,
             status: 'pending',
             storeName: account.storeName || ''
           })
+          clearSessionDirty(app)
           return
         }
         if (account.status === 'disabled' && account.approvedAt) {
+          if (shouldShowEntryInsteadOfDisabled(app, account)) {
+            this.setData({ loading: false, status: 'entry', storeName: '' })
+            clearSessionDirty(app)
+            return
+          }
           this.setData({
             loading: false,
             status: 'removed',
             storeName: account.storeName || ''
           })
+          clearSessionDirty(app)
           return
         }
         if (account.status === 'disabled') {
+          if (shouldShowEntryInsteadOfDisabled(app, account)) {
+            this.setData({ loading: false, status: 'entry', storeName: '' })
+            clearSessionDirty(app)
+            return
+          }
           this.setData({
             loading: false,
             status: 'rejected',
             storeName: account.storeName || ''
           })
+          clearSessionDirty(app)
           return
         }
         this.setData({ loading: false, status: 'entry' })
+        clearSessionDirty(app)
         return
       }
 
       if (account.accountKind === 'customer') {
+        clearSessionDirty(app)
         wx.reLaunch({ url: CUSTOMER_HOME })
         return
       }
 
       this.setData({ loading: false, status: 'entry' })
+      clearSessionDirty(app)
     } catch (e) {
       console.error('[launch]', e)
       this.setData({ loading: false, status: 'entry' })
+      clearSessionDirty(app)
     } finally {
       this._bootstrapping = false
     }
@@ -101,7 +147,12 @@ Page({
   },
 
   showEntry() {
-    this.setData({ status: 'entry', storeName: '' })
+    const app = getApp()
+    const membership = app.globalData.membership
+    if (membership && membership.storeId && membership.status === 'disabled') {
+      app.globalData.launchDismissStoreId = membership.storeId
+    }
+    this.setData({ loading: false, status: 'entry', storeName: '' })
   },
 
   goCustomerRegisterHint() {
