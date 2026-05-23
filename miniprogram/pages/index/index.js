@@ -11,7 +11,7 @@ const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { getProfileCollection } = require('../../utils/account');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
-const { syncStoreTabBar } = require('../../utils/storeTabBar');
+const { syncStoreTabBar, setStoreTabBarHidden } = require('../../utils/storeTabBar');
 
 function linkedCustomerView(customer) {
   if (!customer) {
@@ -35,26 +35,6 @@ function formatNow() {
   const d = new Date();
   const p = (n) => `${n}`.padStart(2, '0');
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
-/** 弹层期间隐藏 TabBar；关闭 animation 降低 DevTools routeDone/webviewId 报错概率 */
-let tabBarHiddenForOverlay = false;
-
-function hideTabBarForOverlay() {
-  if (tabBarHiddenForOverlay) return;
-  tabBarHiddenForOverlay = true;
-  wx.hideTabBar({
-    animation: false,
-    fail: () => {
-      tabBarHiddenForOverlay = false;
-    }
-  });
-}
-
-function showTabBarAfterOverlay() {
-  if (!tabBarHiddenForOverlay) return;
-  tabBarHiddenForOverlay = false;
-  wx.showTabBar({ animation: false, fail: () => {} });
 }
 
 Page({
@@ -106,7 +86,7 @@ Page({
       return;
     }
     if (!this.data.pickerVisible) {
-      showTabBarAfterOverlay();
+      setStoreTabBarHidden(this, false);
     }
     this.loadTodayVisitCount();
     if (app.globalData.selectedCustomerId !== this.data.selectedCustomer?._id) {
@@ -120,14 +100,14 @@ Page({
       this.pollingTimer = null;
     }
     if (this.data.pickerVisible) {
-      showTabBarAfterOverlay();
+      setStoreTabBarHidden(this, false);
       this.setData({ pickerVisible: false });
     }
   },
 
   onUnload() {
     if (this.data.pickerVisible) {
-      showTabBarAfterOverlay();
+      setStoreTabBarHidden(this, false);
     }
   },
 
@@ -207,7 +187,7 @@ Page({
   },
 
   onLinkCustomer() {
-    hideTabBarForOverlay();
+    setStoreTabBarHidden(this, true);
     this.setData({ pickerVisible: true });
   },
 
@@ -246,12 +226,12 @@ Page({
       equityFrame: customer.equityFrame || 0,
       ...linkedCustomerView(customer)
     });
-    showTabBarAfterOverlay();
+    setStoreTabBarHidden(this, false);
   },
 
   onPickerClose() {
     this.setData({ pickerVisible: false });
-    showTabBarAfterOverlay();
+    setStoreTabBarHidden(this, false);
   },
 
   onPickerCustomerUpdated(e) {

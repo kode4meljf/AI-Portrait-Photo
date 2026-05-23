@@ -40,6 +40,10 @@
           <el-icon><Grid /></el-icon>
           <span>相框管理</span>
         </el-menu-item>
+        <el-menu-item index="/feedbacks">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>意见反馈</span>
+        </el-menu-item>
         <el-menu-item index="/settings/platform">
           <el-icon><Setting /></el-icon>
           <span>平台配置</span>

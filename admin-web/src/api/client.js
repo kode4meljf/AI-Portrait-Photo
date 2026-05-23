@@ -29,13 +29,42 @@ http.interceptors.response.use(
     return body
   },
   (err) => {
-    const msg =
-      err.response?.data?.error ||
-      err.message ||
-      '网络错误'
+    const msg = extractHttpErrorMessage(err)
     return Promise.reject(new Error(msg))
   }
 )
+
+function parseResponseBody(data) {
+  if (data == null) return null
+  if (typeof data === 'object') return data
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data)
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+/** 从 axios 错误中取出业务文案（避免展示 "Request failed with status code 400"） */
+function extractHttpErrorMessage(err) {
+  const body = parseResponseBody(err.response?.data)
+  if (body?.error) return String(body.error)
+  if (body?.message) return String(body.message)
+  if (body?.code === 'EXCEED_MAX_PAYLOAD_SIZE' || /exceed max.*payload/i.test(String(body?.message || ''))) {
+    return '上传数据超过接口大小限制，请刷新页面后重试（系统已自动压缩图片）'
+  }
+
+  const axiosMsg = err.message || ''
+  if (/exceed max.*payload/i.test(axiosMsg)) {
+    return '上传数据超过接口大小限制，请刷新页面后重试（系统已自动压缩图片）'
+  }
+  if (err.response?.status && /request failed with status code/i.test(axiosMsg)) {
+    return '请求失败，请稍后重试'
+  }
+  return axiosMsg || '网络错误'
+}
 
 function resolveUrl() {
   if (!API_PREFIX) return ''

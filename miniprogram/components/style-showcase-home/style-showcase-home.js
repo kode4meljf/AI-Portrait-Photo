@@ -3,26 +3,12 @@ function coverUrl(item) {
   return item.sampleDisplayUrl || item.sampleFileId || ''
 }
 
-function thumbCoverUrl(item) {
-  if (!item) return ''
-  const thumb = (item.sampleThumbDisplayUrl || item.sampleThumbFileId || '').trim()
-  return thumb || coverUrl(item)
-}
-
 function normalizeList(templates) {
-  return (templates || []).map((item, index) => {
-    const cover = coverUrl(item)
-    const thumbCover = thumbCoverUrl(item)
-    const hasThumbAsset = thumbCover !== cover
-    return {
-      ...item,
-      index,
-      cover,
-      thumbCover,
-      /** 副格扁宽：竖版样图用 top 保留面部；有横图资源时用 aspectFill */
-      thumbMode: hasThumbAsset ? 'aspectFill' : 'top'
-    }
-  })
+  return (templates || []).map((item, index) => ({
+    ...item,
+    index,
+    cover: coverUrl(item)
+  }))
 }
 
 Component({

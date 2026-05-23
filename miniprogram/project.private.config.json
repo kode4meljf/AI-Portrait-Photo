@@ -5,11 +5,18 @@
     "miniprogram": {
       "list": [
         {
+          "name": "创建门店页面",
+          "pathName": "pages/launch/launch",
+          "query": "",
+          "scene": null,
+          "launchMode": "default"
+        },
+        {
           "name": "客户我的页面",
           "pathName": "packageCustomer/pages/profile/profile",
           "query": "devPreview=1",
-          "scene": null,
-          "launchMode": "default"
+          "launchMode": "default",
+          "scene": null
         },
         {
           "name": "客户首页",

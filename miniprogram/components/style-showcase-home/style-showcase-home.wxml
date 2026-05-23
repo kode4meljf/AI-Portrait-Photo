@@ -12,7 +12,7 @@
       bindtap="onPreview"
       data-index="{{hero.index}}"
     >
-      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="top" />
+      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="aspectFill" />
       <view wx:else class="c-img c-img--empty" />
       <text class="c-badge">推荐</text>
       <text class="c-grad-name">{{hero.name}}</text>
@@ -21,7 +21,7 @@
 
   <view wx:else class="c-layout">
     <view class="c-hero" bindtap="onPreview" data-index="{{hero.index}}">
-      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="top" />
+      <image wx:if="{{hero.cover}}" class="c-img" src="{{hero.cover}}" mode="aspectFill" />
       <view wx:else class="c-img c-img--empty" />
       <text class="c-badge">推荐</text>
       <text class="c-grad-name">{{hero.name}}</text>
@@ -33,12 +33,7 @@
       bindtap="onPreview"
       data-index="{{item.index}}"
     >
-      <image
-        wx:if="{{item.thumbCover}}"
-        class="c-img"
-        src="{{item.thumbCover}}"
-        mode="{{item.thumbMode}}"
-      />
+      <image wx:if="{{item.cover}}" class="c-img" src="{{item.cover}}" mode="aspectFill" />
       <view wx:else class="c-img c-img--empty" />
       <text class="c-grad-name">{{item.name}}</text>
     </view>

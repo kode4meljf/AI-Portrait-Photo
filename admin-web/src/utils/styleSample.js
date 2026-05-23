@@ -1,12 +1,14 @@
+import { compressCanvasToJpegPayload } from './imagePayload'
+
 /** 风格样图：竖版人像 3:4 */
 export const STYLE_SAMPLE_RATIO = 3 / 4
 export const STYLE_SAMPLE_WIDTH = 540
 export const STYLE_SAMPLE_HEIGHT = 720
-export const STYLE_SAMPLE_MAX_BYTES = 3 * 1024 * 1024
+export const STYLE_SAMPLE_MAX_BYTES = 8 * 1024 * 1024
 export const STYLE_SAMPLE_RATIO_TOLERANCE = 0.08
 
 export const STYLE_SAMPLE_TIP =
-  '请上传风格样图（提示词生成效果参考），建议比例 3:4（如 540×720），支持 JPG/PNG/WebP，单张不超过 3MB'
+  '请上传风格样图（3:4 竖图），支持 JPG/PNG/WebP；将自动裁剪并压缩后上传'
 
 function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
@@ -67,12 +69,11 @@ export async function processStyleSampleFile(file) {
   const ctx = canvas.getContext('2d')
   ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, STYLE_SAMPLE_WIDTH, STYLE_SAMPLE_HEIGHT)
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
-  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '')
+  const packed = compressCanvasToJpegPayload(canvas)
 
   return {
-    base64,
-    previewUrl: dataUrl,
+    base64: packed.base64,
+    previewUrl: packed.previewUrl,
     cropped: diff > STYLE_SAMPLE_RATIO_TOLERANCE
   }
 }

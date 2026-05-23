@@ -30,13 +30,12 @@
   color: #9ca3af;
 }
 
-/* 右列略窄，减轻「扁横格 + 竖图」裁脸问题 */
 .c-layout {
   display: grid;
-  grid-template-columns: 1.2fr 0.82fr;
+  grid-template-columns: 1.15fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 16rpx;
-  height: 420rpx;
+  height: 400rpx;
 }
 
 .c-single {

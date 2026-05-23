@@ -33,7 +33,24 @@ cd admin-web && npm install && npm run dev
 
 进入各云函数目录执行 `npm install` 后，在微信开发者工具中部署。
 
-`adminApi` 需在云控制台配置环境变量：`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_JWT_SECRET`。
+`adminApi` 需在云控制台配置环境变量：
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `ADMIN_USERNAME` | 是 | 后台登录用户名 |
+| `ADMIN_PASSWORD` | 是 | 后台登录密码 |
+| `ADMIN_JWT_SECRET` | 是 | 登录 token 签名密钥（随机长字符串） |
+| `ADMIN_VERIFY_PHONE` | 是 | 资产调整短信验证码接收手机号（11 位） |
+| `ADMIN_SMS_MOCK` | 否 | 开发：`true` 时不发真实短信，验证码固定 `123456`（见 `ADMIN_SMS_MOCK_CODE`） |
+| `TENCENT_SECRET_ID` | 生产 | 腾讯云 API 密钥（发短信） |
+| `TENCENT_SECRET_KEY` | 生产 | 腾讯云 API 密钥 |
+| `SMS_SDK_APP_ID` | 生产 | 短信应用 SdkAppId |
+| `SMS_TEMPLATE_ID` | 生产 | 验证码模板 ID（模板变量为验证码） |
+| `SMS_SIGN_NAME` | 生产 | 短信签名 |
+
+部署 `adminApi` 前在 `cloudfunctions/adminApi` 执行 `npm install`（含 `tencentcloud-sdk-nodejs`）。
+
+**资产调整**：门店详情 → 调整资产 → 获取验证码（发至 `ADMIN_VERIFY_PHONE`）→ 输入验证码 → 验证并生效。
 
 ## 云环境
 

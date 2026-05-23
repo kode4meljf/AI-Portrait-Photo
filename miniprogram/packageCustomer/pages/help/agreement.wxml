@@ -1,0 +1,8 @@
+<view class="doc-page">
+  <view class="page-body">
+    <view class="doc-content">
+      <view class="doc-title">用户协议</view>
+      <text class="doc-text">{{text}}</text>
+    </view>
+  </view>
+</view>

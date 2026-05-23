@@ -1,4 +1,5 @@
 // app.js
+const { CLOUD_ENV_ID } = require('./config/cloudEnv');
 const { applySessionToApp, isValidStoreId } = require('./utils/storeSession');
 
 App({
@@ -34,7 +35,7 @@ App({
       return;
     }
     wx.cloud.init({
-      env: 'ai-ymcx-d0gcwabfjd375ffae',
+      env: CLOUD_ENV_ID,
       traceUser: true
     });
 

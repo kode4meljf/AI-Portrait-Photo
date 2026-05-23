@@ -15,4 +15,11 @@ function syncStoreTabBar(page) {
   if (index >= 0) tabBar.setData({ selected: index })
 }
 
-module.exports = { syncStoreTabBar, TAB_ROUTES }
+/** 弹层期间隐藏 custom-tab-bar（勿用 wx.hideTabBar，否则会叠出双层 TabBar） */
+function setStoreTabBarHidden(page, hidden) {
+  if (!page || typeof page.getTabBar !== 'function') return
+  const tabBar = page.getTabBar()
+  if (tabBar) tabBar.setData({ hidden: !!hidden })
+}
+
+module.exports = { syncStoreTabBar, setStoreTabBarHidden, TAB_ROUTES }

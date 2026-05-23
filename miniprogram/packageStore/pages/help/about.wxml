@@ -1,0 +1,22 @@
+<view class="about-page">
+  <view class="about-header">
+    <view class="about-logo">AI</view>
+    <text class="about-name">AI写真馆</text>
+    <text class="about-ver">版本 {{version}}</text>
+  </view>
+  <view class="about-body">
+    <view class="about-card">
+      <text class="about-desc">{{desc}}</text>
+    </view>
+    <view class="about-card">
+      <view class="about-kv about-kv-tap" bindtap="onCallSupport">
+        <text>平台客服</text>
+        <text class="about-kv-val">{{supportPhone}}</text>
+      </view>
+      <view class="about-kv">
+        <text>服务时间</text>
+        <text class="about-kv-val">{{serviceHours}}</text>
+      </view>
+    </view>
+  </view>
+</view>

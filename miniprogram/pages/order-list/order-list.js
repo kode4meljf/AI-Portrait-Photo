@@ -8,6 +8,7 @@ const { callOrderApi } = require('../../utils/orderApi');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
+const { isValidStoreId, applySessionToApp } = require('../../utils/storeSession');
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -43,6 +44,7 @@ Page({
     pageSize: 20,
     currentPage: 0,
     refreshing: false,
+    allowRefresh: false,
     // 统计概览数据
     monthOrderCount: 0,
     monthCompare: "",
@@ -54,10 +56,6 @@ Page({
     }
   },
 
-  onLoad() {
-    this.loadOrders();
-  },
-
   onShow() {
     redirectCustomerIfNeeded().then((redirected) => {
       if (redirected) return;
@@ -65,16 +63,53 @@ Page({
     });
   },
 
-  _onShowStoreOrders() {
+  async _onShowStoreOrders() {
     syncStoreTabBar(this);
+    const ready = await this.ensureStoreReady();
+    if (!ready) return;
+
     if (app.globalData.ordersNeedRefresh) {
       app.globalData.ordersNeedRefresh = false;
-      this.refreshData();
+      await this.refreshData();
+      this._initialLoaded = true;
+      this.setData({ allowRefresh: true });
       return;
     }
     if (this.needRefresh) {
-      this.refreshData();
       this.needRefresh = false;
+      await this.refreshData();
+      return;
+    }
+    if (!this._initialLoaded) {
+      await this.bootstrapAndLoad();
+    }
+  },
+
+  async ensureStoreReady() {
+    await app.ensureLogin();
+    await applySessionToApp(app);
+    if (!isValidStoreId(app.globalData.storeId)) {
+      wx.reLaunch({ url: '/pages/launch/launch' });
+      return false;
+    }
+    return true;
+  },
+
+  async bootstrapAndLoad() {
+    if (this._bootstrapping) return;
+    this._bootstrapping = true;
+    try {
+      await this.loadOrders(false);
+      this._initialLoaded = true;
+      this.setData({ allowRefresh: true });
+    } catch (error) {
+      console.error('订单页初始化失败:', error);
+      wx.showToast({
+        title: (error && error.message) || '加载失败',
+        icon: 'none'
+      });
+    } finally {
+      this._bootstrapping = false;
     }
   },
 
@@ -98,12 +133,10 @@ Page({
       const formattedOrders = this.formatOrders(list);
       await this.updateTabCounts();
 
-      // 合并已有订单（仅用于加载更多）
       const prev = this.data.allOrders || [];
-      let allOrders = loadMore ? [...prev, ...formattedOrders] : formattedOrders;
-      this.setData({ allOrders: allOrders });
+      const allOrders = loadMore ? [...prev, ...formattedOrders] : formattedOrders;
+      this.setData({ allOrders });
 
-      // 按月份分组并计算月度汇总
       const groups = this.groupOrdersByMonth(allOrders);
       this.setData({
         orderGroups: groups,
@@ -111,11 +144,17 @@ Page({
         currentPage: page
       });
 
-      // 计算本月统计概览（使用当前月份的数据）
       this.calculateStats(groups);
     } catch (error) {
-      console.error("加载订单失败:", error);
-      wx.showToast({ title: "加载失败", icon: "none" });
+      console.error('加载订单失败:', error);
+      const msg = (error && error.message) || '加载失败';
+      if (!this._loginRetried && /未登录|login/i.test(msg)) {
+        this._loginRetried = true;
+        await app.ensureLogin();
+        return this.loadOrders(isLoadMore);
+      }
+      wx.showToast({ title: msg, icon: 'none' });
+      throw error;
     } finally {
       this.setData({ loading: false, refreshing: false });
     }
@@ -301,6 +340,10 @@ Page({
 
   /** scroll-view 下拉刷新（勿与 loadOrders 参数混用：refresher 会传入 event） */
   onScrollRefresh() {
+    if (!this.data.allowRefresh) {
+      this.setData({ refreshing: false });
+      return;
+    }
     this.setData({ refreshing: true });
     this.refreshData()
       .catch(() => {})

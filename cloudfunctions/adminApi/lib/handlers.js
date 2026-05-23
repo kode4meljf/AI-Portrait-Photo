@@ -4,9 +4,17 @@ const {
   uploadFrameCoverFromBase64,
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
-  attachStyleSampleUrls
+  attachStyleSampleUrls,
+  attachCustomerAvatarUrls,
+  uploadCustomerAvatarFromBase64
 } = require('./cloudUpload')
+const { formatCustomerForAdmin } = require('./customerFormat')
 const { seedStyles: seedDefaultStyles } = require('./seedStyles')
+const {
+  sendStoreAssetAdjustCode,
+  applyStoreAssetAdjustWithCode,
+  listStoreAssetAdjustments
+} = require('./storeAssetAdjust')
 
 const STORE_DOC_ID_RE = /^store_/i
 
@@ -53,12 +61,16 @@ async function getStore(payload) {
 
 async function updateStore(payload) {
   const storeId = resolveStoreDocId(payload)
-  const allowed = ['name', 'contactName', 'contactPhone', 'address', 'level', 'balance', 'packageTotal', 'packageUsed', 'packageExpireDate', 'avatarUrl']
-  const data = {}
+  const assetKeys = ['balance', 'packageTotal', 'packageUsed']
+  if (assetKeys.some((key) => payload[key] !== undefined)) {
+    throw new Error('账户余额与套餐须通过「调整资产」并完成短信验证后生效')
+  }
+  const allowed = ['name', 'contactName', 'contactPhone', 'address', 'level', 'packageExpireDate', 'avatarUrl']
+  const data = { updateTime: new Date() }
   allowed.forEach((key) => {
     if (payload[key] !== undefined) data[key] = payload[key]
   })
-  if (!Object.keys(data).length) throw new Error('没有可更新字段')
+  if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
   await db.collection('stores').doc(storeId).update({ data })
   return getStore({ storeId })
 }
@@ -86,32 +98,49 @@ async function listCustomers(query) {
     coll.orderBy('createTime', 'desc').skip(skip).limit(pageSize).get(),
     coll.count()
   ])
+  const withAvatars = await attachCustomerAvatarUrls(listRes.data)
   return {
-    list: listRes.data,
+    list: withAvatars.map(formatCustomerForAdmin),
     total: countRes.total,
     page,
     pageSize
   }
 }
 
-async function getCustomer(payload) {
-  const id = payload.id || payload.customerId
+function resolveCustomerDocId(payload) {
+  const raw = payload.id || payload.customerId || payload._id
+  const id = raw != null ? String(raw).trim() : ''
   if (!id) throw new Error('缺少客户 id')
+  return id
+}
+
+async function getCustomer(payload) {
+  const id = resolveCustomerDocId(payload)
   const res = await db.collection('customers').doc(id).get()
-  return res.data
+  if (!res.data) throw new Error('客户不存在')
+  const [row] = await attachCustomerAvatarUrls([res.data])
+  return formatCustomerForAdmin(row)
 }
 
 async function updateCustomer(payload) {
-  const id = payload.id || payload.customerId
-  if (!id) throw new Error('缺少客户 id')
+  const id = resolveCustomerDocId(payload)
   const allowed = ['nickName', 'phone', 'remark', 'equityAlbum', 'equityFrame', 'avatarUrl']
-  const data = {}
+  const data = { updateTime: Date.now() }
   allowed.forEach((key) => {
-    if (payload[key] !== undefined) data[key] = payload[key]
+    if (payload[key] !== undefined) {
+      data[key] = key === 'avatarUrl' ? String(payload[key] || '').trim() : payload[key]
+    }
   })
-  if (!Object.keys(data).length) throw new Error('没有可更新字段')
+  if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
   await db.collection('customers').doc(id).update({ data })
   return getCustomer({ id })
+}
+
+async function uploadCustomerAvatar(payload) {
+  const id = resolveCustomerDocId(payload)
+  const res = await db.collection('customers').doc(id).get()
+  if (!res.data) throw new Error('客户不存在')
+  return uploadCustomerAvatarFromBase64(id, payload.base64, payload.mimeType || 'image/jpeg')
 }
 
 async function listOrders(query) {
@@ -358,6 +387,23 @@ async function countEnabledStyles() {
   return res.total
 }
 
+async function findStyleByName(name) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return null
+  const res = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ name: trimmed }).limit(1).get()
+  return res.data[0] || null
+}
+
+async function assertStyleNameUnique(name, excludeDocId) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) throw new Error('请填写风格名称')
+  const existing = await findStyleByName(trimmed)
+  if (existing && existing._id !== excludeDocId) {
+    const code = existing.id ? `编号 ${existing.id}` : '已有记录'
+    throw new Error(`风格名称「${trimmed}」已存在（${code}）`)
+  }
+}
+
 async function listStyles(query) {
   const { page, pageSize, skip } = parsePage(query)
   const keyword = (query.keyword || '').trim()
@@ -411,6 +457,7 @@ async function createStyle(payload) {
   const sampleFileId = (payload.sampleFileId || '').trim()
   if (!name) throw new Error('请填写风格名称')
   if (!sampleFileId) throw new Error('请上传风格样图')
+  await assertStyleNameUnique(name)
 
   const id = await allocateStyleId()
   const enabled = payload.enabled !== false
@@ -455,20 +502,22 @@ async function updateStyle(payload) {
 
   const allowed = ['name', 'prompt', 'sampleFileId', 'sort', 'enabled']
   const data = { updateTime: new Date() }
+  if (payload.name !== undefined) {
+    const name = (payload.name || '').trim()
+    if (!name) throw new Error('风格名称不能为空')
+    if (name !== String(current.name || '').trim()) {
+      await assertStyleNameUnique(name, docId)
+    }
+    data.name = name
+  }
   allowed.forEach((key) => {
-    if (payload[key] === undefined) return
+    if (payload[key] === undefined || key === 'name') return
     if (key === 'enabled') {
       data.enabled = payload.enabled !== false
       return
     }
     if (key === 'sort') {
       data.sort = Number(payload.sort) || 0
-      return
-    }
-    if (key === 'name') {
-      const name = (payload.name || '').trim()
-      if (!name) throw new Error('风格名称不能为空')
-      data.name = name
       return
     }
     if (key === 'prompt') {
@@ -494,26 +543,30 @@ async function deleteStyle(payload) {
   return { deleted: true }
 }
 
+const {
+  isSizeEmpty: isFrameSizeEmpty,
+  validateFrameSizeSides
+} = require('./frameSizeValidate')
+
 function buildFrameSizeFromPayload(payload) {
   const sizeAxis = 'lw'
-  const sizeUnit = ((payload.sizeUnit || 'cm') + '').trim() || 'cm'
   const rawFirst = payload.sizeFirst
   const rawSecond = payload.sizeSecond
-  const empty = (v) => v === '' || v == null || v === undefined
-  const hasFirst = !empty(rawFirst)
-  const hasSecond = !empty(rawSecond)
+  const hasFirst = !isFrameSizeEmpty(rawFirst)
+  const hasSecond = !isFrameSizeEmpty(rawSecond)
 
   if (!hasFirst && !hasSecond) {
-    return { sizeAxis, sizeUnit, sizeFirst: null, sizeSecond: null, size: '' }
+    return { sizeAxis, sizeUnit: 'cm', sizeFirst: null, sizeSecond: null, size: '' }
   }
   if (!hasFirst || !hasSecond) {
-    throw new Error('请同时填写两个尺寸，或全部留空')
+    throw new Error('请同时填写长、宽两个尺寸，或全部留空')
   }
-  const sizeFirst = Number(rawFirst)
-  const sizeSecond = Number(rawSecond)
-  if (!Number.isFinite(sizeFirst) || !Number.isFinite(sizeSecond) || sizeFirst <= 0 || sizeSecond <= 0) {
-    throw new Error('尺寸须为大于 0 的数字')
-  }
+
+  const { sizeFirst, sizeSecond, sizeUnit } = validateFrameSizeSides(
+    rawFirst,
+    rawSecond,
+    payload.sizeUnit
+  )
   return {
     sizeAxis,
     sizeUnit,
@@ -564,6 +617,23 @@ async function allocateFrameId() {
     if (!used.has(i)) return formatFrameCode(i)
   }
   throw new Error('相框编号已满')
+}
+
+async function findFrameByName(name) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return null
+  const res = await db.collection('frame_templates').where({ name: trimmed }).limit(1).get()
+  return res.data[0] || null
+}
+
+async function assertFrameNameUnique(name, excludeDocId) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) throw new Error('请填写相框名称')
+  const existing = await findFrameByName(trimmed)
+  if (existing && existing._id !== excludeDocId) {
+    const code = existing.id ? `编号 ${existing.id}` : '已有记录'
+    throw new Error(`相框名称「${trimmed}」已存在（${code}）`)
+  }
 }
 
 async function listFrames(query) {
@@ -622,6 +692,7 @@ async function getFrame(payload) {
 async function createFrame(payload) {
   const name = (payload.name || '').trim()
   if (!name) throw new Error('请填写相框名称')
+  await assertFrameNameUnique(name)
 
   const id = await allocateFrameId()
   const now = new Date()
@@ -648,10 +719,14 @@ async function updateFrame(payload) {
   const currentRes = await db.collection('frame_templates').doc(docId).get()
   if (!currentRes.data) throw new Error('相框不存在')
 
+  const current = currentRes.data
   const data = { updateTime: new Date() }
   if (payload.name !== undefined) {
     const name = (payload.name || '').trim()
     if (!name) throw new Error('相框名称不能为空')
+    if (name !== String(current.name || '').trim()) {
+      await assertFrameNameUnique(name, docId)
+    }
     data.name = name
   }
   if (payload.coverFileId !== undefined) {
@@ -714,7 +789,123 @@ async function updatePlatformSettings(payload) {
   return getPlatformSettings()
 }
 
+const FEEDBACK_COL = 'user_feedback'
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
+}
+
+function formatFeedbackRow(row) {
+  return {
+    ...row,
+    createTimeText: formatDateTime(row.createTime),
+    sourceRoleLabel: row.sourceRole === 'store' ? '门店' : '顾客'
+  }
+}
+
+async function listFeedbacks(query) {
+  const { page, pageSize, skip } = parsePage(query)
+  const sourceRole = (query.sourceRole || '').trim()
+  const status = (query.status || '').trim()
+  const keyword = (query.keyword || '').trim()
+  const storeId = (query.storeId || '').trim()
+
+  const filters = []
+  if (sourceRole === 'customer' || sourceRole === 'store') {
+    filters.push({ sourceRole })
+  }
+  if (status === 'pending' || status === 'read') {
+    filters.push({ status })
+  }
+  if (storeId && /^store_/i.test(storeId)) {
+    filters.push({ storeId })
+  }
+  if (keyword) {
+    filters.push(_.or([
+      { content: db.RegExp({ regexp: keyword, options: 'i' }) },
+      { submitterName: db.RegExp({ regexp: keyword, options: 'i' }) },
+      { submitterPhone: db.RegExp({ regexp: keyword, options: 'i' }) },
+      { contact: db.RegExp({ regexp: keyword, options: 'i' }) },
+      { storeName: db.RegExp({ regexp: keyword, options: 'i' }) }
+    ]))
+  }
+
+  let coll = db.collection(FEEDBACK_COL)
+  if (filters.length) {
+    const where = filters.length === 1 ? filters[0] : _.and(filters)
+    coll = coll.where(where)
+  }
+
+  let list = []
+  let total = 0
+  try {
+    const [listRes, countRes] = await Promise.all([
+      coll.orderBy('createTime', 'desc').skip(skip).limit(pageSize).get(),
+      coll.count()
+    ])
+    list = listRes.data || []
+    total = countRes.total
+  } catch (err) {
+    console.warn('[feedbacks.list] orderBy failed, fallback to memory sort', err.message)
+    const allRes = await coll.limit(100).get()
+    const sorted = (allRes.data || []).sort((a, b) => {
+      const ta = a.createTime ? new Date(a.createTime).getTime() : 0
+      const tb = b.createTime ? new Date(b.createTime).getTime() : 0
+      return tb - ta
+    })
+    total = sorted.length
+    list = sorted.slice(skip, skip + pageSize)
+  }
+
+  return {
+    list: list.map(formatFeedbackRow),
+    total,
+    page,
+    pageSize
+  }
+}
+
+async function updateFeedbackStatus(payload) {
+  const id = payload._id || payload.id
+  if (!id) throw new Error('缺少反馈 id')
+  const status = payload.status
+  if (status !== 'pending' && status !== 'read') {
+    throw new Error('状态无效')
+  }
+  await db.collection(FEEDBACK_COL).doc(id).update({
+    data: {
+      status,
+      updateTime: new Date()
+    }
+  })
+  const res = await db.collection(FEEDBACK_COL).doc(id).get()
+  return formatFeedbackRow(res.data)
+}
+
+async function deleteFeedback(payload) {
+  const id = payload._id || payload.id
+  if (!id) throw new Error('缺少反馈 id')
+  try {
+    await db.collection(FEEDBACK_COL).doc(id).remove()
+  } catch (e) {
+    throw new Error('反馈不存在或已删除')
+  }
+  return { _id: id }
+}
+
 const PUBLIC_ACTIONS = new Set(['login', 'ping'])
+
+function adminUsername(payload) {
+  return (payload && payload._adminUser) || 'admin'
+}
 
 async function dispatch(action, payload, query) {
   switch (action) {
@@ -730,12 +921,25 @@ async function dispatch(action, payload, query) {
       return getStore(payload)
     case 'stores.update':
       return updateStore(payload)
+    case 'stores.assetAdjust.sendCode':
+      return sendStoreAssetAdjustCode(resolveStoreDocId(payload))
+    case 'stores.assetAdjust.apply':
+      return applyStoreAssetAdjustWithCode(
+        resolveStoreDocId(payload),
+        payload,
+        payload.smsCode,
+        adminUsername(payload)
+      )
+    case 'stores.assetAdjust.list':
+      return listStoreAssetAdjustments({ ...query, ...payload })
     case 'customers.list':
       return listCustomers({ ...query, ...payload })
     case 'customers.get':
       return getCustomer(payload)
     case 'customers.update':
       return updateCustomer(payload)
+    case 'customers.uploadAvatar':
+      return uploadCustomerAvatar(payload)
     case 'orders.list':
       return listOrders({ ...query, ...payload })
     case 'orders.statusCounts':
@@ -776,6 +980,12 @@ async function dispatch(action, payload, query) {
       return getPlatformSettings()
     case 'platformSettings.update':
       return updatePlatformSettings(payload)
+    case 'feedbacks.list':
+      return listFeedbacks({ ...query, ...payload })
+    case 'feedbacks.updateStatus':
+      return updateFeedbackStatus(payload)
+    case 'feedbacks.delete':
+      return deleteFeedback(payload)
     default:
       throw new Error(`未知 action: ${action}`)
   }

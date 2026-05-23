@@ -117,14 +117,16 @@ async function attachStyleSampleUrls(rows) {
   }
 }
 
+const HTTP_UPLOAD_MAX_BYTES = 400 * 1024
+
 async function uploadStyleSampleFromBase64(base64, mimeType = 'image/jpeg') {
   const raw = String(base64 || '').replace(/^data:image\/\w+;base64,/, '').trim()
   if (!raw) throw new Error('缺少图片数据')
 
   const buffer = Buffer.from(raw, 'base64')
   if (!buffer.length) throw new Error('图片数据无效')
-  if (buffer.length > 4 * 1024 * 1024) {
-    throw new Error('处理后图片仍过大，请换一张')
+  if (buffer.length > HTTP_UPLOAD_MAX_BYTES) {
+    throw new Error('图片仍过大，请刷新页面后重试（前端将自动更强压缩）')
   }
 
   const ext = mimeType.includes('png') ? 'png' : 'jpg'
@@ -140,8 +142,8 @@ async function uploadFrameCoverFromBase64(base64, mimeType = 'image/jpeg') {
 
   const buffer = Buffer.from(raw, 'base64')
   if (!buffer.length) throw new Error('图片数据无效')
-  if (buffer.length > 4 * 1024 * 1024) {
-    throw new Error('处理后图片仍过大，请换一张')
+  if (buffer.length > HTTP_UPLOAD_MAX_BYTES) {
+    throw new Error('图片仍过大，请刷新页面后重试（前端将自动更强压缩）')
   }
 
   const ext = mimeType.includes('png') ? 'png' : 'jpg'
@@ -151,10 +153,73 @@ async function uploadFrameCoverFromBase64(base64, mimeType = 'image/jpeg') {
   return { coverFileId, coverUrl }
 }
 
+/** 客户头像 cloud:// → 临时 HTTPS，供后台列表展示 */
+async function attachCustomerAvatarUrls(rows) {
+  const list = rows || []
+  const cloudIds = list
+    .map((row) => row.avatarUrl)
+    .filter((id) => id && String(id).startsWith('cloud://'))
+  if (!cloudIds.length) {
+    return list.map((row) => {
+      const avatarUrl = row.avatarUrl || ''
+      return {
+        ...row,
+        avatarUrl,
+        avatarDisplayUrl:
+          avatarUrl && !String(avatarUrl).startsWith('cloud://') ? avatarUrl : ''
+      }
+    })
+  }
+  try {
+    const res = await cloud.getTempFileURL({ fileList: [...new Set(cloudIds)] })
+    const map = {}
+    ;(res.fileList || []).forEach((item) => {
+      if (item.fileID && item.tempFileURL) map[item.fileID] = item.tempFileURL
+    })
+    return list.map((row) => {
+      const avatarUrl = row.avatarUrl || ''
+      return {
+        ...row,
+        avatarUrl,
+        avatarDisplayUrl:
+          map[avatarUrl] ||
+          (avatarUrl && !String(avatarUrl).startsWith('cloud://') ? avatarUrl : '')
+      }
+    })
+  } catch (e) {
+    return list.map((row) => {
+      const avatarUrl = row.avatarUrl || ''
+      return { ...row, avatarUrl, avatarDisplayUrl: avatarUrl || '' }
+    })
+  }
+}
+
+async function uploadCustomerAvatarFromBase64(customerId, base64, mimeType = 'image/jpeg') {
+  const id = String(customerId || '').trim()
+  if (!id) throw new Error('缺少客户 id')
+
+  const raw = String(base64 || '').replace(/^data:image\/\w+;base64,/, '').trim()
+  if (!raw) throw new Error('缺少图片数据')
+
+  const buffer = Buffer.from(raw, 'base64')
+  if (!buffer.length) throw new Error('图片数据无效')
+  if (buffer.length > 2 * 1024 * 1024) {
+    throw new Error('头像不能超过 2MB')
+  }
+
+  const ext = mimeType.includes('png') ? 'png' : 'jpg'
+  const cloudPath = `admin/customer-avatars/${id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const avatarUrl = await uploadBuffer(buffer, cloudPath)
+  const avatarDisplayUrl = await getDisplayUrl(avatarUrl)
+  return { avatarUrl, avatarDisplayUrl }
+}
+
 module.exports = {
   uploadFrameCoverFromBase64,
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
   attachStyleSampleUrls,
+  attachCustomerAvatarUrls,
+  uploadCustomerAvatarFromBase64,
   getDisplayUrl
 }

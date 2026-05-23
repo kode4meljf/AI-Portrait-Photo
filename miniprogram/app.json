@@ -39,7 +39,12 @@
         "pages/cloud/frame-selector/frame-selector",
         "pages/order/order-detail/order-detail",
         "pages/order/frame-template/frame-template",
-        "pages/profile/customer-invite/customer-invite"
+        "pages/profile/customer-invite/customer-invite",
+        "pages/help/index",
+        "pages/help/about",
+        "pages/help/feedback",
+        "pages/help/agreement",
+        "pages/help/privacy"
       ]
     },
     {
@@ -51,7 +56,12 @@
         "pages/gallery/gallery",
         "pages/order-list/order-list",
         "pages/order-detail/order-detail",
-        "pages/profile/profile"
+        "pages/profile/profile",
+        "pages/help/index",
+        "pages/help/about",
+        "pages/help/feedback",
+        "pages/help/agreement",
+        "pages/help/privacy"
       ]
     }
   ],

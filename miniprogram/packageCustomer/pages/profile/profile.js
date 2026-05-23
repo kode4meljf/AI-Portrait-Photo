@@ -7,6 +7,7 @@ const {
 } = require('../../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
+const { CUSTOMER_BASE } = require('../../../utils/helpCenter')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 
@@ -78,6 +79,10 @@ Page({
 
   onGoHome() {
     wx.redirectTo({ url: CUSTOMER_HOME })
+  },
+
+  onOpenHelp() {
+    wx.navigateTo({ url: `${CUSTOMER_BASE}/index` })
   },
 
   onOpenNickModal() {

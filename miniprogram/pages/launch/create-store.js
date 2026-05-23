@@ -13,7 +13,9 @@ Page({
     houseNumber: '',
     latitude: null,
     longitude: null,
-    submitting: false
+    submitting: false,
+    nameCheckStatus: '',
+    nameCheckHint: ''
   },
 
   onReady() {
@@ -26,6 +28,35 @@ Page({
   onInput(e) {
     const key = e.currentTarget.dataset.key
     this.setData({ [key]: e.detail.value })
+    if (key === 'name') {
+      this.setData({ nameCheckStatus: '', nameCheckHint: '' })
+    }
+  },
+
+  onNameBlur(e) {
+    this.runNameCheck((e.detail.value || '').trim())
+  },
+
+  async runNameCheck(name) {
+    const trimmed = (name || this.data.name || '').trim()
+    if (!trimmed) {
+      this.setData({ nameCheckStatus: '', nameCheckHint: '' })
+      return
+    }
+    this.setData({ nameCheckStatus: 'checking', nameCheckHint: '' })
+    try {
+      const res = await callStoreMember('store.checkName', { name: trimmed })
+      if (res.available) {
+        this.setData({ nameCheckStatus: 'ok', nameCheckHint: '' })
+      } else {
+        this.setData({
+          nameCheckStatus: 'dup',
+          nameCheckHint: res.reason || '该门店名称已被使用，请换一个名称'
+        })
+      }
+    } catch (e) {
+      this.setData({ nameCheckStatus: '', nameCheckHint: '' })
+    }
   },
 
   chooseAddressOnMap() {
@@ -62,6 +93,17 @@ Page({
 
     if (!name) {
       wx.showToast({ title: '请填写门店名称', icon: 'none' })
+      return false
+    }
+    if (this.data.nameCheckStatus === 'checking') {
+      wx.showToast({ title: '正在检查名称…', icon: 'none' })
+      return false
+    }
+    if (this.data.nameCheckStatus === 'dup') {
+      wx.showToast({
+        title: this.data.nameCheckHint || '该门店名称已被使用',
+        icon: 'none'
+      })
       return false
     }
     if (!contactName) {

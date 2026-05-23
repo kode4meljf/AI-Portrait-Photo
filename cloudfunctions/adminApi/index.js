@@ -10,6 +10,14 @@ function extractToken(event, authHeader) {
   return event.token || event.adminToken || ''
 }
 
+/** 业务失败仍用 200，便于前端按 success/error 展示；仅鉴权与服务器异常用 4xx/5xx */
+function resolveHttpStatus(result) {
+  if (result.success) return 200
+  if (result.code === 'UNAUTHORIZED') return 401
+  if (result.code === 'SERVER_ERROR') return 500
+  return 200
+}
+
 async function runAction(action, payload, query, token) {
   if (!action) {
     return fail('缺少 action', 'MISSING_ACTION')
@@ -20,11 +28,17 @@ async function runAction(action, payload, query, token) {
     return result.success === false ? fail(result.error, 'AUTH_FAILED') : ok(result)
   }
 
+  let adminUser = null
   if (!PUBLIC_ACTIONS.has(action)) {
     const user = verifyToken(token)
     if (!user) {
       return fail('未登录或 token 已过期', 'UNAUTHORIZED')
     }
+    adminUser = user.sub || 'admin'
+  }
+
+  if (adminUser) {
+    payload._adminUser = adminUser
   }
 
   try {
@@ -58,7 +72,7 @@ exports.main = async (event) => {
 
     const token = extractToken(payload, httpCtx.authHeader)
     const result = await runAction(action, payload, httpCtx.query, token)
-    const statusCode = result.code === 'UNAUTHORIZED' ? 401 : result.success ? 200 : 400
+    const statusCode = resolveHttpStatus(result)
     return httpResponse(statusCode, result)
   }
 

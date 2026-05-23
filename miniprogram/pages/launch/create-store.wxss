@@ -75,6 +75,29 @@
   margin: 0 32rpx;
 }
 
+.name-hint-row {
+  padding: 0 32rpx 20rpx;
+}
+
+.name-hint {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.name-hint--checking {
+  color: #9a8b7a;
+}
+
+.name-hint--dup {
+  color: #e91e8c;
+}
+
+.name-hint--ok {
+  color: #5a9a6e;
+}
+
 .address-section-card {
   padding-bottom: 8rpx;
 }

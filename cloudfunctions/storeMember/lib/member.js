@@ -70,6 +70,90 @@ function briefAddress(store) {
   return addr.length > 48 ? `${addr.slice(0, 48)}…` : addr
 }
 
+/** 门店名称规范化：去首尾空白、合并连续空格 */
+function normalizeStoreName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+/** 查重键：仅忽略大小写（不考虑全角半角） */
+function storeNameKey(name) {
+  return normalizeStoreName(name).toLowerCase()
+}
+
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+async function backfillStoreNameKey(storeId, store) {
+  if (!storeId || !store || store.nameKey) return
+  const nameKey = storeNameKey(store.name)
+  if (!nameKey) return
+  try {
+    await db.collection(STORES).doc(storeId).update({
+      data: { nameKey, updateTime: Date.now() }
+    })
+  } catch (e) {
+    console.warn('[store] backfill nameKey failed', storeId, e.message || e)
+  }
+}
+
+/** 禁止同名门店（创建 / 改名）；excludeStoreId 为当前门店自身时跳过 */
+async function assertStoreNameAvailable(name, excludeStoreId) {
+  const norm = normalizeStoreName(name)
+  if (!norm) throw new Error('请填写门店名称')
+  const nameKey = storeNameKey(norm)
+
+  const byKey = await db.collection(STORES).where({ nameKey }).limit(10).get()
+  let dup = (byKey.data || []).find((row) => row._id !== excludeStoreId)
+
+  if (!dup) {
+    const legacy = await db
+      .collection(STORES)
+      .where({
+        name: db.RegExp({
+          regexp: `^${escapeRegExp(norm)}$`,
+          options: 'i'
+        })
+      })
+      .limit(20)
+      .get()
+    for (const row of legacy.data || []) {
+      if (row._id === excludeStoreId) continue
+      const rowKey = row.nameKey || storeNameKey(row.name)
+      if (rowKey !== nameKey) continue
+      dup = row
+      if (!row.nameKey && row._id) {
+        await backfillStoreNameKey(row._id, row)
+      }
+      break
+    }
+  }
+
+  if (dup) {
+    const err = new Error('该门店名称已被使用，请换一个名称')
+    err.code = 'STORE_NAME_EXISTS'
+    throw err
+  }
+}
+
+async function storeCheckName(payload) {
+  const excludeStoreId =
+    payload.excludeStoreId && isValidStoreId(payload.excludeStoreId)
+      ? payload.excludeStoreId
+      : ''
+  try {
+    await assertStoreNameAvailable(payload.name, excludeStoreId)
+    return { available: true, name: normalizeStoreName(payload.name) }
+  } catch (e) {
+    if (e.code === 'STORE_NAME_EXISTS') {
+      return { available: false, reason: e.message }
+    }
+    throw e
+  }
+}
+
 /** 店员邀请预览：门店名称、联系人、脱敏电话、地址摘要 */
 async function getStoreInvitePreview(storeId) {
   try {
@@ -297,7 +381,7 @@ async function storeCreate(openid, payload) {
 
   const storeId = generateStoreId()
   const now = Date.now()
-  const name = (payload.name || 'AI写真馆').trim()
+  const name = normalizeStoreName(payload.name || 'AI写真馆')
   const contactName = (payload.contactName || '').trim()
   const contactPhone = (payload.contactPhone || '').trim()
   const mapAddress = (payload.mapAddress || '').trim() || (payload.address || '').trim()
@@ -312,6 +396,8 @@ async function storeCreate(openid, payload) {
     throw new Error('请通过地图选择门店地址')
   }
 
+  await assertStoreNameAvailable(name)
+
   const fullAddress =
     (payload.address || '').trim() || [mapAddress, houseNumber].filter(Boolean).join(' ')
 
@@ -319,6 +405,7 @@ async function storeCreate(openid, payload) {
   const storeData = {
     accountType: 'store',
     name,
+    nameKey: storeNameKey(name),
     contactName,
     contactPhone,
     address: fullAddress,
@@ -395,7 +482,11 @@ async function storeGet(openid) {
   const member = await requireActiveMember(openid)
   const res = await db.collection(STORES).doc(member.storeId).get()
   if (!res.data) throw new Error('门店档案不存在')
-  return { ...res.data, _id: member.storeId }
+  const row = res.data
+  if (!row.nameKey && row.name) {
+    await backfillStoreNameKey(member.storeId, row)
+  }
+  return { ...row, _id: member.storeId }
 }
 
 async function storeUpdate(openid, payload) {
@@ -409,6 +500,12 @@ async function storeUpdate(openid, payload) {
   STORE_PROFILE_FIELDS.forEach((key) => {
     if (payload[key] !== undefined) data[key] = payload[key]
   })
+  if (data.name !== undefined) {
+    data.name = normalizeStoreName(data.name)
+    if (!data.name) throw new Error('请填写门店名称')
+    await assertStoreNameAvailable(data.name, storeId)
+    data.nameKey = storeNameKey(data.name)
+  }
   if (payload.balanceInc !== undefined) {
     data.balance = _.inc(Number(payload.balanceInc) || 0)
   }
@@ -822,6 +919,7 @@ module.exports = {
   storeCreate,
   storeGet,
   storeUpdate,
+  storeCheckName,
   inviteCreate,
   inviteQrImage,
   inviteRevoke,

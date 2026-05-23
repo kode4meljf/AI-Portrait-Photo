@@ -1,12 +1,14 @@
+import { compressCanvasToJpegPayload } from './imagePayload'
+
 /** 与小程序 frame-thumb 一致：216×264rpx ≈ 9:11 竖图 */
 export const FRAME_THUMB_RATIO = 9 / 11
 export const FRAME_THUMB_WIDTH = 540
 export const FRAME_THUMB_HEIGHT = 660
-export const FRAME_THUMB_MAX_BYTES = 3 * 1024 * 1024
+export const FRAME_THUMB_MAX_BYTES = 8 * 1024 * 1024
 export const FRAME_THUMB_RATIO_TOLERANCE = 0.08
 
 export const FRAME_THUMB_TIP =
-  '请上传竖图，建议比例 9:11（如 540×660），支持 JPG/PNG/WebP，单张不超过 3MB'
+  '请上传竖图（9:11），支持 JPG/PNG/WebP；将自动裁剪并压缩后上传'
 
 function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
@@ -70,12 +72,11 @@ export async function processFrameThumbFile(file) {
   const ctx = canvas.getContext('2d')
   ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, FRAME_THUMB_WIDTH, FRAME_THUMB_HEIGHT)
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
-  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '')
+  const packed = compressCanvasToJpegPayload(canvas)
 
   return {
-    base64,
-    previewUrl: dataUrl,
+    base64: packed.base64,
+    previewUrl: packed.previewUrl,
     cropped: diff > FRAME_THUMB_RATIO_TOLERANCE
   }
 }

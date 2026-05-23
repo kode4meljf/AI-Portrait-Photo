@@ -1,3 +1,49 @@
+/** 摆台相框尺寸（cm），与 adminApi frameSizeValidate 保持一致 */
+export const FRAME_SIZE_SIDE_MIN = 5
+export const FRAME_SIZE_SIDE_MAX = 150
+export const FRAME_SIZE_MAX_RATIO = 5
+
+export const SIZE_FORM_HINT =
+  `选填；单位 cm，单边 ${FRAME_SIZE_SIDE_MIN}–${FRAME_SIZE_SIDE_MAX}，长宽比不超过 ${FRAME_SIZE_MAX_RATIO}:1`
+
+function roundSizeCm(n) {
+  return Math.round(Number(n) * 10) / 10
+}
+
+function isSizeEmpty(v) {
+  return v === '' || v == null || v === undefined
+}
+
+function validateFrameSizeSides(sizeFirst, sizeSecond, sizeUnit = 'cm') {
+  const unit = (sizeUnit || 'cm').trim().toLowerCase() || 'cm'
+  if (unit !== 'cm') {
+    throw new Error('当前仅支持 cm（厘米）')
+  }
+
+  const a = roundSizeCm(sizeFirst)
+  const b = roundSizeCm(sizeSecond)
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    throw new Error('尺寸须为有效数字')
+  }
+  if (a <= 0 || b <= 0) {
+    throw new Error('尺寸须大于 0')
+  }
+  if (a < FRAME_SIZE_SIDE_MIN || b < FRAME_SIZE_SIDE_MIN) {
+    throw new Error(`单边尺寸不能小于 ${FRAME_SIZE_SIDE_MIN}cm`)
+  }
+  if (a > FRAME_SIZE_SIDE_MAX || b > FRAME_SIZE_SIDE_MAX) {
+    throw new Error(`单边尺寸不能大于 ${FRAME_SIZE_SIDE_MAX}cm`)
+  }
+
+  const long = Math.max(a, b)
+  const short = Math.min(a, b)
+  if (short > 0 && long / short > FRAME_SIZE_MAX_RATIO) {
+    throw new Error(`长宽比不能超过 ${FRAME_SIZE_MAX_RATIO}:1，请检查是否填错`)
+  }
+
+  return { sizeFirst: a, sizeSecond: b, sizeUnit: unit }
+}
+
 /** 列表/详情展示 */
 export function formatFrameSizeDisplay(row) {
   if (row.sizeFirst != null && row.sizeSecond != null) {
@@ -11,28 +57,27 @@ export const SIZE_FORM_LABEL = '尺寸（长 × 宽）'
 
 export function buildFrameSizePayload(form) {
   const sizeAxis = 'lw'
-  const sizeUnit = (form.sizeUnit || 'cm').trim() || 'cm'
-  const empty = (v) => v === '' || v == null
-  const hasFirst = !empty(form.sizeFirst)
-  const hasSecond = !empty(form.sizeSecond)
+  const hasFirst = !isSizeEmpty(form.sizeFirst)
+  const hasSecond = !isSizeEmpty(form.sizeSecond)
 
   if (!hasFirst && !hasSecond) {
     return {
       sizeAxis,
-      sizeUnit,
+      sizeUnit: 'cm',
       sizeFirst: null,
       sizeSecond: null,
       size: ''
     }
   }
   if (!hasFirst || !hasSecond) {
-    throw new Error('请同时填写两个尺寸，或全部留空')
+    throw new Error('请同时填写长、宽两个尺寸，或全部留空')
   }
-  const sizeFirst = Number(form.sizeFirst)
-  const sizeSecond = Number(form.sizeSecond)
-  if (!Number.isFinite(sizeFirst) || !Number.isFinite(sizeSecond) || sizeFirst <= 0 || sizeSecond <= 0) {
-    throw new Error('尺寸须为大于 0 的数字')
-  }
+
+  const { sizeFirst, sizeSecond, sizeUnit } = validateFrameSizeSides(
+    form.sizeFirst,
+    form.sizeSecond,
+    form.sizeUnit
+  )
   return {
     sizeAxis,
     sizeUnit,

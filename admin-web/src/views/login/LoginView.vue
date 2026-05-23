@@ -28,7 +28,7 @@
           登录
         </el-button>
       </el-form>
-      <p v-if="useMock" class="mock-tip">当前为 Mock 模式，默认账号 admin / admin123</p>
+      <p v-if="useMock" class="mock-tip">Mock 模式：admin / admin123；资产调整验证码 123456</p>
     </div>
   </div>
 </template>

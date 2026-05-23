@@ -77,7 +77,7 @@
           <el-input v-model="editForm.id" disabled />
         </el-form-item>
         <el-form-item label="名称" required>
-          <el-input v-model="editForm.name" />
+          <el-input v-model="editForm.name" placeholder="名称不可重复" />
         </el-form-item>
         <el-form-item label="提示词" required>
           <el-input

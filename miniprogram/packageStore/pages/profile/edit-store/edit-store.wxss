@@ -200,6 +200,29 @@
   margin: 0 32rpx;
 }
 
+.name-hint-row {
+  padding: 0 32rpx 20rpx;
+}
+
+.name-hint {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.name-hint--checking {
+  color: #999;
+}
+
+.name-hint--dup {
+  color: #e91e8c;
+}
+
+.name-hint--ok {
+  color: #5a9a6e;
+}
+
 /* 保存按钮 */
 .btn-wrap {
   padding: 40rpx 30rpx 0;

@@ -4,14 +4,27 @@
 
 let cachedSupportPhone = null
 
+function getSettingsCloudTarget() {
+  try {
+    const app = getApp()
+    if (app.globalData.accountKind === 'customer') {
+      return { name: 'customer', action: 'platform.settings' }
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return { name: 'storeMember', action: 'platform.settings' }
+}
+
 function fetchPlatformSupportPhone(forceRefresh = false) {
   if (!forceRefresh && cachedSupportPhone !== null) {
     return Promise.resolve(cachedSupportPhone)
   }
+  const target = getSettingsCloudTarget()
   return wx.cloud
     .callFunction({
-      name: 'storeMember',
-      data: { action: 'platform.settings' }
+      name: target.name,
+      data: { action: target.action }
     })
     .then((res) => {
       const result = res.result || {}

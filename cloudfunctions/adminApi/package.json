@@ -4,6 +4,7 @@
   "description": "AI写真馆后台管理 API（HTTP / callFunction）",
   "main": "index.js",
   "dependencies": {
+    "tencentcloud-sdk-nodejs": "^4.0.990",
     "wx-server-sdk": "^2.6.3"
   }
 }

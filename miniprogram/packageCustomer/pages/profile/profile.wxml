@@ -16,11 +16,14 @@
         />
       </view>
       <view class="top-main">
-        <view class="top-name-row">
+          <view class="top-name-row">
           <view class="name-tap" bindtap="onOpenNickModal">
             <text class="name-text">{{wxNickName}}</text>
           </view>
-          <text class="role-tag">顾客</text>
+          <view class="help-entry" bindtap="onOpenHelp">
+            <text class="help-entry-mark">?</text>
+            <text>帮助</text>
+          </view>
         </view>
         <text class="tap-hint" bindtap="onOpenNickModal">点击修改昵称</text>
         <view class="store-chip">

@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
 const member = require('./lib/member')
+const feedback = require('./lib/feedback')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -22,6 +23,9 @@ exports.main = async (event) => {
         break
       case 'store.update':
         data = await member.storeUpdate(openid, event)
+        break
+      case 'store.checkName':
+        data = await member.storeCheckName(event)
         break
       case 'invite.create':
         data = await member.inviteCreate(openid, event)
@@ -61,6 +65,9 @@ exports.main = async (event) => {
         break
       case 'platform.settings':
         data = await member.platformSettingsGet(openid)
+        break
+      case 'feedback.submit':
+        data = await feedback.submitStoreFeedback(openid, event)
         break
       case 'customerRegisterInvite.create':
         data = await member.customerRegisterInviteCreate(openid, event)

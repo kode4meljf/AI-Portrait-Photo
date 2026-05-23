@@ -1,7 +1,7 @@
 <!--packageOrder/pages/order-list/order-list.wxml-->
 <view class="order-container">
   <!-- 可滚动内容区 -->
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" bindrefresherrefresh="onScrollRefresh" refresher-triggered="{{refreshing}}">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{allowRefresh}}" bindrefresherrefresh="onScrollRefresh" refresher-triggered="{{refreshing}}">
 
     <!-- 统计概览（动态数据） -->
     <view class="stats-overview">

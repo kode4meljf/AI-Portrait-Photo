@@ -8,10 +8,14 @@ export const api = {
   listStores: (params) => adminRequest('stores.list', {}, params),
   getStore: (storeId) => adminRequest('stores.get', { storeId }),
   updateStore: (data) => adminRequest('stores.update', data),
+  sendStoreAssetAdjustCode: (data) => adminRequest('stores.assetAdjust.sendCode', data),
+  applyStoreAssetAdjust: (data) => adminRequest('stores.assetAdjust.apply', data),
+  listStoreAssetAdjustments: (params) => adminRequest('stores.assetAdjust.list', {}, params),
 
   listCustomers: (params) => adminRequest('customers.list', {}, params),
   getCustomer: (id) => adminRequest('customers.get', { id }),
   updateCustomer: (data) => adminRequest('customers.update', data),
+  uploadCustomerAvatar: (data) => adminRequest('customers.uploadAvatar', data),
 
   listOrders: (params) => adminRequest('orders.list', {}, params),
   getOrderStatusCounts: (params) => adminRequest('orders.statusCounts', {}, params),
@@ -35,5 +39,9 @@ export const api = {
   uploadFrameCover: (data) => adminRequest('frames.uploadCover', data),
 
   getPlatformSettings: () => adminRequest('platformSettings.get'),
-  updatePlatformSettings: (data) => adminRequest('platformSettings.update', data)
+  updatePlatformSettings: (data) => adminRequest('platformSettings.update', data),
+
+  listFeedbacks: (params) => adminRequest('feedbacks.list', {}, params),
+  updateFeedbackStatus: (data) => adminRequest('feedbacks.updateStatus', data),
+  deleteFeedback: (data) => adminRequest('feedbacks.delete', data)
 }

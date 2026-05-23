@@ -82,32 +82,34 @@
           <el-input v-model="editForm.id" disabled />
         </el-form-item>
         <el-form-item label="名称" required>
-          <el-input v-model="editForm.name" />
+          <el-input v-model="editForm.name" placeholder="名称不可重复" />
         </el-form-item>
         <el-form-item :label="SIZE_FORM_LABEL">
           <div class="size-editor">
             <div class="size-inputs">
               <el-input-number
                 v-model="editForm.sizeFirst"
-                :min="0"
+                :min="FRAME_SIZE_SIDE_MIN"
+                :max="FRAME_SIZE_SIDE_MAX"
                 :precision="1"
                 :controls="false"
-                placeholder="数值"
+                placeholder="长"
                 class="size-num"
               />
               <span class="size-unit">{{ editForm.sizeUnit }}</span>
               <span class="size-times">×</span>
               <el-input-number
                 v-model="editForm.sizeSecond"
-                :min="0"
+                :min="FRAME_SIZE_SIDE_MIN"
+                :max="FRAME_SIZE_SIDE_MAX"
                 :precision="1"
                 :controls="false"
-                placeholder="数值"
+                placeholder="宽"
                 class="size-num"
               />
               <span class="size-unit">{{ editForm.sizeUnit }}</span>
             </div>
-            <p class="size-hint">选填；按所选顺序填写，小程序展示为「20cm × 25cm」</p>
+            <p class="size-hint">{{ SIZE_FORM_HINT }}</p>
           </div>
         </el-form-item>
         <el-form-item label="材质">
@@ -137,6 +139,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api/admin'
 import {
   SIZE_FORM_LABEL,
+  SIZE_FORM_HINT,
+  FRAME_SIZE_SIDE_MIN,
+  FRAME_SIZE_SIDE_MAX,
   buildFrameSizePayload,
   formatFrameSizeDisplay,
   parseFrameSizeToForm

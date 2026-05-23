@@ -66,6 +66,12 @@ const routes = [
         name: 'platform-settings',
         component: () => import('@/views/settings/PlatformSettingsView.vue'),
         meta: { title: '平台配置' }
+      },
+      {
+        path: 'feedbacks',
+        name: 'feedbacks',
+        component: () => import('@/views/feedbacks/FeedbackListView.vue'),
+        meta: { title: '意见反馈' }
       }
     ]
   }

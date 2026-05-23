@@ -1,0 +1,28 @@
+<view class="help-page">
+  <view class="page-body">
+    <view class="help-tip">{{tip}}</view>
+    <block wx:for="{{sections}}" wx:key="title">
+      <view class="section-title">{{item.title}}</view>
+      <view class="settings-card">
+        <view
+          class="item"
+          wx:for="{{item.items}}"
+          wx:for-item="row"
+          wx:key="action"
+          bindtap="onItemTap"
+          data-action="{{row.action}}"
+        >
+          <view class="item-icon">
+            <image src="{{row.iconSrc}}" mode="aspectFit" />
+          </view>
+          <text class="item-text">{{row.text}}</text>
+          <text wx:if="{{row.value}}" class="item-value">{{row.value}}</text>
+          <text class="item-arrow">›</text>
+        </view>
+      </view>
+    </block>
+    <view class="version-bar">
+      <text class="version-text">{{versionText}}</text>
+    </view>
+  </view>
+</view>

@@ -3,7 +3,7 @@
  */
 
 const app = getApp();
-const { isValidStoreId, updateStoreProfile } = require('../../../../utils/storeSession');
+const { isValidStoreId, updateStoreProfile, callStoreMember } = require('../../../../utils/storeSession');
 const { getProfileCollection } = require('../../../../utils/account');
 
 const TEXT_FIELDS = [
@@ -35,7 +35,9 @@ Page({
       avatarUrl: "",
       latitude: null,
       longitude: null
-    }
+    },
+    nameCheckStatus: "",
+    nameCheckHint: ""
   },
 
   onLoad() {
@@ -149,7 +151,44 @@ Page({
     this.setData({
       [`form.${field}`]: e.detail.value
     });
+    if (field === "name") {
+      this.setData({ nameCheckStatus: "", nameCheckHint: "" });
+    }
     this.refreshChangedState();
+  },
+
+  onNameBlur(e) {
+    this.runNameCheck((e.detail.value || "").trim());
+  },
+
+  async runNameCheck(name) {
+    const trimmed = (name || this.data.form.name || "").trim();
+    const initial = (this.data.initialTextSnapshot.name || "").trim();
+    if (!trimmed) {
+      this.setData({ nameCheckStatus: "", nameCheckHint: "" });
+      return;
+    }
+    if (trimmed === initial) {
+      this.setData({ nameCheckStatus: "", nameCheckHint: "" });
+      return;
+    }
+    this.setData({ nameCheckStatus: "checking", nameCheckHint: "" });
+    try {
+      const res = await callStoreMember("store.checkName", {
+        name: trimmed,
+        excludeStoreId: this.getStoreDocId()
+      });
+      if (res.available) {
+        this.setData({ nameCheckStatus: "ok", nameCheckHint: "" });
+      } else {
+        this.setData({
+          nameCheckStatus: "dup",
+          nameCheckHint: res.reason || "该门店名称已被使用，请换一个名称"
+        });
+      }
+    } catch (error) {
+      this.setData({ nameCheckStatus: "", nameCheckHint: "" });
+    }
   },
 
   chooseAddressOnMap() {
@@ -246,6 +285,17 @@ Page({
     const mapAddress = (this.data.form.address || "").trim();
     if (!mapAddress) {
       wx.showToast({ title: "请先地图选点", icon: "none" });
+      return;
+    }
+    if (this.data.nameCheckStatus === "checking") {
+      wx.showToast({ title: "正在检查名称…", icon: "none" });
+      return;
+    }
+    if (this.data.nameCheckStatus === "dup") {
+      wx.showToast({
+        title: this.data.nameCheckHint || "该门店名称已被使用",
+        icon: "none"
+      });
       return;
     }
     const houseNumber = (this.data.form.houseNumber || "").trim();

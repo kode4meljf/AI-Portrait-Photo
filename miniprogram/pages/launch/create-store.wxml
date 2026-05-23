@@ -13,7 +13,13 @@
           value="{{name}}"
           data-key="name"
           bindinput="onInput"
+          bindblur="onNameBlur"
         />
+      </view>
+      <view wx:if="{{nameCheckStatus}}" class="name-hint-row">
+        <text wx:if="{{nameCheckStatus === 'checking'}}" class="name-hint name-hint--checking">正在检查名称…</text>
+        <text wx:elif="{{nameCheckStatus === 'dup'}}" class="name-hint name-hint--dup">{{nameCheckHint}}</text>
+        <text wx:elif="{{nameCheckStatus === 'ok'}}" class="name-hint name-hint--ok">名称可用</text>
       </view>
     </view>
 

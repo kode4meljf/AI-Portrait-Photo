@@ -4,6 +4,12 @@
 
     <!-- 门店信息头部 -->
     <view class="store-header">
+      <view class="store-header-actions">
+        <view class="help-entry gold" bindtap="onOpenHelp">
+          <text class="help-entry-mark">?</text>
+          <text>帮助</text>
+        </view>
+      </view>
       <view class="store-top">
         <view wx:if="{{storeInfo.avatarUrl}}" class="store-avatar" bindtap="previewStoreAvatar">
           <image class="store-avatar-img" src="{{storeInfo.avatarUrl}}" mode="aspectFill"></image>

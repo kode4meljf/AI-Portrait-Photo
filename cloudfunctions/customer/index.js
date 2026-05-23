@@ -1,6 +1,8 @@
 const cloud = require('wx-server-sdk')
 const handlers = require('./lib/handlers')
 const register = require('./lib/register')
+const platform = require('./lib/platform')
+const feedback = require('./lib/feedback')
 const { checkinQrImage } = require('./lib/checkinQr')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -59,6 +61,13 @@ exports.main = async (event) => {
       case 'scan.bindCheckin':
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.scanBindCheckin(openid, event)
+        break
+      case 'platform.settings':
+        data = await platform.getSettings()
+        break
+      case 'feedback.submit':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await feedback.submitCustomerFeedback(openid, event)
         break
       default:
         return { success: false, error: `未知 action: ${action}` }
