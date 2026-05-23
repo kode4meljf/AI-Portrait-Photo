@@ -49,8 +49,9 @@
         </view>
 
         <view
-          class="entry-card entry-card--primary"
+          class="entry-card"
           hover-class="entry-card--active"
+          hover-stay-time="80"
           bindtap="goCreateStore"
         >
           <view class="entry-icon">🏪</view>
@@ -61,7 +62,7 @@
           <text class="entry-arrow">›</text>
         </view>
 
-        <view class="entry-card" hover-class="entry-card--active" bindtap="goJoin">
+        <view class="entry-card" hover-class="entry-card--active" hover-stay-time="80" bindtap="goJoin">
           <view class="entry-icon entry-icon--muted">🪪</view>
           <view class="entry-body">
             <text class="entry-title">邀请码加入</text>

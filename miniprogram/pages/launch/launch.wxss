@@ -88,17 +88,12 @@
   padding: 28rpx 32rpx;
   border-radius: 28rpx;
   background: #fff;
-  border: 1rpx solid #f0e8dc;
+  border: 2rpx solid #f0e8dc;
 }
 
 .entry-card--active {
-  opacity: 0.92;
   background: #fffcf9;
-}
-
-.entry-card--primary {
-  background: #fff;
-  border: 2rpx solid #e8b86d;
+  border-color: #e8b86d;
   box-shadow: 0 8rpx 32rpx rgba(201, 146, 42, 0.1);
 }
 
