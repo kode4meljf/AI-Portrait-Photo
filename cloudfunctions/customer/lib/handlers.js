@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk')
 const { isValidStoreId } = require('./storeId')
 const { normalizeMobilePhone } = require('./phone')
+const { deleteCloudFileSafe } = require('./checkinQr')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -69,7 +70,11 @@ function phoneConflictError(existing) {
 async function findByPhone(storeId, phone) {
   const p = (phone || '').trim()
   if (!p) return null
-  const res = await db.collection('customers').where({ storeId, phone: p }).limit(1).get()
+  const res = await db
+    .collection('customers')
+    .where({ storeId, phone: p, status: _.neq('deleted') })
+    .limit(1)
+    .get()
   return res.data[0] || null
 }
 
@@ -344,8 +349,124 @@ async function scanBindCheckin(openid, payload) {
   return latest.data
 }
 
+async function assertCustomerDeletable(customer, member, operatorOpenId) {
+  if (!customer) {
+    throw new Error('客户不存在')
+  }
+  if (customer.storeId !== member.storeId) {
+    throw new Error('无权操作该客户')
+  }
+  if ((customer.wxOpenId || '').trim()) {
+    const err = new Error('该客户已绑定微信，无法删除档案')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  if ((customer.source || '').trim() !== 'store_create') {
+    const err = new Error('仅支持删除代客建档且未绑定微信的客户')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  const isOwner = member.role === 'owner'
+  const createdBy = (customer.createdBy || '').trim()
+  if (!isOwner && createdBy !== operatorOpenId) {
+    const err = new Error('仅可删除您本人创建的预建档客户')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  const totalCheckins = Number(customer.totalCheckins) || 0
+  if (totalCheckins > 0) {
+    const err = new Error('该客户已有打卡记录，无法删除')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+}
+
+async function assertNoRelatedCustomerData(customerDocId, storeId) {
+  const frame = await db
+    .collection('frame_orders')
+    .where({ storeId, customerId: customerDocId })
+    .limit(1)
+    .get()
+  if (frame.data.length) {
+    const err = new Error('该客户已有摆台订单，无法删除')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  const checkins = await db
+    .collection('checkins')
+    .where({ storeId, customerDocId })
+    .limit(1)
+    .get()
+  if (checkins.data.length) {
+    const err = new Error('该客户已有打卡记录，无法删除')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  const photos = await db
+    .collection('photos')
+    .where({ storeId, customerId: customerDocId })
+    .limit(1)
+    .get()
+  if (photos.data.length) {
+    const err = new Error('该客户已关联云相册照片，无法删除')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+  const batches = await db
+    .collection('batches')
+    .where({ storeId, customerId: customerDocId })
+    .limit(1)
+    .get()
+  if (batches.data.length) {
+    const err = new Error('该客户已关联云相册批次，无法删除')
+    err.code = 'CUSTOMER_DELETE_FORBIDDEN'
+    throw err
+  }
+}
+
+function collectCustomerCloudFileIds(customer) {
+  const ids = []
+  const avatar = (customer.avatarUrl || '').trim()
+  const qr = (customer.checkinQrFileId || '').trim()
+  if (avatar.startsWith('cloud://')) ids.push(avatar)
+  if (qr.startsWith('cloud://')) ids.push(qr)
+  return [...new Set(ids)]
+}
+
+async function deleteCustomerCloudAssets(customer) {
+  const fileIds = collectCustomerCloudFileIds(customer)
+  for (const fileId of fileIds) {
+    await deleteCloudFileSafe(fileId)
+  }
+}
+
+/** 物理删除代客预建档客户，并清理云存储头像、打卡码等 */
+async function deleteByStore(openid, payload) {
+  const member = await requireStoreOperator(openid)
+  const storeId = member.storeId
+  const customerDocId = String(payload.customerDocId || payload.id || '').trim()
+  if (!customerDocId) throw new Error('缺少客户 ID')
+
+  let customer
+  try {
+    const docRes = await db.collection('customers').doc(customerDocId).get()
+    customer = docRes.data
+  } catch (e) {
+    customer = null
+  }
+
+  await assertCustomerDeletable(customer, member, openid)
+  await assertNoRelatedCustomerData(customerDocId, storeId)
+
+  await deleteCustomerCloudAssets(customer)
+  await db.collection('customers').doc(customerDocId).remove()
+
+  return { customerDocId, deleted: true }
+}
+
 module.exports = {
   createByStore,
   updateByStore,
-  scanBindCheckin
+  scanBindCheckin,
+  deleteByStore
 }

@@ -1,5 +1,8 @@
 const { callCustomer } = require('../../../../utils/storeSession')
 const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../../../utils/customerForm')
+const { canShowDeleteCustomer, confirmDeleteCustomer } = require('../../../../utils/customerDelete')
+
+const app = getApp()
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -36,7 +39,10 @@ Page({
     avatarInitial: '客',
     avatarTint: '#4e7cf6',
     wxNickName: '',
-    phoneLocked: false
+    phoneLocked: false,
+    canDelete: false,
+    deleting: false,
+    customerRaw: null
   },
 
   onLoad(options) {
@@ -68,7 +74,9 @@ Page({
         avatarInitial: initialFromName(nickName || data.wxNickName),
         avatarTint: pickAvatarTint(this.data.id || nickName || data.wxNickName),
         wxNickName: (data.wxNickName || '').trim(),
-        phoneLocked: !!(data.wxOpenId || '').trim()
+        phoneLocked: !!(data.wxOpenId || '').trim(),
+        customerRaw: data,
+        canDelete: canShowDeleteCustomer(data, app)
       })
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' })
@@ -122,6 +130,28 @@ Page({
       wx.showToast({ title: e.message || '保存失败', icon: 'none' })
     } finally {
       this.setData({ saving: false })
+    }
+  },
+
+  async onDelete() {
+    if (this.data.deleting || !this.data.canDelete || !this.data.customerRaw) return
+    const confirmed = await confirmDeleteCustomer(this.data.customerRaw)
+    if (!confirmed) return
+
+    this.setData({ deleting: true })
+    try {
+      await callCustomer('deleteByStore', { customerDocId: this.data.id })
+      if (app.globalData.selectedCustomerId === this.data.id) {
+        app.globalData.selectedCustomerId = null
+        app.globalData.selectedCustomer = null
+        wx.removeStorageSync('selectedCustomerId')
+      }
+      wx.showToast({ title: '已删除', icon: 'success' })
+      setTimeout(() => wx.navigateBack(), 400)
+    } catch (e) {
+      wx.showToast({ title: e.message || '删除失败', icon: 'none' })
+    } finally {
+      this.setData({ deleting: false })
     }
   }
 })

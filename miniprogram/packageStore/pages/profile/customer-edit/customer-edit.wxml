@@ -59,6 +59,13 @@
 
   <view class="save-bar">
     <view
+      wx:if="{{canDelete}}"
+      class="delete-btn {{deleting || saving ? 'delete-btn--disabled' : ''}}"
+      hover-class="delete-btn-hover"
+      hover-stay-time="80"
+      bindtap="onDelete"
+    >删除档案</view>
+    <view
       class="save-btn {{saving || !canSave ? 'save-btn--disabled' : ''}}"
       hover-class="save-btn-hover"
       hover-stay-time="80"

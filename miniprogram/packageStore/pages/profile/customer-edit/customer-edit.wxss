@@ -147,9 +147,36 @@
 
 .save-bar {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
   box-sizing: border-box;
   margin-top: 32rpx;
-  padding: 0 48rpx;
+  padding: 0 48rpx calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 88rpx;
+  border-radius: 44rpx;
+  border: 2rpx solid #fecaca;
+  background: #fff;
+  color: #e91e8c;
+  font-size: 30rpx;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.delete-btn-hover {
+  background: #fff5f7;
+}
+
+.delete-btn--disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .save-btn {

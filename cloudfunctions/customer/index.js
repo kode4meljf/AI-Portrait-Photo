@@ -58,6 +58,10 @@ exports.main = async (event) => {
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.updateByStore(openid, event)
         break
+      case 'deleteByStore':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await handlers.deleteByStore(openid, event)
+        break
       case 'scan.bindCheckin':
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.scanBindCheckin(openid, event)
