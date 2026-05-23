@@ -35,4 +35,30 @@ function showPhoneConflictModal(err, options = {}) {
   })
 }
 
-module.exports = { validateStoreCustomerForm, showPhoneConflictModal }
+function showRegisteredPhoneModal(err, options = {}) {
+  wx.showModal({
+    title: options.title || '无法使用该手机号',
+    content: err.message || '该手机号已是其他门店注册客户',
+    showCancel: false,
+    confirmText: '知道了'
+  })
+}
+
+function showCustomerPhoneError(err, options = {}) {
+  if (err && err.code === 'PHONE_REGISTERED_ELSEWHERE') {
+    showRegisteredPhoneModal(err, options)
+    return true
+  }
+  if (err && err.code === 'PHONE_ALREADY_EXISTS') {
+    showPhoneConflictModal(err, options)
+    return true
+  }
+  return false
+}
+
+module.exports = {
+  validateStoreCustomerForm,
+  showPhoneConflictModal,
+  showRegisteredPhoneModal,
+  showCustomerPhoneError
+}

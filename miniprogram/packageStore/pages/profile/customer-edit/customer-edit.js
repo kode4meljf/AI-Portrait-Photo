@@ -1,5 +1,5 @@
 const { callCustomer } = require('../../../../utils/storeSession')
-const { validateStoreCustomerForm, showPhoneConflictModal } = require('../../../../utils/customerForm')
+const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../../../utils/customerForm')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -118,10 +118,7 @@ Page({
       wx.showToast({ title: '保存成功', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 400)
     } catch (e) {
-      if (e.code === 'PHONE_ALREADY_EXISTS') {
-        showPhoneConflictModal(e)
-        return
-      }
+      if (showCustomerPhoneError(e)) return
       wx.showToast({ title: e.message || '保存失败', icon: 'none' })
     } finally {
       this.setData({ saving: false })

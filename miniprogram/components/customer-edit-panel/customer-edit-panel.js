@@ -4,7 +4,7 @@
 const app = getApp()
 const { callCustomer } = require('../../utils/storeSession')
 const { initialFromName, pickAvatarTint } = require('../../utils/customerListDisplay')
-const { validateStoreCustomerForm, showPhoneConflictModal } = require('../../utils/customerForm')
+const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../utils/customerForm')
 
 function avatarMetaFromCustomer(customer, id) {
   const nick = customer?.nickName || customer?.wxNickName || ''
@@ -118,10 +118,7 @@ Component({
         wx.showToast({ title: '保存成功', icon: 'success' })
         this.triggerEvent('saved', { customer: latest })
       } catch (err) {
-        if (err.code === 'PHONE_ALREADY_EXISTS') {
-          showPhoneConflictModal(err)
-          return
-        }
+        if (showCustomerPhoneError(err)) return
         console.error('[customer-edit-panel] save failed', err)
         wx.showToast({ title: err.message || '保存失败', icon: 'none' })
       } finally {

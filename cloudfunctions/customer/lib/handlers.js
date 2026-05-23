@@ -73,6 +73,32 @@ async function findByPhone(storeId, phone) {
   return res.data[0] || null
 }
 
+/** 该手机号是否已被任意门店的已注册客户（有 wxOpenId）占用 */
+async function findRegisteredByPhone(phone, excludeDocId) {
+  const p = (phone || '').trim()
+  if (!p) return null
+  const res = await db.collection('customers').where({ phone: p }).limit(50).get()
+  for (const row of res.data || []) {
+    if (excludeDocId && row._id === excludeDocId) continue
+    if ((row.wxOpenId || '').trim()) return row
+  }
+  return null
+}
+
+async function assertPhoneNotGloballyRegistered(phone, options = {}) {
+  const { excludeDocId, operatorStoreId, action = 'create' } = options
+  const row = await findRegisteredByPhone(phone, excludeDocId)
+  if (!row) return
+  const storeName = await getStoreName(row.storeId)
+  const suffix = action === 'create' ? '无法重复建档' : '无法使用该手机号'
+  const err = new Error(`该手机号已是「${storeName}」注册客户，${suffix}`)
+  err.code = 'PHONE_REGISTERED_ELSEWHERE'
+  if (operatorStoreId && row.storeId === operatorStoreId) {
+    err.existingId = row._id
+  }
+  throw err
+}
+
 function formatCustomerResponse(row, extra = {}) {
   return {
     _id: row._id,
@@ -102,6 +128,8 @@ async function createByStore(openid, payload) {
   if (existing) {
     throw phoneConflictError(existing)
   }
+
+  await assertPhoneNotGloballyRegistered(phone, { operatorStoreId: storeId, action: 'create' })
 
   const addRes = await db.collection('customers').add({
     data: {
@@ -165,6 +193,14 @@ async function updateByStore(openid, payload) {
     err.code = 'PHONE_ALREADY_EXISTS'
     err.existingId = dup._id
     throw err
+  }
+
+  if (phone !== storedPhone) {
+    await assertPhoneNotGloballyRegistered(phone, {
+      excludeDocId: customerDocId,
+      operatorStoreId: storeId,
+      action: 'update'
+    })
   }
 
   await db.collection('customers').doc(customerDocId).update({

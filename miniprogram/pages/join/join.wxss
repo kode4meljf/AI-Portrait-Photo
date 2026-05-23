@@ -59,7 +59,7 @@
   margin-bottom: 24rpx;
 }
 
-.join-card .btn-secondary {
+.join-card .join-preview-trigger {
   margin-top: 28rpx;
 }
 

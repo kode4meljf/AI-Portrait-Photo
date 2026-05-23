@@ -1,7 +1,7 @@
 const app = getApp()
 const { callCustomer, isValidStoreId } = require('../../../../utils/storeSession')
 const { normalizeMobilePhone } = require('../../../../utils/phone')
-const { validateStoreCustomerForm, showPhoneConflictModal } = require('../../../../utils/customerForm')
+const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../../../utils/customerForm')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -83,10 +83,7 @@ Page({
       })
       wx.setNavigationBarTitle({ title: '添加成功' })
     } catch (e) {
-      if (e.code === 'PHONE_ALREADY_EXISTS') {
-        showPhoneConflictModal(e, { title: '手机号已登记' })
-        return
-      }
+      if (showCustomerPhoneError(e, { title: '手机号已登记' })) return
       wx.showToast({ title: e.message || '创建失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })

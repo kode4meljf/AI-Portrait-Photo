@@ -9,7 +9,7 @@
 
   <view class="join-card">
     <view class="field">
-      <text class="label">邀请码</text>
+      <text class="label">邀请码<text class="required">*</text></text>
       <view class="input-shell">
         <input
           class="input-shell__field"
@@ -61,8 +61,8 @@
     </view>
 
     <button
-      class="btn btn-secondary"
-      hover-class="btn-secondary--press"
+      class="btn btn-primary join-preview-trigger"
+      hover-class="btn-primary--press"
       hover-stay-time="80"
       bindtap="onPreview"
     >查看门店信息</button>
