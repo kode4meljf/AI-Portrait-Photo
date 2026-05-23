@@ -5,6 +5,7 @@
 const app = getApp();
 const { isValidStoreId, updateStoreProfile, callStoreMember } = require('../../../../utils/storeSession');
 const { getProfileCollection } = require('../../../../utils/account');
+const { normalizeMobilePhone } = require('../../../../utils/phone');
 
 const TEXT_FIELDS = [
   "name",
@@ -298,6 +299,11 @@ Page({
       });
       return;
     }
+    const phoneResult = normalizeMobilePhone(this.data.form.contactPhone);
+    if (!phoneResult.ok) {
+      wx.showToast({ title: phoneResult.error, icon: "none" });
+      return;
+    }
     const houseNumber = (this.data.form.houseNumber || "").trim();
     const fullAddress = [mapAddress, houseNumber].filter(Boolean).join(" ");
 
@@ -306,7 +312,7 @@ Page({
       await updateStoreProfile({
         name: this.data.form.name,
         contactName: this.data.form.contactName,
-        contactPhone: this.data.form.contactPhone,
+        contactPhone: phoneResult.phone,
         address: fullAddress,
         mapAddress,
         addressName: this.data.form.addressName,

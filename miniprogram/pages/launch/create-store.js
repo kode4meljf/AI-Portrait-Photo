@@ -1,5 +1,6 @@
 const { callStoreMember, applySessionToApp } = require('../../utils/storeSession')
 const { markSessionDirty } = require('../../utils/sessionDirty')
+const { normalizeMobilePhone } = require('../../utils/phone')
 const { auditPageLayout } = require('../../utils/pageLayoutGuard')
 
 Page({
@@ -16,7 +17,8 @@ Page({
     longitude: null,
     submitting: false,
     nameCheckStatus: '',
-    nameCheckHint: ''
+    nameCheckHint: '',
+    phoneCheckHint: ''
   },
 
   onReady() {
@@ -28,9 +30,16 @@ Page({
 
   onInput(e) {
     const key = e.currentTarget.dataset.key
-    this.setData({ [key]: e.detail.value })
+    let value = e.detail.value || ''
+    if (key === 'contactPhone') {
+      value = String(value).replace(/\D/g, '').slice(0, 11)
+    }
+    this.setData({ [key]: value })
     if (key === 'name') {
       this.setData({ nameCheckStatus: '', nameCheckHint: '' })
+    }
+    if (key === 'contactPhone') {
+      this.setData({ phoneCheckHint: '' })
     }
   },
 
@@ -111,8 +120,10 @@ Page({
       wx.showToast({ title: '请填写联系人', icon: 'none' })
       return false
     }
-    if (!contactPhone) {
-      wx.showToast({ title: '请填写联系电话', icon: 'none' })
+    const phoneResult = normalizeMobilePhone(contactPhone)
+    if (!phoneResult.ok) {
+      this.setData({ phoneCheckHint: phoneResult.error })
+      wx.showToast({ title: phoneResult.error, icon: 'none' })
       return false
     }
     if (!mapAddress) {
@@ -138,11 +149,12 @@ Page({
       const mapAddress = (this.data.address || '').trim()
       const houseNumber = (this.data.houseNumber || '').trim()
       const fullAddress = [mapAddress, houseNumber].filter(Boolean).join(' ')
+      const phoneNorm = normalizeMobilePhone((this.data.contactPhone || '').trim())
 
       const created = await callStoreMember('store.create', {
         name: (this.data.name || '').trim(),
         contactName: (this.data.contactName || '').trim(),
-        contactPhone: (this.data.contactPhone || '').trim(),
+        contactPhone: phoneNorm.phone,
         address: fullAddress,
         mapAddress,
         addressName: (this.data.addressName || '').trim(),

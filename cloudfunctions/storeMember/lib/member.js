@@ -6,7 +6,7 @@ const db = cloud.database()
 const _ = db.command
 
 const platform = require('./platform')
-const { getPhoneFromCode } = require('./phone')
+const { getPhoneFromCode, normalizeMobilePhone } = require('./phone')
 const QRCode = require('qrcode')
 
 const MEMBERS = 'store_members'
@@ -383,12 +383,11 @@ async function storeCreate(openid, payload) {
   const now = Date.now()
   const name = normalizeStoreName(payload.name || 'AI写真馆')
   const contactName = (payload.contactName || '').trim()
-  const contactPhone = (payload.contactPhone || '').trim()
+  const contactPhone = normalizeMobilePhone(payload.contactPhone)
   const mapAddress = (payload.mapAddress || '').trim() || (payload.address || '').trim()
   const houseNumber = (payload.houseNumber || '').trim()
 
   if (!contactName) throw new Error('请填写联系人')
-  if (!contactPhone) throw new Error('请填写联系电话')
   if (!mapAddress) throw new Error('请先地图选点选择门店地址')
   const lat = payload.latitude
   const lng = payload.longitude
@@ -505,6 +504,9 @@ async function storeUpdate(openid, payload) {
     if (!data.name) throw new Error('请填写门店名称')
     await assertStoreNameAvailable(data.name, storeId)
     data.nameKey = storeNameKey(data.name)
+  }
+  if (data.contactPhone !== undefined) {
+    data.contactPhone = normalizeMobilePhone(data.contactPhone)
   }
   if (payload.balanceInc !== undefined) {
     data.balance = _.inc(Number(payload.balanceInc) || 0)
