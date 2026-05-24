@@ -76,7 +76,7 @@ Page({
   applyPayload({ list, storeName }) {
     const formatTime = (d) => this.formatTime(d)
     const orders = (list || []).map((o) => formatCustomerOrderRow(o, formatTime))
-  const name =
+    const name =
       (storeName || '').trim() ||
       (app.globalData.customer && app.globalData.customer.storeName) ||
       '所属门店'
