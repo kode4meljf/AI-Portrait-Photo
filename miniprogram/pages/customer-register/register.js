@@ -1,7 +1,7 @@
 const app = getApp()
 const { callCustomer } = require('../../utils/customerApi')
 const { applySessionToApp } = require('../../utils/storeSession')
-const { markSessionDirty } = require('../../utils/sessionDirty')
+const { clearSessionDirty } = require('../../utils/sessionDirty')
 const { parseCustomerRegisterFromScan } = require('../../utils/inviteCode')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
@@ -138,6 +138,7 @@ Page({
     }
 
     this.setData({ submitting: true })
+    let uploadedAvatarFileID = ''
     try {
       if (!app.globalData.openId) {
         await app.ensureLogin()
@@ -150,6 +151,7 @@ Page({
           cloudPath: `customer-avatars/${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
           filePath: avatarUrl
         })
+        uploadedAvatarFileID = up.fileID
         avatarUrl = up.fileID
       }
 
@@ -161,12 +163,16 @@ Page({
       })
 
       await applySessionToApp(app)
-      markSessionDirty(app)
+      clearSessionDirty(app)
       wx.showToast({ title: '注册成功', icon: 'success' })
       setTimeout(() => {
         wx.reLaunch({ url: CUSTOMER_HOME })
       }, 400)
     } catch (e) {
+      if (uploadedAvatarFileID) {
+        const { deleteCloudFileSafe } = require('../../utils/cloudFileCleanup')
+        await deleteCloudFileSafe(uploadedAvatarFileID)
+      }
       wx.showToast({ title: e.message || '注册失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })

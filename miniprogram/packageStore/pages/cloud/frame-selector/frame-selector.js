@@ -3,6 +3,7 @@ const { isCloudFileId } = require('../../../../utils/cloudPhoto');
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { isStoreAccount, getProfileCollection } = require('../../../../utils/account');
 const { isValidStoreId } = require('../../../../utils/storeSession');
+const { isStoreOwner } = require('../../../../utils/storeRole');
 const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../../config/frames.js');
 const db = wx.cloud.database();
 
@@ -52,6 +53,7 @@ Page({
   },
 
   onShow() {
+    this.setData({ isOwner: isStoreOwner(app) });
     if (this._storeLoaded) {
       this.loadStoreInfo();
     } else {
@@ -199,6 +201,17 @@ Page({
     if (!isValidStoreId(app.globalData.storeId)) {
       wx.showToast({ title: '请先登录门店', icon: 'none' });
       return;
+    }
+
+    const customerId = app.globalData.selectedCustomerId || null;
+    if (!customerId) {
+      const modal = await wx.showModal({
+        title: '未关联客户',
+        content: '下单时未关联客户，顾客端「我的订单」将无法看到该订单。是否仍要提交？',
+        confirmText: '仍要提交',
+        cancelText: '取消'
+      });
+      if (!modal.confirm) return;
     }
 
     this.setData({ submitting: true });

@@ -4,6 +4,7 @@ const _ = db.command;
 const { ORDER_TYPES, STATUS_TAB_MAP, ORDER_STATUSES } = require('./config');
 const { normalizePhotoUrl } = require('./photo');
 const { ensureStoreProfile } = require('./store');
+const { deleteCloudFileSafe } = require('./cloudFile')
 function getFrameConfig() { return ORDER_TYPES.frame; }
 async function assertStoreOrder(orderId, storeId) {
   const res = await db.collection(getFrameConfig().collection).doc(orderId).get();
@@ -28,18 +29,24 @@ async function createFrameOrder(event, storeId) {
   const balance = store?.balance ?? 0;
   if (balance < 1) return { success: false, error: '摆件相框次数不足，请充值' };
 
-  const finalPhotoUrl = await normalizePhotoUrl(photoUrl, storeId);
-  await db.collection('stores').doc(storeId).update({ data: { balance: _.inc(-1) } });
+  const { url: finalPhotoUrl, orphanFileId } = await normalizePhotoUrl(photoUrl, storeId);
 
   const orderNo = `${getFrameConfig().orderNoPrefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const orderRes = await db.collection(getFrameConfig().collection).add({
-    data: {
-      orderType: 'frame', orderNo, storeId, customerId: customerId || null,
-      frameTemplateId, frameName, photoUrl: finalPhotoUrl,
-      styleId: styleId || '', styleName: styleName || '',
-      status: '待处理', shippingNo: null, createTime: db.serverDate()
-    }
-  });
+  let orderRes;
+  try {
+    orderRes = await db.collection(getFrameConfig().collection).add({
+      data: {
+        orderType: 'frame', orderNo, storeId, customerId: customerId || null,
+        frameTemplateId, frameName, photoUrl: finalPhotoUrl,
+        styleId: styleId || '', styleName: styleName || '',
+        status: '待处理', shippingNo: null, createTime: db.serverDate()
+      }
+    });
+    await db.collection('stores').doc(storeId).update({ data: { balance: _.inc(-1) } });
+  } catch (err) {
+    if (orphanFileId) await deleteCloudFileSafe(orphanFileId);
+    throw err;
+  }
   return { success: true, orderId: orderRes._id, orderNo };
 }
 async function listFrameOrders(event, storeId) {

@@ -15,6 +15,7 @@ const {
   applyStoreAssetAdjustWithCode,
   listStoreAssetAdjustments
 } = require('./storeAssetAdjust')
+const { deleteCloudFileSafe, deleteReplacedCloudFile } = require('./cloudFile')
 
 const STORE_DOC_ID_RE = /^store_/i
 
@@ -531,6 +532,9 @@ async function updateStyle(payload) {
     }
   })
 
+  if (data.sampleFileId !== undefined) {
+    await deleteReplacedCloudFile(current.sampleFileId, data.sampleFileId)
+  }
   if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
   await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).update({ data })
   return getStyle({ _id: docId })
@@ -539,7 +543,10 @@ async function updateStyle(payload) {
 async function deleteStyle(payload) {
   const docId = payload._id
   if (!docId) throw new Error('缺少 _id')
+  const currentRes = await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).get()
+  const sampleFileId = currentRes.data && currentRes.data.sampleFileId
   await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).remove()
+  if (sampleFileId) await deleteCloudFileSafe(sampleFileId)
   return { deleted: true }
 }
 
@@ -747,6 +754,9 @@ async function updateFrame(payload) {
     }))
   }
 
+  if (data.coverFileId !== undefined) {
+    await deleteReplacedCloudFile(current.coverFileId, data.coverFileId)
+  }
   if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
   await db.collection('frame_templates').doc(docId).update({ data })
   return getFrame({ _id: docId })
@@ -755,7 +765,10 @@ async function updateFrame(payload) {
 async function deleteFrame(payload) {
   const docId = payload._id
   if (!docId) throw new Error('缺少 _id')
+  const currentRes = await db.collection('frame_templates').doc(docId).get()
+  const coverFileId = currentRes.data && currentRes.data.coverFileId
   await db.collection('frame_templates').doc(docId).remove()
+  if (coverFileId) await deleteCloudFileSafe(coverFileId)
   return { deleted: true }
 }
 

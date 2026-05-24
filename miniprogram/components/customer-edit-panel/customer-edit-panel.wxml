@@ -135,6 +135,13 @@
 
   <view class="edit-save-bar {{embed === 'page' ? 'edit-save-bar--fixed' : ''}}">
     <view
+      wx:if="{{editCanDelete}}"
+      class="edit-delete-btn {{editDeleting || editSaving ? 'edit-delete-btn--disabled' : ''}}"
+      hover-class="edit-delete-btn-hover"
+      hover-stay-time="80"
+      bindtap="onDelete"
+    >删除档案</view>
+    <view
       class="edit-save-btn {{editSaving || !editCanSave ? 'edit-save-btn--disabled' : ''}}"
       hover-class="edit-save-btn-hover"
       hover-stay-time="80"

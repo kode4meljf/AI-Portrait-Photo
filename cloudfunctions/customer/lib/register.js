@@ -1,8 +1,17 @@
 const cloud = require('wx-server-sdk')
 const { isValidStoreId } = require('./storeId')
+
+function orderCreateTimeMs(value) {
+  if (!value) return 0
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'object' && value.$date != null) return Number(value.$date) || 0
+  const t = new Date(value).getTime()
+  return Number.isNaN(t) ? 0 : t
+}
 const { getPhoneFromCode } = require('./phone')
 const { buildCheckinQrPayload } = require('./qrPayload')
 const { ensureCheckinQr } = require('./checkinQr')
+const { deleteReplacedCloudFile } = require('./cloudFile')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -169,6 +178,9 @@ async function registerComplete(openid, payload) {
       patch.source = existing.source || 'link_register'
     }
 
+    if (patch.avatarUrl) {
+      await deleteReplacedCloudFile(existing.avatarUrl, patch.avatarUrl)
+    }
     await db.collection('customers').doc(existing._id).update({ data: patch })
     const latest = await db.collection('customers').doc(existing._id).get()
     return finalizeCustomerProfile(latest.data, openid)
@@ -191,6 +203,9 @@ async function registerComplete(openid, payload) {
     }
     if (wxNickName) patch.wxNickName = wxNickName
     if (avatarUrl) patch.avatarUrl = avatarUrl
+    if (patch.avatarUrl) {
+      await deleteReplacedCloudFile(row.avatarUrl, patch.avatarUrl)
+    }
     await db.collection('customers').doc(row._id).update({ data: patch })
     const latest = await db.collection('customers').doc(row._id).get()
     return finalizeCustomerProfile(latest.data, openid)
@@ -238,6 +253,9 @@ async function syncWxProfile(openid, payload) {
   if (avatarUrl) data.avatarUrl = avatarUrl
   if (Object.keys(data).length <= 1) throw new Error('请提供微信昵称或头像')
 
+  if (data.avatarUrl) {
+    await deleteReplacedCloudFile(row.avatarUrl, data.avatarUrl)
+  }
   await db.collection('customers').doc(row._id).update({ data })
   const latest = await db.collection('customers').doc(row._id).get()
   return finalizeCustomerProfile(latest.data, openid)
@@ -248,7 +266,13 @@ async function updateMyProfile(openid, payload) {
   if (!row) throw new Error('您尚未注册为顾客')
 
   const data = { updateTime: Date.now() }
-  if (payload.avatarUrl !== undefined) data.avatarUrl = (payload.avatarUrl || '').trim()
+  if (payload.avatarUrl !== undefined) {
+    const nextAvatar = (payload.avatarUrl || '').trim()
+    if (nextAvatar) {
+      await deleteReplacedCloudFile(row.avatarUrl, nextAvatar)
+    }
+    data.avatarUrl = nextAvatar
+  }
 
   if (payload.wxNickName !== undefined) {
     const wxNickName = String(payload.wxNickName || '').trim()
@@ -282,13 +306,46 @@ async function updateMyProfile(openid, payload) {
 async function listMyOrders(openid) {
   const row = await getCustomerByOpenId(openid)
   if (!row) throw new Error('您尚未注册为顾客')
-  const res = await db
-    .collection('frame_orders')
-    .where({ customerId: row._id })
-    .orderBy('createTime', 'desc')
-    .limit(50)
-    .get()
-  return { list: res.data }
+
+  const where = { customerId: row._id }
+  if (isValidStoreId(row.storeId)) {
+    where.storeId = row.storeId
+  }
+
+  const field = {
+    _id: true,
+    orderNo: true,
+    frameName: true,
+    styleName: true,
+    photoUrl: true,
+    status: true,
+    createTime: true
+  }
+
+  let rows = []
+  try {
+    const res = await db
+      .collection('frame_orders')
+      .where(where)
+      .field(field)
+      .orderBy('createTime', 'desc')
+      .limit(50)
+      .get()
+    rows = res.data || []
+  } catch (err) {
+    console.warn('[listMyOrders] orderBy failed, fallback', err.message || err)
+    const res = await db.collection('frame_orders').where(where).field(field).limit(100).get()
+    rows = res.data || []
+    rows.sort((a, b) => orderCreateTimeMs(b.createTime) - orderCreateTimeMs(a.createTime))
+    rows = rows.slice(0, 50)
+  }
+
+  let storeName = ''
+  if (isValidStoreId(row.storeId)) {
+    storeName = await getStoreName(row.storeId)
+  }
+
+  return { list: rows, storeName }
 }
 
 async function getMyOrder(openid, payload) {

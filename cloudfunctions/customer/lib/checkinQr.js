@@ -2,22 +2,13 @@ const cloud = require('wx-server-sdk')
 const crypto = require('crypto')
 const QRCode = require('qrcode')
 const { buildCheckinQrPayload } = require('./qrPayload')
+const { deleteCloudFileSafe } = require('./cloudFile')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 function hashPayload(payload) {
   return crypto.createHash('sha256').update(payload || '', 'utf8').digest('hex')
-}
-
-async function deleteCloudFileSafe(fileId) {
-  const id = (fileId || '').trim()
-  if (!id || !id.startsWith('cloud://')) return
-  try {
-    await cloud.deleteFile({ fileList: [id] })
-  } catch (err) {
-    console.warn('[checkinQr] deleteFile failed', id, err.message || err)
-  }
 }
 
 async function uploadCheckinQrPng(customerDocId, buffer) {

@@ -8,6 +8,22 @@ function isValidStoreId(storeId) {
   return typeof storeId === 'string' && /^store_[a-z0-9]{8,32}$/i.test(storeId)
 }
 
+function unwrapFunctionResult(res) {
+  let payload = res && res.result
+  if (payload && typeof payload === 'object' && payload.result && payload.success === undefined) {
+    payload = payload.result
+  }
+  return payload || {}
+}
+
+function throwCloudBizError(result) {
+  const err = new Error(result.error || result.errMsg || '操作失败')
+  if (result.code) err.code = result.code
+  if (result.existingId) err.existingId = result.existingId
+  if (result.storeName) err.storeName = result.storeName
+  throw err
+}
+
 function parseCloudResult(res, fallbackName) {
   if (!res) {
     throw new Error(`${fallbackName || '云函数'}无响应`)
@@ -19,12 +35,15 @@ function parseCloudResult(res, fallbackName) {
     }
     throw new Error(errMsg)
   }
-  const result = res.result || {}
+  const result = unwrapFunctionResult(res)
   if (result.success === false) {
-    throw new Error(result.error || '操作失败')
+    throwCloudBizError(result)
   }
   if (result.success !== true && result.error) {
-    throw new Error(result.error)
+    throwCloudBizError(result)
+  }
+  if (result.success === true) {
+    return result.data
   }
   return result.data
 }
@@ -72,21 +91,7 @@ function updateStoreProfile(data) {
 function callCustomer(action, data = {}) {
   return wx.cloud
     .callFunction({ name: 'customer', data: { action, ...data } })
-    .then((res) => {
-      try {
-        return parseCloudResult(res, 'customer')
-      } catch (e) {
-        if (e.message) {
-          const err = new Error(e.message)
-          const result = res.result || {}
-          err.code = result.code
-          err.storeName = result.storeName
-          err.existingId = result.existingId
-          throw err
-        }
-        throw e
-      }
-    })
+    .then((res) => parseCloudResult(res, 'customer'))
 }
 
 module.exports = {

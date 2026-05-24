@@ -505,6 +505,12 @@
   line-height: 1;
 }
 
+.ci-hint {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 8rpx;
+}
+
 .uncheckin-tip {
   background: #fffbeb;
   border: 2rpx solid #fde68a;

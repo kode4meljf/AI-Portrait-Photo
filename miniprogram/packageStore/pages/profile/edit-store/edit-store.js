@@ -6,6 +6,7 @@ const app = getApp();
 const { isValidStoreId, updateStoreProfile, callStoreMember } = require('../../../../utils/storeSession');
 const { getProfileCollection } = require('../../../../utils/account');
 const { normalizeMobilePhone } = require('../../../../utils/phone');
+const { isStoreOwner } = require('../../../../utils/storeRole');
 
 const TEXT_FIELDS = [
   "name",
@@ -44,6 +45,11 @@ Page({
   onLoad() {
     if (!isValidStoreId(app.globalData.storeId)) {
       wx.showToast({ title: '请先登录门店', icon: 'none' });
+      setTimeout(() => wx.navigateBack(), 1500);
+      return;
+    }
+    if (!isStoreOwner(app)) {
+      wx.showToast({ title: '仅店长可编辑门店资料', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
@@ -259,7 +265,13 @@ Page({
       });
 
       const avatarUrl = uploadRes.fileID;
-      await updateStoreProfile({ avatarUrl });
+      try {
+        await updateStoreProfile({ avatarUrl });
+      } catch (profileErr) {
+        const { deleteCloudFileSafe } = require("../../../../utils/cloudFileCleanup");
+        await deleteCloudFileSafe(avatarUrl);
+        throw profileErr;
+      }
 
       this.setData({ "form.avatarUrl": avatarUrl });
       wx.showToast({ title: "头像已更新", icon: "success" });

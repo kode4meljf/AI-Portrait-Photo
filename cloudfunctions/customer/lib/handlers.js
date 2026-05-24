@@ -1,7 +1,7 @@
 const cloud = require('wx-server-sdk')
 const { isValidStoreId } = require('./storeId')
 const { normalizeMobilePhone } = require('./phone')
-const { deleteCloudFileSafe } = require('./checkinQr')
+const { deleteCloudFileSafe } = require('./cloudFile')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -36,7 +36,6 @@ function todayDateString() {
   return `${y}-${m}-${day}`
 }
 
-const { buildCheckinQrPayload } = require('./qrPayload')
 
 function pickClientProfile(payload) {
   const wxNickName = (payload.wxNickName || payload.wechatNickName || '').trim()
@@ -51,31 +50,41 @@ function pickClientProfile(payload) {
   return out
 }
 
-function customerDisplayName(row) {
-  const alias = (row.nickName || '').trim()
-  if (alias) return alias
-  const wx = (row.wxNickName || '').trim()
-  return wx || '匿名用户'
-}
-
-function phoneConflictError(existing) {
-  const err = new Error(
-    `该手机号已登记客户「${customerDisplayName(existing)}」，请勿重复建档`
-  )
+function phoneConflictError(existing, action = 'create') {
+  const message =
+    action === 'update'
+      ? '该手机号在本店已有客户档案，无法更换为该号码'
+      : '该手机号在本店已有客户档案，请勿重复建档'
+  const err = new Error(message)
   err.code = 'PHONE_ALREADY_EXISTS'
   err.existingId = existing._id
   return err
 }
 
 async function findByPhone(storeId, phone) {
-  const p = (phone || '').trim()
-  if (!p) return null
+  let p
+  try {
+    p = normalizeMobilePhone(phone)
+  } catch (e) {
+    return null
+  }
   const res = await db
     .collection('customers')
     .where({ storeId, phone: p, status: _.neq('deleted') })
     .limit(1)
     .get()
-  return res.data[0] || null
+  if (res.data[0]) return res.data[0]
+
+  const asNum = Number(p)
+  if (!Number.isNaN(asNum)) {
+    const legacy = await db
+      .collection('customers')
+      .where({ storeId, phone: asNum, status: _.neq('deleted') })
+      .limit(1)
+      .get()
+    if (legacy.data[0]) return legacy.data[0]
+  }
+  return null
 }
 
 /** 该手机号是否已被任意门店的已注册客户（有 wxOpenId）占用 */
@@ -94,13 +103,16 @@ async function assertPhoneNotGloballyRegistered(phone, options = {}) {
   const { excludeDocId, operatorStoreId, action = 'create' } = options
   const row = await findRegisteredByPhone(phone, excludeDocId)
   if (!row) return
-  const storeName = await getStoreName(row.storeId)
-  const suffix = action === 'create' ? '无法重复建档' : '无法使用该手机号'
-  const err = new Error(`该手机号已是「${storeName}」注册客户，${suffix}`)
-  err.code = 'PHONE_REGISTERED_ELSEWHERE'
-  if (operatorStoreId && row.storeId === operatorStoreId) {
-    err.existingId = row._id
+  const sameStore = operatorStoreId && row.storeId === operatorStoreId
+  if (sameStore) {
+    throw phoneConflictError(row, action)
   }
+  const message =
+    action === 'update'
+      ? '该手机号已在其他门店登记，无法使用该手机号'
+      : '该手机号已在其他门店登记，无法重复建档'
+  const err = new Error(message)
+  err.code = 'PHONE_REGISTERED_ELSEWHERE'
   throw err
 }
 
@@ -113,7 +125,6 @@ function formatCustomerResponse(row, extra = {}) {
     phone: row.phone || '',
     avatarUrl: row.avatarUrl || '',
     totalCheckins: row.totalCheckins || 0,
-    qrPayload: buildCheckinQrPayload(row),
     ...extra
   }
 }
@@ -194,10 +205,7 @@ async function updateByStore(openid, payload) {
 
   const dup = await findByPhone(storeId, phone)
   if (dup && dup._id !== customerDocId) {
-    const err = new Error(`该手机号已被客户「${customerDisplayName(dup)}」使用`)
-    err.code = 'PHONE_ALREADY_EXISTS'
-    err.existingId = dup._id
-    throw err
+    throw phoneConflictError(dup, 'update')
   }
 
   if (phone !== storedPhone) {
@@ -333,9 +341,7 @@ async function scanBindCheckin(openid, payload) {
     }
   }
 
-  await db.collection('customers').doc(customer._id).update({ data: updateData })
-
-  await db.collection('checkins').add({
+  const checkinRes = await db.collection('checkins').add({
     data: {
       storeId,
       customerDocId: customer._id,
@@ -344,6 +350,17 @@ async function scanBindCheckin(openid, payload) {
       createTime: now
     }
   })
+
+  try {
+    await db.collection('customers').doc(customer._id).update({ data: updateData })
+  } catch (err) {
+    try {
+      await db.collection('checkins').doc(checkinRes._id).remove()
+    } catch (rollbackErr) {
+      console.warn('[scanBindCheckin] rollback checkin failed', rollbackErr.message || rollbackErr)
+    }
+    throw err
+  }
 
   const latest = await db.collection('customers').doc(customer._id).get()
   return latest.data

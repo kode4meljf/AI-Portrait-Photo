@@ -146,15 +146,21 @@ Page({
 
   async uploadAvatarAndSave(tempPath) {
     wx.showLoading({ title: '保存中' })
+    let uploadedFileID = ''
     try {
       const ext = (tempPath.match(/\.(\w+)$/) || [])[1] || 'jpg'
       const cloudPath = `customer-avatars/${app.globalData.customerDocId || 'me'}_${Date.now()}.${ext}`
       const up = await wx.cloud.uploadFile({ cloudPath, filePath: tempPath })
+      uploadedFileID = up.fileID
       const profile = await callCustomer('profile.update', { avatarUrl: up.fileID })
       app.globalData.customer = profile
       applyProfileToPage(this, profile)
       wx.showToast({ title: '已更新', icon: 'success' })
     } catch (e) {
+      if (uploadedFileID) {
+        const { deleteCloudFileSafe } = require('../../../utils/cloudFileCleanup')
+        await deleteCloudFileSafe(uploadedFileID)
+      }
       wx.showToast({ title: e.message || '保存失败', icon: 'none' })
     } finally {
       wx.hideLoading()

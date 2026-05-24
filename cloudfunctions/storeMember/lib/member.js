@@ -6,6 +6,7 @@ const db = cloud.database()
 const _ = db.command
 
 const platform = require('./platform')
+const { deleteReplacedCloudFile } = require('./cloudFile')
 const { getPhoneFromCode, normalizeMobilePhone } = require('./phone')
 const QRCode = require('qrcode')
 
@@ -318,6 +319,16 @@ function buildCustomerRegisterQrText(token) {
   return `pages/customer-register/register?token=${encodeURIComponent(t)}`
 }
 
+/** 邀请码二维码固定云路径（同 token 覆盖写，避免每次生成产生新文件） */
+function inviteQrCloudPath(kind, storeId, token) {
+  const t = (token || '').trim()
+  if (!isValidStoreId(storeId)) throw new Error('门店ID无效')
+  if (!t || !/^[a-z0-9]+$/i.test(t)) throw new Error('邀请码无效')
+  if (kind === 'staff') return `staff-invite-qr/${storeId}/${t}.png`
+  if (kind === 'customer') return `customer-invite-wxacode/${storeId}/${t}.png`
+  throw new Error('未知邀请码类型')
+}
+
 /** 生成顾客注册小程序码 PNG（wxacode.getUnlimited → 云存储临时链接） */
 async function customerRegisterInviteQrImage(openid, payload) {
   const member = await requireActiveMember(openid)
@@ -345,7 +356,7 @@ async function customerRegisterInviteQrImage(openid, payload) {
     )
   }
 
-  const cloudPath = `customer-invite-wxacode/${storeId}_${Date.now()}.png`
+  const cloudPath = inviteQrCloudPath('customer', storeId, token)
   const upload = await cloud.uploadFile({
     cloudPath,
     fileContent: buffer
@@ -478,6 +489,22 @@ const STORE_PROFILE_FIELDS = [
   'packageExpireDate'
 ]
 
+/** 门店展示资料（名称/联系/地址/头像等）：仅店长可修改 */
+const STORE_PROFILE_OWNER_FIELDS = [
+  'name',
+  'contactName',
+  'contactPhone',
+  'address',
+  'mapAddress',
+  'addressName',
+  'addressDetail',
+  'distanceText',
+  'houseNumber',
+  'avatarUrl',
+  'latitude',
+  'longitude'
+]
+
 async function storeGet(openid) {
   const member = await requireActiveMember(openid)
   const res = await db.collection(STORES).doc(member.storeId).get()
@@ -514,7 +541,19 @@ async function storeUpdate(openid, payload) {
   }
   if (!Object.keys(data).length) throw new Error('没有可更新字段')
 
+  const touchesStoreProfile = STORE_PROFILE_OWNER_FIELDS.some((key) =>
+    Object.prototype.hasOwnProperty.call(data, key)
+  )
+  if (touchesStoreProfile) {
+    await requireOwner(openid, storeId)
+  }
+
   data.updateTime = Date.now()
+  if (data.avatarUrl !== undefined) {
+    const currentRes = await db.collection(STORES).doc(storeId).get()
+    const prevAvatar = currentRes.data && currentRes.data.avatarUrl
+    await deleteReplacedCloudFile(prevAvatar, data.avatarUrl)
+  }
   await db.collection(STORES).doc(storeId).update({ data })
   return storeGet(openid)
 }
@@ -566,7 +605,7 @@ async function inviteQrImage(openid, payload) {
     color: { dark: '#e8b86d', light: '#1a1a2e' }
   })
 
-  const cloudPath = `staff-invite-qr/${storeId}_${Date.now()}.png`
+  const cloudPath = inviteQrCloudPath('staff', storeId, token)
   const upload = await cloud.uploadFile({
     cloudPath,
     fileContent: buffer

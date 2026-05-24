@@ -32,14 +32,22 @@ exports.main = async (event, context) => {
     };
     const addRes = await db.collection('ai_tasks').add({ data: task });
 
-    // 更新照片状态为“等待处理”
-    await db.collection('photos').doc(photoId).update({
-      data: {
-        generateStatus: 'pending',
-        isGenerated: false,
-        updateTime: new Date()
+    try {
+      await db.collection('photos').doc(photoId).update({
+        data: {
+          generateStatus: 'pending',
+          isGenerated: false,
+          updateTime: new Date()
+        }
+      });
+    } catch (photoErr) {
+      try {
+        await db.collection('ai_tasks').doc(addRes._id).remove();
+      } catch (rollbackErr) {
+        console.warn('[submitAITask] rollback task failed', rollbackErr.message || rollbackErr);
       }
-    });
+      throw photoErr;
+    }
 
     return { success: true, taskId: addRes._id, message: '任务已提交，请稍后刷新查看' };
   } catch (err) {

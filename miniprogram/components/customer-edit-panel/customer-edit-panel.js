@@ -5,6 +5,7 @@ const app = getApp()
 const { callCustomer } = require('../../utils/storeSession')
 const { initialFromName, pickAvatarTint } = require('../../utils/customerListDisplay')
 const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../utils/customerForm')
+const { canShowDeleteCustomer, confirmDeleteCustomer } = require('../../utils/customerDelete')
 
 function avatarMetaFromCustomer(customer, id) {
   const nick = customer?.nickName || customer?.wxNickName || ''
@@ -41,7 +42,10 @@ Component({
     editPhoneLocked: false,
     editChanged: false,
     editCanSave: false,
-    editSaving: false
+    editSaving: false,
+    editCanDelete: false,
+    editDeleting: false,
+    customerRaw: null
   },
 
   methods: {
@@ -63,7 +67,10 @@ Component({
           ...avatarMetaFromCustomer(customer, id),
           editChanged: false,
           editCanSave: false,
-          editSaving: false
+          editSaving: false,
+          editDeleting: false,
+          customerRaw: customer,
+          editCanDelete: canShowDeleteCustomer(customer, app)
         })
       } catch (err) {
         console.error('[customer-edit-panel] load failed', err)
@@ -123,6 +130,29 @@ Component({
         wx.showToast({ title: err.message || '保存失败', icon: 'none' })
       } finally {
         this.setData({ editSaving: false })
+      }
+    },
+
+    async onDelete() {
+      const id = this.properties.customerId
+      if (this.data.editDeleting || !this.data.editCanDelete || !this.data.customerRaw || !id) return
+      const confirmed = await confirmDeleteCustomer(this.data.customerRaw)
+      if (!confirmed) return
+
+      this.setData({ editDeleting: true })
+      try {
+        await callCustomer('deleteByStore', { customerDocId: id })
+        if (app.globalData.selectedCustomerId === id) {
+          app.globalData.selectedCustomerId = null
+          app.globalData.selectedCustomer = null
+          wx.removeStorageSync('selectedCustomerId')
+        }
+        wx.showToast({ title: '已删除', icon: 'success' })
+        this.triggerEvent('deleted', { customerId: id })
+      } catch (err) {
+        wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+      } finally {
+        this.setData({ editDeleting: false })
       }
     }
   }

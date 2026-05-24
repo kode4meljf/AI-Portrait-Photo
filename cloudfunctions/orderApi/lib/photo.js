@@ -19,20 +19,23 @@ function fetchUrlBuffer(url, redirectLeft = 3) {
     }).on('error', reject);
   });
 }
+/**
+ * @returns {{ url: string, orphanFileId: string|null }} orphanFileId 为本请求新上传、尚未关联订单的 fileID
+ */
 async function normalizePhotoUrl(photoUrl, storeId) {
   const src = String(photoUrl || '').trim();
   if (!src) throw new Error('缺少照片');
   if (/^https?:\/\/tmp\//i.test(src)) {
     throw new Error('收到微信本地临时路径，请在小程序端先上传云存储后再下单');
   }
-  if (src.startsWith('cloud://')) return src;
+  if (src.startsWith('cloud://')) return { url: src, orphanFileId: null };
   if (/^https?:\/\//i.test(src)) {
     const buffer = await fetchUrlBuffer(src);
     const uploadRes = await cloud.uploadFile({
       cloudPath: `frame-orders/${storeId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`,
       fileContent: buffer
     });
-    return uploadRes.fileID;
+    return { url: uploadRes.fileID, orphanFileId: uploadRes.fileID };
   }
   throw new Error('照片须为 cloud:// 或 http(s) 链接，请确认小程序已上传云存储');
 }

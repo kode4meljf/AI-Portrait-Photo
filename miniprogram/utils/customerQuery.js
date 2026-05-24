@@ -15,4 +15,26 @@ function storeCustomersWhere(db, storeId, extraAnd = null) {
   return _.and(parts)
 }
 
-module.exports = { storeCustomersWhere, activeStatusCondition }
+/**
+ * 本店是否已有该手机号客户（代客建档前预检，与云函数 findByPhone 规则一致）
+ * @returns {Promise<object|null>}
+ */
+async function findStoreCustomerByPhone(storeId, phone) {
+  const { normalizeMobilePhone } = require('./phone')
+  const phoneResult = normalizeMobilePhone(phone)
+  if (!phoneResult.ok) return null
+
+  const db = wx.cloud.database()
+  const res = await db
+    .collection('customers')
+    .where(storeCustomersWhere(db, storeId, { phone: phoneResult.phone }))
+    .limit(1)
+    .get()
+  return res.data[0] || null
+}
+
+module.exports = {
+  storeCustomersWhere,
+  activeStatusCondition,
+  findStoreCustomerByPhone
+}

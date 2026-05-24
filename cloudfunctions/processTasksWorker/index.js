@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk');
+const { deleteReplacedCloudFile } = require('./lib/cloudFile')
 const Jimp = require('jimp');
 const axios = require('axios');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
@@ -150,7 +151,7 @@ async function processTask(task) {
     const uploadRes = await cloud.uploadFile({ cloudPath, fileContent: finalBuffer });
     console.log('[Worker] 最终图片上传完成，fileID:', uploadRes.fileID);
     
-    // 更新数据库
+    const previousAiUrl = photoRes.data.aiUrl || '';
     await db.collection('photos').doc(photoId).update({
         data: {
             aiUrl: uploadRes.fileID,
@@ -159,6 +160,7 @@ async function processTask(task) {
             updateTime: new Date()
         }
     });
+    await deleteReplacedCloudFile(previousAiUrl, uploadRes.fileID);
     await db.collection('ai_tasks').doc(_id).update({
         data: {
             status: 'completed',

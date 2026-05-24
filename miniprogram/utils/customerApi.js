@@ -11,8 +11,9 @@ function parseCloudResult(res, name) {
   const result = res.result || {}
   if (result.success === false) {
     const err = new Error(result.error || '操作失败')
-    err.code = result.code
-    err.storeName = result.storeName
+    if (result.code) err.code = result.code
+    if (result.existingId) err.existingId = result.existingId
+    if (result.storeName) err.storeName = result.storeName
     throw err
   }
   return result.data

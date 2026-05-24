@@ -175,6 +175,10 @@
   background: #e5e7eb;
 }
 
+.save-btn--busy {
+  opacity: 0.72;
+}
+
 .outline-btn {
   display: flex;
   align-items: center;
@@ -262,47 +266,4 @@
   margin-top: 8rpx;
   font-size: 24rpx;
   color: #71717a;
-}
-
-.success-id-row {
-  width: 100%;
-  margin-top: 24rpx;
-  padding: 20rpx 24rpx;
-  background: #fafafa;
-  border-radius: 12rpx;
-  box-sizing: border-box;
-}
-
-.success-id-label {
-  display: block;
-  font-size: 20rpx;
-  color: #a1a1aa;
-  margin-bottom: 8rpx;
-}
-
-.success-id-value {
-  display: block;
-  font-size: 22rpx;
-  color: #52525b;
-  word-break: break-all;
-  line-height: 1.4;
-}
-
-.copy-btn {
-  width: 100%;
-  margin-top: 24rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 36rpx;
-  border: 1rpx solid #18181b;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #18181b;
-  box-sizing: border-box;
-}
-
-.copy-btn-hover {
-  background: #f4f4f5;
 }

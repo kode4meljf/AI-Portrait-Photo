@@ -95,6 +95,7 @@
       customer-id="{{editingId}}"
       bind:back="onEditBack"
       bind:saved="onEditSaved"
+      bind:deleted="onEditDeleted"
     />
   </view>
 </view>

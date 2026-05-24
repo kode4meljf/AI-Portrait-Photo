@@ -182,6 +182,12 @@ Page({
     await this.loadCustomers();
   },
 
+  async onEditDeleted() {
+    this.onEditBack();
+    this.setData({ customers: [], hasMore: true, currentPage: 0 });
+    await this.loadCustomers();
+  },
+
   async linkBatchToCustomer(batchId, customer) {
     if (!batchId) throw new Error('缺少批次 ID');
     return callStoreMember('batch.linkCustomer', {

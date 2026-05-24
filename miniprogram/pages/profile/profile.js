@@ -10,6 +10,7 @@ const { safeNavigateTo } = require('../../utils/navigation');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { STORE_BASE } = require('../../utils/helpCenter');
+const { isStoreOwner } = require('../../utils/storeRole');
 
 // 内置日期工具函数
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -53,7 +54,8 @@ Page({
     refreshing: false,
     packageProgress: 0,   // 本月已用人次百分比
     expireDays: 0,        // 套餐到期剩余天数
-    expireProgress: 0     // 到期进度（暂用于样式，可自定义）
+    expireProgress: 0,    // 到期进度（暂用于样式，可自定义）
+    isOwner: false
   },
 
   onLoad() {
@@ -71,6 +73,7 @@ Page({
 
   _onShowStoreProfile() {
     syncStoreTabBar(this);
+    this.setData({ isOwner: isStoreOwner(app) });
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
@@ -175,24 +178,24 @@ Page({
     this.loadOrderStats();
   },
 
-  // 查看昨日未打卡名单
+  // 昨日已打卡名单
   onViewUncheckedYesterday() {
     wx.navigateTo({
-      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&type=yesterday`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&mode=checked`
     });
   },
 
-  // 查看今日已打卡名单
+  // 今日已打卡名单
   onViewCheckedToday() {
     wx.navigateTo({
-      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=checked`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&mode=checked`
     });
   },
 
-  // 查看今日未打卡名单
+  // 今日尚未打卡名单
   onViewUncheckedToday() {
     wx.navigateTo({
-      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&type=unchecked`
+      url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&mode=unchecked`
     });
   },
 
@@ -210,6 +213,10 @@ Page({
   },
 
   onEditStore() {
+    if (!this.data.isOwner) {
+      wx.showToast({ title: '仅店长可编辑门店资料', icon: 'none' });
+      return;
+    }
     safeNavigateTo({
       url: '/packageStore/pages/profile/edit-store/edit-store',
       fail: (err) => {

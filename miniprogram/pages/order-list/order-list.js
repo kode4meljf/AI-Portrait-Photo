@@ -11,9 +11,12 @@ const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId, applySessionToApp } = require('../../utils/storeSession');
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
+const { parseCloudDate } = require('../../utils/cloudDate');
+
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
   if (!date) return "";
-  const d = new Date(date);
+  const d = parseCloudDate(date);
+  if (!d || Number.isNaN(d.getTime())) return "";
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -70,19 +73,11 @@ Page({
 
     if (app.globalData.ordersNeedRefresh) {
       app.globalData.ordersNeedRefresh = false;
-      await this.refreshData();
-      this._initialLoaded = true;
-      this.setData({ allowRefresh: true });
-      return;
     }
-    if (this.needRefresh) {
-      this.needRefresh = false;
-      await this.refreshData();
-      return;
-    }
-    if (!this._initialLoaded) {
-      await this.bootstrapAndLoad();
-    }
+    // 订单 Tab 展示全店订单，不按首页「关联客户」过滤
+    await this.refreshData();
+    this._initialLoaded = true;
+    this.setData({ allowRefresh: true });
   },
 
   async ensureStoreReady() {
@@ -96,24 +91,6 @@ Page({
     return true;
   },
 
-  async bootstrapAndLoad() {
-    if (this._bootstrapping) return;
-    this._bootstrapping = true;
-    try {
-      await this.loadOrders(false);
-      this._initialLoaded = true;
-      this.setData({ allowRefresh: true });
-    } catch (error) {
-      console.error('订单页初始化失败:', error);
-      wx.showToast({
-        title: (error && error.message) || '加载失败',
-        icon: 'none'
-      });
-    } finally {
-      this._bootstrapping = false;
-    }
-  },
-
   async loadOrders(isLoadMore = false) {
     const loadMore = isLoadMore === true;
     if (this.data.loading) return;
@@ -124,7 +101,6 @@ Page({
       const res = await callOrderApi('list', {
         orderType: 'frame',
         statusTab: this.data.currentTab,
-        customerId: app.globalData.selectedCustomerId || undefined,
         page,
         pageSize: this.data.pageSize
       });
@@ -164,8 +140,7 @@ Page({
   async updateTabCounts() {
     try {
       const { counts } = await callOrderApi('countByStatus', {
-        orderType: 'frame',
-        customerId: app.globalData.selectedCustomerId || undefined
+        orderType: 'frame'
       });
       const tabs = this.data.tabs.map((tab) => ({
         ...tab,
@@ -211,7 +186,7 @@ Page({
   groupOrdersByMonth(orders) {
     const groupsMap = new Map();
     orders.forEach(order => {
-      const date = new Date(order.createTime);
+      const date = parseCloudDate(order.createTime) || new Date();
       const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
       if (!groupsMap.has(monthKey)) {
         groupsMap.set(monthKey, { month: monthKey, totalCount: 0, orders: [] });

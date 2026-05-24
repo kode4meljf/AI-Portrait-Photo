@@ -31,6 +31,16 @@ function isSessionDirty(app) {
   return !!(target && target.globalData.sessionDirty)
 }
 
+/** 仅审核/移出等稳定态可跳过 resolve；entry 必须每次重新分流 */
+const CACHED_LAUNCH_STATUSES = ['pending', 'rejected', 'removed']
+
+function shouldSkipLaunchBootstrap({ force, sessionDirty, status }) {
+  if (force) return false
+  if (sessionDirty) return false
+  if (!status) return false
+  return CACHED_LAUNCH_STATUSES.includes(status)
+}
+
 /** 会话失效或需重新分流时跳转 launch（自动置脏） */
 function reLaunchLaunch(options = {}) {
   markSessionDirty()
@@ -42,5 +52,6 @@ module.exports = {
   markSessionDirty,
   clearSessionDirty,
   isSessionDirty,
+  shouldSkipLaunchBootstrap,
   reLaunchLaunch
 }

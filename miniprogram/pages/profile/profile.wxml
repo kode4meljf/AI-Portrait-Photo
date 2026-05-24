@@ -75,7 +75,12 @@
         <text class="ws-hint">常用管理</text>
       </view>
       <view class="ws-grid">
-        <view class="ws-item" hover-class="ws-item-active" bindtap="onEditStore">
+        <view
+          wx:if="{{isOwner}}"
+          class="ws-item"
+          hover-class="ws-item-active"
+          bindtap="onEditStore"
+        >
           <view class="ws-icon blue">
             <image class="ws-icon-img" src="/assets/icons/ws-store.svg" mode="aspectFit"></image>
           </view>
@@ -162,10 +167,12 @@
         <view class="checkin-item yesterday" bindtap="onViewUncheckedYesterday">
           <view class="ci-label">昨日打卡</view>
           <view class="ci-num">{{checkinStats.yesterdayCount || 0}}</view>
+          <view class="ci-hint">点击查看名单</view>
         </view>
         <view class="checkin-item today" bindtap="onViewCheckedToday">
           <view class="ci-label">今日打卡</view>
           <view class="ci-num">{{checkinStats.todayCount || 0}}</view>
+          <view class="ci-hint">点击查看名单</view>
         </view>
       </view>
       <view class="uncheckin-tip" bindtap="onViewUncheckedToday">

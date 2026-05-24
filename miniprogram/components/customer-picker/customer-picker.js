@@ -252,5 +252,22 @@ Component({
       })
       await this.loadCustomers()
     },
+
+    async onEditDeleted(e) {
+      const { customerId } = e.detail || {}
+      if (customerId && this.data.selectedId === customerId) {
+        this.setData({ selectedId: '' })
+        this.triggerEvent('customerUpdated', { customer: null })
+      }
+      this.setData({
+        editPanelVisible: false,
+        editingId: '',
+        customers: [],
+        filteredCustomers: [],
+        hasMore: true,
+        currentPage: 0
+      })
+      await this.loadCustomers()
+    },
   }
 })

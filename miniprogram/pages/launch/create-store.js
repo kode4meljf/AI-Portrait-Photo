@@ -1,5 +1,5 @@
 const { callStoreMember, applySessionToApp } = require('../../utils/storeSession')
-const { markSessionDirty } = require('../../utils/sessionDirty')
+const { clearSessionDirty } = require('../../utils/sessionDirty')
 const { normalizeMobilePhone } = require('../../utils/phone')
 const { auditPageLayout } = require('../../utils/pageLayoutGuard')
 
@@ -173,11 +173,11 @@ Page({
       }
 
       const account = await applySessionToApp(app)
-      markSessionDirty(app)
       if (!account.canUseStore) {
         throw new Error('门店已创建，但成员状态异常，请返回上一页刷新')
       }
 
+      clearSessionDirty(app)
       wx.showToast({ title: '创建成功', icon: 'success' })
       setTimeout(() => {
         wx.reLaunch({ url: '/pages/index/index' })

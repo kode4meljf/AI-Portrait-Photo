@@ -1,5 +1,9 @@
 const { applySessionToApp, isValidStoreId } = require('../../utils/storeSession')
-const { clearSessionDirty, isSessionDirty } = require('../../utils/sessionDirty')
+const {
+  clearSessionDirty,
+  isSessionDirty,
+  shouldSkipLaunchBootstrap
+} = require('../../utils/sessionDirty')
 
 const STORE_HOME = '/pages/index/index'
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
@@ -32,7 +36,13 @@ Page({
       return
     }
     const app = getApp()
-    if (!isSessionDirty(app) && this.data.status) {
+    if (
+      shouldSkipLaunchBootstrap({
+        force: false,
+        sessionDirty: isSessionDirty(app),
+        status: this.data.status
+      })
+    ) {
       return
     }
     this.bootstrap()
@@ -47,7 +57,13 @@ Page({
     if (this._bootstrapping) return
 
     const app = getApp()
-    if (!force && !isSessionDirty(app) && this.data.status) {
+    if (
+      shouldSkipLaunchBootstrap({
+        force,
+        sessionDirty: isSessionDirty(app),
+        status: this.data.status
+      })
+    ) {
       return
     }
 
@@ -116,7 +132,12 @@ Page({
           clearSessionDirty(app)
           return
         }
-        this.setData({ loading: false, status: 'entry' })
+        console.warn('[launch] store member but cannot use store', account)
+        this.setData({
+          loading: false,
+          status: 'entry',
+          storeName: account.storeName || ''
+        })
         clearSessionDirty(app)
         return
       }

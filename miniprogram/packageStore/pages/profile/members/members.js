@@ -1,5 +1,6 @@
 const app = getApp()
 const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession')
+const { isStoreOwner } = require('../../../../utils/storeRole')
 
 function decorateMember(row, isOwner) {
   const name = (row.nickName || '').trim() || '微信用户'
@@ -54,7 +55,7 @@ Page({
     try {
       await app.refreshStoreSession()
       const storeId = app.globalData.storeId
-      const isOwner = app.globalData.storeRole === 'owner'
+      const isOwner = isStoreOwner(app)
       if (!isValidStoreId(storeId)) {
         wx.showToast({ title: '请先登录门店', icon: 'none' })
         return
@@ -182,6 +183,7 @@ Page({
   },
 
   async onApprove(e) {
+    if (!this.data.isOwner) return
     const memberId = e.currentTarget.dataset.id
     try {
       await callStoreMember('member.approve', {
@@ -196,6 +198,7 @@ Page({
   },
 
   async onReject(e) {
+    if (!this.data.isOwner) return
     const memberId = e.currentTarget.dataset.id
     wx.showModal({
       title: '拒绝申请',
@@ -218,6 +221,7 @@ Page({
   },
 
   async onDisable(e) {
+    if (!this.data.isOwner) return
     const memberId = e.currentTarget.dataset.id
     const name = e.currentTarget.dataset.name || '该成员'
     wx.showModal({

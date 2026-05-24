@@ -4,7 +4,7 @@
       <view class="edit-avatar edit-avatar--initial" style="background-color: {{avatarTint}};">
         <text class="edit-avatar-initial">{{avatarInitial}}</text>
       </view>
-      <text class="edit-avatar-hint">手机号必填；保存后生成客户码。客户注册授权手机后，打卡码将含手机号</text>
+      <text class="edit-avatar-hint">手机号必填。客户邀请注册后，可在顾客端生成打卡码</text>
     </view>
 
     <view class="edit-form">
@@ -50,8 +50,8 @@
 
     <view class="save-bar">
       <view
-        class="save-btn {{submitting || !canSave ? 'save-btn--disabled' : ''}}"
-        hover-class="save-btn-hover"
+        class="save-btn {{!canSave ? 'save-btn--disabled' : ''}} {{submitting ? 'save-btn--busy' : ''}}"
+        hover-class="{{!canSave || submitting ? '' : 'save-btn-hover'}}"
         hover-stay-time="80"
         bindtap="onSubmit"
       >{{submitting ? '保存中…' : '保存'}}</view>
@@ -64,7 +64,7 @@
         <text class="success-icon">✓</text>
       </view>
       <text class="success-title">客户已添加</text>
-      <text class="success-sub">累计打卡 0 次，可将客户码提供给客户扫码打卡</text>
+      <text class="success-sub">累计打卡 0 次。请邀请客户完成注册后，在顾客端出示打卡码到店</text>
 
       <view class="success-card">
         <view class="edit-avatar edit-avatar--initial success-avatar" style="background-color: {{avatarTint}};">
@@ -72,16 +72,6 @@
         </view>
         <text class="success-name">{{form.nickName}}</text>
         <text wx:if="{{form.phone}}" class="success-phone">{{form.phone}}</text>
-        <view class="success-id-row">
-          <text class="success-id-label">客户 ID</text>
-          <text class="success-id-value">{{customerDocId}}</text>
-        </view>
-        <view
-          class="copy-btn"
-          hover-class="copy-btn-hover"
-          hover-stay-time="80"
-          bindtap="onCopyId"
-        >复制客户 ID</view>
       </view>
     </view>
 

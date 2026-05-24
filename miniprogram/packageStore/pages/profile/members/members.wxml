@@ -14,11 +14,13 @@
         <text class="summary-num">{{active.length}}</text>
         <text class="summary-label">在职员工</text>
       </view>
-      <view class="summary-divider"></view>
-      <view class="summary-item">
-        <text class="summary-num {{pending.length ? 'highlight' : ''}}">{{pending.length}}</text>
-        <text class="summary-label">待审核</text>
-      </view>
+      <block wx:if="{{isOwner}}">
+        <view class="summary-divider"></view>
+        <view class="summary-item">
+          <text class="summary-num {{pending.length ? 'highlight' : ''}}">{{pending.length}}</text>
+          <text class="summary-label">待审核</text>
+        </view>
+      </block>
     </view>
 
     <!-- 邀请入职（店长） -->
@@ -48,8 +50,12 @@
       </view>
     </view>
 
-    <!-- 待审核 -->
-    <view class="section">
+    <view wx:if="{{!isOwner}}" class="staff-readonly-hint">
+      <text>当前为店员账号，仅可查看在职同事；邀请、审核与移出由店长操作。</text>
+    </view>
+
+    <!-- 待审核（仅店长） -->
+    <view wx:if="{{isOwner}}" class="section">
       <view class="section-head">
         <view class="section-title-wrap">
           <text class="section-title">待审核</text>

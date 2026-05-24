@@ -1,15 +1,102 @@
-<view class="container">
-  <view class="date-header">{{date}} {{type === 'checked' ? '已打卡' : '未打卡'}}名单</view>
-  <view wx:if="{{customers.length === 0 && !loading}}" class="empty-tip">暂无客户</view>
-  <view class="customer-list">
-    <view wx:for="{{customers}}" wx:key="_id" class="customer-item">
-      <image class="avatar" src="{{item.avatarUrl || '/assets/icons/album-placeholder.png'}}" mode="aspectFill"></image>
-      <view class="info">
-        <text class="name">{{item.nickName || '匿名用户'}}</text>
-        <text class="phone">{{item.phone || '未绑定手机'}}</text>
-      </view>
-      <view class="checkin-count">累计打卡 {{item.totalCheckins || 0}} 次</view>
+<view class="page">
+  <view class="summary summary--{{summary.variant}}">
+    <text class="summary-date">{{summary.dateLine}}</text>
+    <text class="summary-headline">{{summary.headline}}</text>
+    <text class="summary-sub">{{summary.subline}}</text>
+  </view>
+
+  <view class="search-bar-wrap">
+    <view class="search-bar">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索客户姓名或手机号"
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+      />
+      <text wx:if="{{searchKeyword}}" class="clear-icon" bindtap="onClearSearch">×</text>
     </view>
   </view>
-  <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
+
+  <view class="chips">
+    <block wx:if="{{mode === 'checked'}}">
+      <view
+        class="chip {{sortKey === 'time' ? 'chip--active' : ''}}"
+        data-key="time"
+        bindtap="onChipTap"
+      >按到店时间</view>
+      <view
+        class="chip {{sortKey === 'name' ? 'chip--active' : ''}}"
+        data-key="name"
+        bindtap="onChipTap"
+      >按姓名</view>
+      <view
+        class="chip {{wxOnly ? 'chip--active' : ''}}"
+        data-key="wxOnly"
+        bindtap="onChipTap"
+      >仅已绑微信</view>
+    </block>
+    <block wx:else>
+      <view
+        class="chip {{sortKey === 'lastVisit' ? 'chip--active' : ''}}"
+        data-key="lastVisit"
+        bindtap="onChipTap"
+      >按上次到店</view>
+      <view
+        class="chip {{sortKey === 'name' ? 'chip--active' : ''}}"
+        data-key="name"
+        bindtap="onChipTap"
+      >按姓名</view>
+      <view
+        class="chip {{streakOnly ? 'chip--active' : ''}}"
+        data-key="streak"
+        bindtap="onChipTap"
+      >连续未打卡≥3天</view>
+    </block>
+  </view>
+
+  <view class="list-card">
+    <view wx:if="{{loading && displayList.length === 0}}" class="state-tip">加载中...</view>
+
+    <view wx:elif="{{loadError}}" class="state-tip">{{loadError}}</view>
+
+    <view wx:elif="{{displayList.length === 0}}" class="empty-inner">
+      <text class="empty-title">{{emptyMain}}</text>
+      <text wx:if="{{emptySub}}" class="empty-sub">{{emptySub}}</text>
+    </view>
+
+    <block wx:else>
+      <view
+        wx:for="{{displayList}}"
+        wx:key="_id"
+        class="checkin-row"
+        bindtap="onCustomerTap"
+        data-id="{{item._id}}"
+        hover-class="checkin-row--active"
+      >
+        <view wx:if="{{item.avatarUrl}}" class="customer-avatar customer-avatar--image">
+          <image class="customer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
+        </view>
+        <view
+          wx:else
+          class="customer-avatar customer-avatar--initial"
+          style="background-color: {{item.avatarTint}};"
+        >
+          <text class="avatar-initial-text">{{item.avatarInitial}}</text>
+        </view>
+        <view class="row-main">
+          <view class="row-top">
+            <text class="customer-name">{{item.displayName}}</text>
+            <text class="pill pill--{{item.pillTone}}">{{item.pillText}}</text>
+          </view>
+          <text class="customer-phone">{{item.phoneMasked}}</text>
+          <text class="row-meta">{{item.metaLine}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <text wx:if="{{mode === 'unchecked'}}" class="page-foot">不做群发提醒，避免骚扰</text>
+  <text wx:else class="page-foot">点击行进入客户详情</text>
 </view>

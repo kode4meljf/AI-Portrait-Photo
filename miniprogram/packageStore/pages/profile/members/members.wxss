@@ -39,6 +39,17 @@
   color: #ea580c;
 }
 
+.staff-readonly-hint {
+  margin-bottom: 24rpx;
+  padding: 20rpx 24rpx;
+  background: #fffbeb;
+  border: 1rpx solid #fde68a;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  color: #92400e;
+  line-height: 1.5;
+}
+
 .summary-label {
   font-size: 24rpx;
   color: #9ca3af;

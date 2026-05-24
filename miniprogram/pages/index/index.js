@@ -76,12 +76,27 @@ Page({
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
+        const { applySessionToApp } = require('../../utils/storeSession');
         const { reLaunchLaunch } = require('../../utils/sessionDirty');
-        reLaunchLaunch({
-          complete: () => {
-            this._relaunching = false;
-          }
-        });
+        applySessionToApp(app)
+          .then((account) => {
+            if (account.canUseStore && isValidStoreId(account.storeId)) {
+              this._relaunching = false;
+              return;
+            }
+            reLaunchLaunch({
+              complete: () => {
+                this._relaunching = false;
+              }
+            });
+          })
+          .catch(() => {
+            reLaunchLaunch({
+              complete: () => {
+                this._relaunching = false;
+              }
+            });
+          });
       }
       return;
     }

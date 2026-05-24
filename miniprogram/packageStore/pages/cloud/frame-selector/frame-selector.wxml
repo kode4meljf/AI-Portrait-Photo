@@ -30,9 +30,9 @@
         <text class="store-name">{{storeInfo.name}}</text>
         <text class="store-addr">{{storeInfo.address}}</text>
         <text class="store-contact">{{storeInfo.contactName}} {{storeInfo.contactPhone}}</text>
-        <text class="store-hint">相框制作完成后寄送至门店，无需填写客户收件地址</text>
+        <text class="store-hint">{{isOwner ? '相框制作完成后寄送至门店，无需填写客户收件地址' : '门店资料仅店长可修改'}}</text>
       </view>
-      <text class="store-arrow">›</text>
+      <text wx:if="{{isOwner}}" class="store-arrow">›</text>
     </view>
   </view>
 

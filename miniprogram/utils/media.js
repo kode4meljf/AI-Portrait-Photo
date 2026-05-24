@@ -4,6 +4,7 @@
  */
 
 const app = getApp();
+const { deleteCloudFileSafe } = require('./cloudFileCleanup');
 
 /**
  * 选择媒体并上传（支持相机/相册）
@@ -30,6 +31,10 @@ const chooseAndUpload = (options = {}) => {
           for (const file of res.tempFiles) {
             const ok = await _uploadAndSavePhoto(file.tempFilePath, batchId);
             if (ok) successCount++;
+          }
+
+          if (successCount === 0) {
+            await _removeEmptyBatch(batchId);
           }
 
           wx.hideLoading();
@@ -74,6 +79,9 @@ const uploadSingle = (filePath) => {
     try {
       const batchId = await _createBatch();
       const ok = await _uploadAndSavePhoto(filePath, batchId);
+      if (!ok) {
+        await _removeEmptyBatch(batchId);
+      }
       wx.hideLoading();
       if (ok) {
         wx.showToast({ title: '上传成功', icon: 'success' });
@@ -143,26 +151,29 @@ async function _uploadAndSavePhoto(tempFilePath, batchId) {
 
     const db = wx.cloud.database();
 
-    // 添加照片记录
-    await db.collection('photos').add({
-      data: {
-        batchId: batchId,
-        storeId: storeId,
-        customerId: app.globalData.selectedCustomerId || null,
-        originalUrl: uploadRes.fileID,
-        aiUrl: null,
-        isGenerated: false,
-        isFavorite: false,
-        createTime: db.serverDate()
-      }
-    });
+    try {
+      await db.collection('photos').add({
+        data: {
+          batchId: batchId,
+          storeId: storeId,
+          customerId: app.globalData.selectedCustomerId || null,
+          originalUrl: uploadRes.fileID,
+          aiUrl: null,
+          isGenerated: false,
+          isFavorite: false,
+          createTime: db.serverDate()
+        }
+      });
 
-    // 更新 batch 中的 photoIds
-    await db.collection('batches').doc(batchId).update({
-      data: {
-        photoIds: db.command.push([uploadRes.fileID])
-      }
-    });
+      await db.collection('batches').doc(batchId).update({
+        data: {
+          photoIds: db.command.push([uploadRes.fileID])
+        }
+      });
+    } catch (dbErr) {
+      await deleteCloudFileSafe(uploadRes.fileID);
+      throw dbErr;
+    }
 
     return true;
   } catch (err) {
