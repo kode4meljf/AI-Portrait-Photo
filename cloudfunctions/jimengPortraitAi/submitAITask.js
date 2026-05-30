@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk');
-const { resolveStoreIdFromOpenid } = require('../lib/resolveStoreMember');
+const { resolveStoreIdFromOpenid } = require('./lib/resolveStoreMember');
+const { assertCanSubmitPortrait, INSUFFICIENT_BALANCE_MSG } = require('./lib/balance');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -24,6 +25,7 @@ async function main(event) {
     const resolution = style.resolution || '1024:1024';
 
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
+    await assertCanSubmitPortrait(storeId);
 
     const task = {
       photoId,
@@ -68,7 +70,9 @@ async function main(event) {
     };
   } catch (err) {
     console.error('[jimengPortraitAi/submit] 失败:', err);
-    return { success: false, error: err.message };
+    const message =
+      err.code === 'INSUFFICIENT_BALANCE' ? INSUFFICIENT_BALANCE_MSG : err.message;
+    return { success: false, error: message, code: err.code || '' };
   }
 }
 

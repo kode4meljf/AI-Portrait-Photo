@@ -6,7 +6,7 @@ const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js'
 
 const db = wx.cloud.database()
 const { buildShootQuery, setPendingShoot } = require('../../../../utils/shootContext.js')
-const { portraitCostForCount } = require('../../../../utils/portraitBilling.js')
+const { portraitCostForCount, assertPortraitBalance } = require('../../../../utils/portraitBilling.js')
 
 Page({
   data: {
@@ -162,7 +162,7 @@ Page({
     })
   },
 
-  onStartGenerate() {
+  async onStartGenerate() {
     if (!this.data.originalUrl) {
       wx.showToast({ title: '请先选择原图', icon: 'none' })
       return
@@ -174,6 +174,11 @@ Page({
       return
     }
     const count = this.data.count === 9 ? 9 : 3
+    try {
+      await assertPortraitBalance(count)
+    } catch (e) {
+      return
+    }
     const styles = pickStyles(pool, count)
     setPendingShoot({
       count,
@@ -185,7 +190,7 @@ Page({
       originalUrl: this.data.originalUrl
     })
     wx.navigateTo({
-      url: `/packageStore/pages/cloud/generate-result/generate-result?${qs}`
+      url: `/packageStore/pages/cloud/portrait-viewer/portrait-viewer?mode=live&${qs}`
     })
   }
 })

@@ -123,6 +123,9 @@ const mockFrames = [
 let mockPlatformSettings = {
   _id: 'default',
   supportPhone: '400-888-8888',
+  volcAccessKeyMasked: '',
+  volcSecretKeyConfigured: false,
+  volcKeysUpdateTime: null,
   updateTime: new Date().toISOString()
 }
 
@@ -158,6 +161,23 @@ const mockFeedbacks = [
 const mockOrders = [
   { _id: 'o1', storeId: 'store_demo0001', orderNo: 'OR20260516001', customerId: 'c1', customerName: '张小明', frameName: '经典木质相框', size: '10寸', material: '实木', price: 199, status: '制作中', createTimeText: '2026-05-16 10:20:00' },
   { _id: 'o2', storeId: 'store_demo0001', orderNo: 'OR20260515002', customerId: 'c2', customerName: '李婷婷', frameName: '简约金属相框', size: '8寸', material: '铝合金', price: 129, status: '待处理', createTimeText: '2026-05-15 16:45:00' }
+]
+
+const mockGalleryBatches = [
+  {
+    _id: 'batch_demo1',
+    storeId: 'store_demo0001',
+    customerId: 'c1',
+    customerName: '张小明',
+    createTimeText: '2026-05-18 15:30',
+    status: 'completed',
+    statusLabel: '已完成',
+    photoCount: 3,
+    generatedCount: 3,
+    progressPercent: 100,
+    coverUrl: '',
+    styleSummary: '日系清新 · 复古胶片'
+  }
 ]
 
 export async function mockRequest(action, payload = {}, query = {}) {
@@ -275,6 +295,17 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return { all: 4, 待处理: 1, 制作中: 2, 已发货: 1, 已完成: 0 }
     case 'orders.updateStatus':
       return { ...mockOrders[0], status: payload.status }
+    case 'orders.delete': {
+      const idx = mockOrders.findIndex((o) => o._id === (payload.orderId || payload._id))
+      if (idx >= 0) mockOrders.splice(idx, 1)
+      return {
+        orderId: payload.orderId || payload._id,
+        deleted: true,
+        deletedPortraitFiles: 1,
+        clearedPhotos: 0,
+        deletedTasks: 0
+      }
+    }
     case 'checkins.list':
       return { date: query.date || '2026-05-16', type: query.type || 'unchecked', total: 1, list: [mockCustomers[1]] }
     case 'checkins.summary':
@@ -405,10 +436,22 @@ export async function mockRequest(action, payload = {}, query = {}) {
     case 'platformSettings.get':
       return { ...mockPlatformSettings }
     case 'platformSettings.update': {
+      const volcAccessKey = (payload.volcAccessKey || '').trim()
+      const volcSecretKey = (payload.volcSecretKey || '').trim()
       mockPlatformSettings = {
-        _id: 'default',
+        ...mockPlatformSettings,
         supportPhone: (payload.supportPhone || '').trim(),
         updateTime: new Date().toISOString()
+      }
+      if (volcAccessKey) {
+        mockPlatformSettings.volcAccessKeyMasked =
+          volcAccessKey.length <= 8
+            ? '****'
+            : `${volcAccessKey.slice(0, 4)}****${volcAccessKey.slice(-4)}`
+      }
+      if (volcSecretKey) {
+        mockPlatformSettings.volcSecretKeyConfigured = true
+        mockPlatformSettings.volcKeysUpdateTime = new Date().toISOString()
       }
       return { ...mockPlatformSettings }
     }
@@ -448,6 +491,37 @@ export async function mockRequest(action, payload = {}, query = {}) {
       if (idx < 0) throw new Error('反馈不存在')
       mockFeedbacks.splice(idx, 1)
       return { _id: payload._id }
+    }
+    case 'gallery.batches.list': {
+      const storeId = (query.storeId || '').trim()
+      if (!storeId) throw new Error('请先在后台选择门店')
+      const page = Math.max(1, parseInt(query.page, 10) || 1)
+      const pageSize = Math.max(1, parseInt(query.pageSize, 10) || 20)
+      const rows = mockGalleryBatches.filter((r) => r.storeId === storeId)
+      const skip = (page - 1) * pageSize
+      return { list: rows.slice(skip, skip + pageSize), total: rows.length, page, pageSize }
+    }
+    case 'gallery.batches.get': {
+      const batch = mockGalleryBatches.find((r) => r._id === payload.batchId)
+      if (!batch) throw new Error('批次不存在')
+      return {
+        batch,
+        photos: [
+          {
+            _id: 'ph1',
+            styleName: '日系清新',
+            originalDisplayUrl: '',
+            aiDisplayUrl: '',
+            generateStatus: 'completed'
+          }
+        ]
+      }
+    }
+    case 'gallery.batches.delete': {
+      const idx = mockGalleryBatches.findIndex((r) => r._id === payload.batchId)
+      if (idx < 0) throw new Error('批次不存在')
+      mockGalleryBatches.splice(idx, 1)
+      return { batchId: payload.batchId, deletedPhotos: 1, deletedTasks: 1, deletedFiles: 2 }
     }
     default:
       throw new Error(`Mock 未实现: ${action}`)

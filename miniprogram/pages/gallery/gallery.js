@@ -104,9 +104,7 @@ Page({
     filterCustomerName: '',
     filterCustomerInitial: '',
     pickerVisible: false,
-    pickerSelectedId: GALLERY_STORE_SCOPE_ID,
-    autoRefreshing: false,
-    autoRefreshStopped: false
+    pickerSelectedId: GALLERY_STORE_SCOPE_ID
   },
 
   onLoad() {
@@ -416,7 +414,6 @@ Page({
   _updateAutoRefresh() {
     this._clearAutoRefresh();
     if (!this._hasGeneratingBatches()) {
-      this.setData({ autoRefreshing: false });
       this._autoRefreshStartedAt = null;
       return;
     }
@@ -425,20 +422,17 @@ Page({
     }
     const elapsed = Date.now() - this._autoRefreshStartedAt;
     if (elapsed >= AUTO_REFRESH_MAX_DURATION_MS) {
-      this.setData({ autoRefreshing: false, autoRefreshStopped: true });
       return;
     }
-    this.setData({ autoRefreshing: true, autoRefreshStopped: false });
     this._autoRefreshTimer = setInterval(() => {
       const e = Date.now() - this._autoRefreshStartedAt;
       if (e >= AUTO_REFRESH_MAX_DURATION_MS) {
         this._clearAutoRefresh();
-        this.setData({ autoRefreshing: false, autoRefreshStopped: true });
         return;
       }
       if (!this._hasGeneratingBatches()) {
         this._clearAutoRefresh();
-        this.setData({ autoRefreshing: false, autoRefreshStopped: false });
+        this._autoRefreshStartedAt = null;
         return;
       }
       const tab = this.data.activeTab;
@@ -475,7 +469,7 @@ Page({
   onRefresh() {
     const tab = this.data.activeTab;
     const key = tab === 'time' ? 'timeRefreshing' : 'favRefreshing';
-    this.setData({ [key]: true, autoRefreshStopped: false });
+    this.setData({ [key]: true });
     this._autoRefreshStartedAt = null;
     const groupsKey = tab === 'time' ? 'timeGroups' : 'favGroups';
     const hasMoreKey = tab === 'time' ? 'timeHasMore' : 'favHasMore';
@@ -516,7 +510,9 @@ Page({
 
   onBatchTap(e) {
     const batch = e.currentTarget.dataset.batch;
-    wx.navigateTo({ url: `/packageStore/pages/cloud/browse/browse?batchId=${batch._id}` });
+    wx.navigateTo({
+      url: `/packageStore/pages/cloud/portrait-viewer/portrait-viewer?mode=batch&batchId=${batch._id}`
+    });
   },
 
   onBatchMenu(e) {

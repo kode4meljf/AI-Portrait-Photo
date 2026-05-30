@@ -1,0 +1,228 @@
+<view class="page-shell">
+  <view wx:if="{{!previewVisible}}" class="result-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="result-nav-inner">
+      <view class="nav-back" bindtap="onNavBack" hover-class="nav-back--active" hover-stay-time="80">
+        <view class="nav-back-chevron"></view>
+      </view>
+      <text class="result-nav-title">{{navTitle}}</text>
+    </view>
+  </view>
+
+  <view class="result-page">
+    <view wx:if="{{phase === 'loading'}}" class="loading-body">
+      <view class="loading-main">
+        <view class="spinner"></view>
+        <text class="loading-title">AI正在生成写真 {{loadingProgressText}}</text>
+        <view wx:if="{{showLoadingGalleryLink}}" class="loading-hint-row">
+          <text class="loading-hint">可稍后在</text>
+          <view
+            class="loading-gallery-link"
+            bindtap="onOpenGallery"
+            hover-class="loading-gallery-link--press"
+            hover-stay-time="80"
+          >云相册</view>
+          <text class="loading-hint">查看生成结果</text>
+        </view>
+        <text wx:else class="loading-hint">可稍后在「云相册」查看生成结果</text>
+        <view
+          wx:if="{{originalUrl}}"
+          class="loading-preview"
+          bindtap="onPreviewOriginal"
+          hover-class="loading-preview--press"
+          hover-stay-time="80"
+        >
+          <image src="{{originalUrl}}" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <block wx:else>
+      <view class="page-body">
+        <view class="image-zone">
+          <view class="hero-stage">
+            <view class="hero-frame" style="height: {{swiperHeight}}px;">
+              <swiper
+                class="result-swiper"
+                style="height: {{swiperHeight}}px;"
+                current="{{currentIndex}}"
+                bindchange="onSwiperChange"
+                duration="280"
+                easing-function="easeOutCubic"
+                circular="{{false}}"
+                skip-hidden-item-layout
+              >
+                <swiper-item wx:for="{{results}}" wx:key="photoId">
+                  <view
+                    class="swiper-item-inner {{item.status === 'failed' ? 'is-failed' : ''}} {{item.status === 'retrying' ? 'is-retrying' : ''}} {{item.status === 'generating' ? 'is-generating' : ''}}"
+                    bindtap="onPreviewImage"
+                    data-index="{{index}}"
+                  >
+                    <image
+                      id="hero-img-{{index}}"
+                      class="result-image"
+                      src="{{item.status === 'failed' || item.status === 'retrying' || item.status === 'generating' ? originalUrl : item.url}}"
+                      mode="aspectFit"
+                      bindload="onResultImageLoad"
+                      data-index="{{index}}"
+                    ></image>
+
+                    <view wx:if="{{item.status === 'failed'}}" class="fail-overlay">
+                      <text class="fail-label">{{item.failLabel || '生成失败'}}</text>
+                      <text class="fail-hint">{{item.failHint || '点击右下角重新生成'}}</text>
+                    </view>
+
+                    <view wx:if="{{item.status === 'retrying' || item.status === 'generating'}}" class="retrying-overlay">
+                      <view class="retrying-spinner"></view>
+                      <text class="retrying-text">{{item.status === 'generating' ? '生成中…' : '重新生成中…'}}</text>
+                    </view>
+                  </view>
+                </swiper-item>
+              </swiper>
+
+              <view class="frame-overlay">
+                <view wx:if="{{results.length > 0}}" class="hero-chrome">
+                  <text class="pill-count">{{downloadCountText}}</text>
+                  <view
+                    class="pill-dl"
+                    catchtap="onDownloadAll"
+                    hover-class="pill-dl--active"
+                    hover-stay-time="80"
+                  >全部下载</view>
+                </view>
+                <view
+                  wx:if="{{originalUrl && !currentItemFailed}}"
+                  class="origin-float {{showOriginFloat ? '' : 'is-hidden'}}"
+                  catchtap="onPreviewOriginal"
+                  hover-class="origin-float--press"
+                  hover-stay-time="80"
+                >
+                  <image src="{{originalUrl}}" mode="aspectFill"></image>
+                  <text class="mini-label">原图</text>
+                </view>
+                <view
+                  wx:if="{{currentItemFailed}}"
+                  class="retry-fab"
+                  catchtap="onRetryTap"
+                  hover-class="retry-fab--active"
+                  hover-stay-time="80"
+                >
+                  <view class="retry-fab-icon"></view>
+                </view>
+                <view wx:if="{{showSwipeToast}}" class="swipe-toast">在预览区内左右滑动切换生成图</view>
+              </view>
+            </view>
+
+            <view class="hero-tip-row">
+              <text class="hero-tip">* 默认以当前展示写真制作实物摆台</text>
+              <view
+                class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"
+                hover-class="origin-toggle--press"
+                hover-stay-time="80"
+                bindtap="onToggleOrigin"
+              >{{showOriginFloat ? '隐藏原图' : '显示原图'}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{results.length > 1}}" class="style-tray">
+          <view class="list-title">{{results.length}}种风格</view>
+          <scroll-view
+            class="thumb-scroll"
+            scroll-x
+            enhanced
+            show-scrollbar="{{false}}"
+            scroll-into-view="{{thumbScrollIntoView}}"
+            scroll-with-animation
+          >
+            <view class="thumb-row">
+              <view
+                wx:for="{{results}}"
+                wx:key="photoId"
+                id="thumb-{{index}}"
+                class="thumb-item {{currentIndex === index ? 'active' : ''}} {{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending' ? 'is-processing' : ''}} {{item.status === 'failed' ? 'is-failed' : ''}}"
+                bindtap="onThumbTap"
+                data-index="{{index}}"
+              >
+                <view class="thumb-image-wrap">
+                  <image
+                    class="thumb-image"
+                    src="{{item.url || originalUrl}}"
+                    mode="aspectFill"
+                  ></image>
+                  <view
+                    wx:if="{{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending'}}"
+                    class="state-dot ing"
+                  ></view>
+                  <view wx:elif="{{item.status === 'failed'}}" class="state-dot fail"></view>
+                </view>
+                <text class="thumb-name">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+
+        <view class="footer">
+          <view class="action-row">
+            <button class="btn btn-outline" bindtap="onMakeAlbum">制作影集</button>
+            <button
+              class="btn btn-primary {{currentItemFailed ? 'is-disabled' : ''}}"
+              bindtap="onMakeFrame"
+              disabled="{{currentItemFailed}}"
+            >制作摆台</button>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view
+      wx:if="{{previewVisible}}"
+      class="preview-layer {{previewExpanded ? 'is-expanded' : ''}}"
+      catchtouchmove="preventMove"
+    >
+      <view class="preview-dim" bindtap="onClosePreview"></view>
+
+      <view
+        class="preview-fly {{previewAnimating ? 'is-animating' : ''}} {{previewExpanded ? 'is-expanded' : ''}}"
+        style="{{previewFlyStyle}}"
+      >
+        <image class="preview-fly-img" src="{{previewCurrentUrl}}" mode="aspectFit"></image>
+      </view>
+
+      <view class="preview-ui {{previewExpanded ? 'is-visible' : ''}}">
+        <swiper
+          class="preview-swiper"
+          current="{{previewIndex}}"
+          bindchange="onPreviewSwiperChange"
+          duration="280"
+          circular="{{false}}"
+        >
+          <swiper-item wx:for="{{results}}" wx:key="photoId">
+            <view class="preview-slide" bindtap="onClosePreview">
+              <image class="preview-slide-img" src="{{item.url}}" mode="aspectFit"></image>
+            </view>
+          </swiper-item>
+        </swiper>
+
+        <view wx:if="{{results.length > 1}}" class="preview-progress-track">
+          <view
+            wx:for="{{results}}"
+            wx:key="photoId"
+            class="preview-segment {{index === previewIndex ? 'active' : ''}}"
+          ></view>
+        </view>
+
+        <view class="preview-actions" catchtap="stopActionBubble">
+          <view class="preview-action-btn" catchtap="onClosePreview">
+            <view class="preview-icon-close"></view>
+          </view>
+          <view class="preview-action-btn" catchtap="onDownloadPreview">
+            <view class="preview-icon-down">
+              <view class="preview-icon-down-stem"></view>
+              <view class="preview-icon-down-head"></view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

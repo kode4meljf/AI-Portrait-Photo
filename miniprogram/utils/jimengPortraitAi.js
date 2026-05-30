@@ -10,6 +10,7 @@ function callJimengPortraitAi(data) {
     const result = res.result || {};
     if (result.success === false) {
       const err = new Error(result.error || '即梦任务提交失败');
+      if (result.code) err.code = result.code;
       throw err;
     }
     return result;
@@ -24,12 +25,37 @@ function submitPortraitTask(photoId, styleId) {
   });
 }
 
+/** 批次入队 + 预扣 balance（拍摄 3/9 风格） */
+function submitPortraitBatch({ batchId, items }) {
+  return callJimengPortraitAi({
+    action: 'submitBatch',
+    batchId: batchId || '',
+    items
+  });
+}
+
 function retryPortraitTask(photoId, styleId) {
   return callJimengPortraitAi({
     action: 'retry',
     photoId,
     styleId
   });
+}
+
+/** 唤醒独立 Worker 消费 ai_tasks 队列 */
+function kickPortraitWorker(options = {}) {
+  const data = { action: 'run' };
+  const batchId = options.batchId || '';
+  if (batchId) data.priorityBatchId = batchId;
+
+  return wx.cloud
+    .callFunction({
+      name: 'jimengPortraitWorker',
+      data
+    })
+    .catch((err) => {
+      console.warn('[jimengPortraitWorker] kick failed', err);
+    });
 }
 
 async function pollPortraitPhoto(photoId, options = {}) {
@@ -64,7 +90,9 @@ function isPortraitGenerating(generateStatus) {
 module.exports = {
   callJimengPortraitAi,
   submitPortraitTask,
+  submitPortraitBatch,
   retryPortraitTask,
+  kickPortraitWorker,
   pollPortraitPhoto,
   isPortraitGenerating
 };

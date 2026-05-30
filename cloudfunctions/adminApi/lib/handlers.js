@@ -16,6 +16,8 @@ const {
   listStoreAssetAdjustments
 } = require('./storeAssetAdjust')
 const { deleteCloudFileSafe, deleteReplacedCloudFile } = require('./cloudFile')
+const { listGalleryBatches, getGalleryBatch, deleteGalleryBatch } = require('./gallery')
+const { deleteOrder } = require('./orders')
 
 const STORE_DOC_ID_RE = /^store_/i
 
@@ -775,16 +777,31 @@ async function deleteFrame(payload) {
 const PLATFORM_SETTINGS_COL = 'platform_settings'
 const PLATFORM_SETTINGS_ID = 'default'
 
-async function getPlatformSettings() {
+function maskAccessKey(key) {
+  const k = String(key || '').trim()
+  if (!k) return ''
+  if (k.length <= 8) return '****'
+  return `${k.slice(0, 4)}****${k.slice(-4)}`
+}
+
+async function readPlatformSettingsDoc() {
   try {
     const res = await db.collection(PLATFORM_SETTINGS_COL).doc(PLATFORM_SETTINGS_ID).get()
-    return {
-      _id: PLATFORM_SETTINGS_ID,
-      supportPhone: (res.data && res.data.supportPhone) || '',
-      updateTime: res.data?.updateTime || null
-    }
+    return res.data || {}
   } catch (e) {
-    return { _id: PLATFORM_SETTINGS_ID, supportPhone: '', updateTime: null }
+    return {}
+  }
+}
+
+async function getPlatformSettings() {
+  const raw = await readPlatformSettingsDoc()
+  return {
+    _id: PLATFORM_SETTINGS_ID,
+    supportPhone: raw.supportPhone || '',
+    volcAccessKeyMasked: maskAccessKey(raw.volcAccessKey),
+    volcSecretKeyConfigured: !!String(raw.volcSecretKey || '').trim(),
+    volcKeysUpdateTime: raw.volcKeysUpdateTime || null,
+    updateTime: raw.updateTime || null
   }
 }
 
@@ -793,12 +810,29 @@ async function updatePlatformSettings(payload) {
   if (supportPhone && !/^[\d\s\-+()]{6,24}$/.test(supportPhone)) {
     throw new Error('平台电话格式不正确')
   }
-  await db.collection(PLATFORM_SETTINGS_COL).doc(PLATFORM_SETTINGS_ID).set({
-    data: {
-      supportPhone,
-      updateTime: new Date()
-    }
-  })
+
+  const existing = await readPlatformSettingsDoc()
+  const data = {
+    supportPhone: supportPhone || existing.supportPhone || '',
+    updateTime: new Date()
+  }
+  if (existing.volcAccessKey) data.volcAccessKey = existing.volcAccessKey
+  if (existing.volcSecretKey) data.volcSecretKey = existing.volcSecretKey
+  if (existing.volcKeysUpdateTime) data.volcKeysUpdateTime = existing.volcKeysUpdateTime
+
+  const volcAccessKey = (payload.volcAccessKey || '').trim()
+  if (volcAccessKey) {
+    data.volcAccessKey = volcAccessKey
+    data.volcKeysUpdateTime = new Date()
+  }
+
+  const volcSecretKey = (payload.volcSecretKey || '').trim()
+  if (volcSecretKey) {
+    data.volcSecretKey = volcSecretKey
+    data.volcKeysUpdateTime = new Date()
+  }
+
+  await db.collection(PLATFORM_SETTINGS_COL).doc(PLATFORM_SETTINGS_ID).set({ data })
   return getPlatformSettings()
 }
 
@@ -959,6 +993,8 @@ async function dispatch(action, payload, query) {
       return getOrderStatusCounts({ ...query, ...payload })
     case 'orders.updateStatus':
       return updateOrderStatus(payload)
+    case 'orders.delete':
+      return deleteOrder(payload)
     case 'checkins.list':
       return listCheckins({ ...query, ...payload })
     case 'checkins.summary':
@@ -999,6 +1035,12 @@ async function dispatch(action, payload, query) {
       return updateFeedbackStatus(payload)
     case 'feedbacks.delete':
       return deleteFeedback(payload)
+    case 'gallery.batches.list':
+      return listGalleryBatches({ ...query, ...payload })
+    case 'gallery.batches.get':
+      return getGalleryBatch(payload)
+    case 'gallery.batches.delete':
+      return deleteGalleryBatch(payload)
     default:
       throw new Error(`未知 action: ${action}`)
   }

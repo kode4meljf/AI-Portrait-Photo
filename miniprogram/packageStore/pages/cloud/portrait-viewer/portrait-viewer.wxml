@@ -1,0 +1,30 @@
+<page-meta page-style="{{previewPageStyle}}" />
+<portrait-result-viewer
+  id="viewer"
+  phase="{{phase}}"
+  original-url="{{originalUrl}}"
+  results="{{results}}"
+  current-index="{{currentIndex}}"
+  loading-progress-text="{{loadingProgressText}}"
+  status-bar-height="{{statusBarHeight}}"
+  nav-title="{{navTitle}}"
+  show-loading-gallery-link="{{mode === 'live' && phase === 'loading'}}"
+  bind:opengallery="onOpenGallery"
+  bind:indexchange="onViewerIndexChange"
+  bind:navback="onNavBack"
+  bind:retry="onRetryTap"
+  bind:makealbum="onMakeAlbum"
+  bind:makeframe="onMakeFrame"
+  bind:patchresults="onPatchResults"
+  bind:previewchange="onPreviewChange"
+/>
+
+<portrait-retry-dialog
+  visible="{{retryDialogVisible}}"
+  styleName="{{retryStyleName}}"
+  cost="{{portraitCost}}"
+  balance="{{retryBalance}}"
+  loading="{{retryLoading}}"
+  bind:cancel="onRetryCancel"
+  bind:confirm="onRetryConfirm"
+/>

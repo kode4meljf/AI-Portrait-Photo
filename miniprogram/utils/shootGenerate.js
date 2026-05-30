@@ -5,7 +5,8 @@ const app = getApp();
 const db = wx.cloud.database();
 const { createShootBatch, uploadShootOriginalToCloud, isWechatLocalPath } = require('./media.js');
 const { isValidStoreId } = require('./storeSession.js');
-const { submitPortraitTask, isPortraitGenerating } = require('./jimengPortraitAi.js');
+const { submitPortraitBatch, kickPortraitWorker, isPortraitGenerating } = require('./jimengPortraitAi.js');
+const { portraitFailPresentation } = require('./portraitBilling.js');
 
 async function ensureCloudOriginalUrl(originalUrl) {
   const src = String(originalUrl || '').trim();
@@ -66,17 +67,23 @@ async function createPhotosForStyles(cloudOriginalUrl, styles) {
   return { batchId, jobs };
 }
 
-async function submitAllPortraitTasks(jobs) {
-  for (const job of jobs) {
-    await submitPortraitTask(job.photoId, job.styleId);
-  }
+async function submitAllPortraitTasks(jobs, batchId) {
+  if (!jobs || !jobs.length) return;
+  await submitPortraitBatch({
+    batchId: batchId || '',
+    items: jobs.map((job) => ({
+      photoId: job.photoId,
+      styleId: job.styleId
+    }))
+  });
+  kickPortraitWorker({ batchId: batchId || '' });
 }
 
 /**
  * 轮询 N 条 photos 直至全部 completed / failed 或超时
  */
 async function pollShootPhotos(jobs, options = {}) {
-  const { onProgress, intervalMs = 3000, maxWaitMs = 600000 } = options;
+  const { onProgress, onPollTick, intervalMs = 3000, maxWaitMs = 600000 } = options;
   const photoIds = jobs.map((j) => j.photoId);
   const deadline = Date.now() + maxWaitMs;
   const cmd = db.command;
@@ -103,6 +110,9 @@ async function pollShootPhotos(jobs, options = {}) {
 
     if (onProgress) {
       onProgress({ completed, failed, generating, total: photoIds.length });
+    }
+    if (onPollTick) {
+      onPollTick({ completed, failed, generating, total: photoIds.length });
     }
 
     if (completed + failed >= photoIds.length) {
@@ -144,12 +154,24 @@ async function runShootPortraitGeneration(originalUrl, styles, options = {}) {
 
   const cloudOriginalUrl = await ensureCloudOriginalUrl(originalUrl);
   const { batchId, jobs } = await createPhotosForStyles(cloudOriginalUrl, styles);
-  await submitAllPortraitTasks(jobs);
+  if (options.onBatchCreated) {
+    options.onBatchCreated(batchId);
+  }
+  await submitAllPortraitTasks(jobs, batchId);
+
+  let lastWorkerKickAt = Date.now();
 
   const polled = await pollShootPhotos(jobs, {
     intervalMs: options.intervalMs || 3000,
     maxWaitMs: options.maxWaitMs || 600000,
-    onProgress: options.onProgress
+    onProgress: options.onProgress,
+    onPollTick: ({ completed, failed, total }) => {
+      const remaining = total - completed - failed;
+      if (remaining > 0 && Date.now() - lastWorkerKickAt > 20000) {
+        kickPortraitWorker({ batchId });
+        lastWorkerKickAt = Date.now();
+      }
+    }
   });
 
   const succeeded = polled.filter((item) => !item.failed && item.photo && item.photo.aiUrl);
@@ -161,6 +183,7 @@ async function runShootPortraitGeneration(originalUrl, styles, options = {}) {
 
   const results = polled.map((item) => {
     const ok = !item.failed && item.photo && item.photo.aiUrl;
+    const failMeta = ok ? {} : portraitFailPresentation(item.errorMsg);
     return {
       id: item.styleId,
       name: item.styleName,
@@ -168,6 +191,8 @@ async function runShootPortraitGeneration(originalUrl, styles, options = {}) {
       photoId: item.photoId,
       styleId: item.styleId,
       status: ok ? 'success' : 'failed',
+      errorMsg: item.errorMsg || '',
+      ...failMeta,
       imageMode: 'portrait',
       aspectRatio: 3 / 4
     };

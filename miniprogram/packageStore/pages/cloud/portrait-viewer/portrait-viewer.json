@@ -1,6 +1,6 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "生成中",
+  "navigationBarTitleText": "成片查看",
   "navigationBarBackgroundColor": "#f3f3f3",
   "backgroundColor": "#f3f3f3",
   "backgroundColorTop": "#f3f3f3",
@@ -8,6 +8,7 @@
   "enablePullDownRefresh": false,
   "disableScroll": true,
   "usingComponents": {
-    "portrait-retry-dialog": "/components/portrait-retry-dialog/portrait-retry-dialog"
+    "portrait-retry-dialog": "/components/portrait-retry-dialog/portrait-retry-dialog",
+    "portrait-result-viewer": "/components/portrait-result-viewer/portrait-result-viewer"
   }
 }

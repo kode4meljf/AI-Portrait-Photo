@@ -5,6 +5,13 @@ const { isStoreAccount, getProfileCollection } = require('../../../../utils/acco
 const { isValidStoreId } = require('../../../../utils/storeSession');
 const { isStoreOwner } = require('../../../../utils/storeRole');
 const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../../config/frames.js');
+const {
+  assertPortraitBalance,
+  isInsufficientBalanceError,
+  promptInsufficientBalance,
+  fetchStoreBalance,
+  PORTRAIT_COST
+} = require('../../../../utils/portraitBilling.js');
 const db = wx.cloud.database();
 
 const MOCK_STORE = {
@@ -214,6 +221,12 @@ Page({
       if (!modal.confirm) return;
     }
 
+    try {
+      await assertPortraitBalance(PORTRAIT_COST);
+    } catch (e) {
+      return;
+    }
+
     this.setData({ submitting: true });
     wx.showLoading({ title: '提交中...', mask: true });
 
@@ -234,11 +247,18 @@ Page({
       app.globalData.ordersNeedRefresh = true;
       wx.switchTab({ url: '/pages/order-list/order-list' });
     } catch (err) {
-      wx.showToast({
-        title: err.message || '提交失败，请重试',
-        icon: 'none',
-        duration: 3000
-      });
+      if (isInsufficientBalanceError(err)) {
+        await promptInsufficientBalance({
+          balance: await fetchStoreBalance(),
+          required: PORTRAIT_COST
+        });
+      } else {
+        wx.showToast({
+          title: err.message || '提交失败，请重试',
+          icon: 'none',
+          duration: 3000
+        });
+      }
     } finally {
       this.setData({ submitting: false });
       wx.hideLoading();

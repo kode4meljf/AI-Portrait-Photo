@@ -1,0 +1,13 @@
+{
+  "timeout": 60,
+  "triggers": [
+    {
+      "name": "jimengPortraitWorkerTimer",
+      "type": "timer",
+      "config": "*/15 * * * * * *"
+    }
+  ],
+  "permissions": {
+    "openapi": []
+  }
+}

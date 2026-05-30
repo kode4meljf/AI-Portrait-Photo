@@ -4,6 +4,8 @@ const { getProfileCollection } = require('./account.js');
 const { isValidStoreId } = require('./storeSession.js');
 
 const PORTRAIT_COST = 1;
+const INSUFFICIENT_BALANCE_MSG = '剩余次数不足，请先充值';
+const RECHARGE_URL = '/packageStore/pages/profile/recharge/recharge';
 
 async function fetchStoreBalance() {
   const storeId = app.globalData.storeId;
@@ -22,10 +24,61 @@ function portraitCostForCount(count) {
   return Math.max(1, n) * PORTRAIT_COST;
 }
 
+function isInsufficientBalanceError(err) {
+  const msg = String((err && err.message) || err || '');
+  return /INSUFFICIENT_BALANCE|剩余次数不足|次数不足/i.test(msg);
+}
+
+function portraitFailPresentation(errorMsg) {
+  const msg = String(errorMsg || '').trim();
+  if (/剩余次数不足|INSUFFICIENT_BALANCE|次数不足/i.test(msg)) {
+    return {
+      failLabel: '剩余次数不足',
+      failHint: '请先充值后再重试'
+    };
+  }
+  if (/生成超时|TIMEOUT/i.test(msg)) {
+    return {
+      failLabel: '生成超时',
+      failHint: '点击右下角重新生成'
+    };
+  }
+  return {
+    failLabel: '生成失败',
+    failHint: '点击右下角重新生成'
+  };
+}
+
+async function promptInsufficientBalance(options = {}) {
+  const balance = options.balance != null ? options.balance : await fetchStoreBalance();
+  const required = Math.max(1, Number(options.required) || 1);
+  const res = await wx.showModal({
+    title: '剩余次数不足',
+    content: `当前剩余 ${balance} 次，本次需要 ${required} 次。请先充值后再试。`,
+    confirmText: '去充值',
+    cancelText: '取消'
+  });
+  if (res.confirm) {
+    wx.navigateTo({ url: RECHARGE_URL });
+  }
+  return false;
+}
+
+/** 余额不足时弹窗并抛错，足够时返回当前余额 */
+async function assertPortraitBalance(requiredCount) {
+  const required = Math.max(1, Number(requiredCount) || 1);
+  const balance = await fetchStoreBalance();
+  if (balance >= required) return balance;
+  await promptInsufficientBalance({ balance, required });
+  const err = new Error(INSUFFICIENT_BALANCE_MSG);
+  err.code = 'INSUFFICIENT_BALANCE';
+  throw err;
+}
+
 function toastPortraitError(err, fallback = '操作失败') {
   const msg = String((err && err.message) || err || fallback);
   let title = fallback;
-  if (/剩余次数不足|次数不足/.test(msg)) {
+  if (isInsufficientBalanceError(msg)) {
     title = '剩余次数不足';
   } else if (/服务暂不可用|请联系平台/.test(msg)) {
     title = '服务暂不可用';
@@ -39,7 +92,13 @@ function toastPortraitError(err, fallback = '操作失败') {
 
 module.exports = {
   PORTRAIT_COST,
+  INSUFFICIENT_BALANCE_MSG,
+  RECHARGE_URL,
   fetchStoreBalance,
   portraitCostForCount,
+  isInsufficientBalanceError,
+  portraitFailPresentation,
+  promptInsufficientBalance,
+  assertPortraitBalance,
   toastPortraitError
 };

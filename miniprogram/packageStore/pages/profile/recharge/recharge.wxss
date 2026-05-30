@@ -26,6 +26,16 @@
   margin-top: 10rpx;
 }
 
+.load-error {
+  margin: 0 0 32rpx;
+  padding: 24rpx 28rpx;
+  border-radius: 16rpx;
+  background: #fff7ed;
+  color: #b45309;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
 .package-card {
   background: #fff;
   border-radius: 28rpx;

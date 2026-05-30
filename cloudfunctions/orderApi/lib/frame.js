@@ -5,6 +5,7 @@ const { ORDER_TYPES, STATUS_TAB_MAP, ORDER_STATUSES } = require('./config');
 const { normalizePhotoUrl } = require('./photo');
 const { ensureStoreProfile } = require('./store');
 const { deleteCloudFileSafe } = require('./cloudFile')
+const { chargeStoreForFrame, refundStoreFrame } = require('./balance')
 function getFrameConfig() { return ORDER_TYPES.frame; }
 async function assertStoreOrder(orderId, storeId) {
   const res = await db.collection(getFrameConfig().collection).doc(orderId).get();
@@ -25,9 +26,10 @@ async function createFrameOrder(event, storeId) {
   if (!frameName) return { success: false, error: '缺少 frameName（相框名称）' };
   if (!photoUrl) return { success: false, error: '缺少 photoUrl（照片）' };
 
-  const store = await ensureStoreProfile(storeId);
-  const balance = store?.balance ?? 0;
-  if (balance < 1) return { success: false, error: '摆件相框次数不足，请充值' };
+  await ensureStoreProfile(storeId);
+
+  const charge = await chargeStoreForFrame(storeId);
+  if (!charge.ok) return { success: false, error: charge.error };
 
   const { url: finalPhotoUrl, orphanFileId } = await normalizePhotoUrl(photoUrl, storeId);
 
@@ -42,8 +44,8 @@ async function createFrameOrder(event, storeId) {
         status: '待处理', shippingNo: null, createTime: db.serverDate()
       }
     });
-    await db.collection('stores').doc(storeId).update({ data: { balance: _.inc(-1) } });
   } catch (err) {
+    await refundStoreFrame(storeId);
     if (orphanFileId) await deleteCloudFileSafe(orphanFileId);
     throw err;
   }

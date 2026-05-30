@@ -50,6 +50,12 @@ const routes = [
         meta: { title: '打卡管理' }
       },
       {
+        path: 'gallery',
+        name: 'gallery',
+        component: () => import('@/views/gallery/GalleryListView.vue'),
+        meta: { title: '云相册' }
+      },
+      {
         path: 'styles',
         name: 'styles',
         component: () => import('@/views/styles/StyleListView.vue'),

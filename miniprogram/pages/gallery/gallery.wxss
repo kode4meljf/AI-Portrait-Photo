@@ -107,21 +107,6 @@
   opacity: 0.55;
 }
 
-.auto-hint {
-  margin-top: 16rpx;
-  padding: 16rpx 24rpx;
-  font-size: 22rpx;
-  color: #ea580c;
-  background: #fff7ed;
-  border-radius: 12rpx;
-  text-align: center;
-}
-
-.auto-hint.muted {
-  color: #9ca3af;
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .content-swiper {
   flex: 1;
   height: 0;

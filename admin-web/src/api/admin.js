@@ -20,6 +20,7 @@ export const api = {
   listOrders: (params) => adminRequest('orders.list', {}, params),
   getOrderStatusCounts: (params) => adminRequest('orders.statusCounts', {}, params),
   updateOrderStatus: (data) => adminRequest('orders.updateStatus', data),
+  deleteOrder: (data) => adminRequest('orders.delete', data),
 
   listCheckins: (params) => adminRequest('checkins.list', {}, params),
   getCheckinSummary: (params) => adminRequest('checkins.summary', params),
@@ -43,5 +44,9 @@ export const api = {
 
   listFeedbacks: (params) => adminRequest('feedbacks.list', {}, params),
   updateFeedbackStatus: (data) => adminRequest('feedbacks.updateStatus', data),
-  deleteFeedback: (data) => adminRequest('feedbacks.delete', data)
+  deleteFeedback: (data) => adminRequest('feedbacks.delete', data),
+
+  listGalleryBatches: (params) => adminRequest('gallery.batches.list', {}, params),
+  getGalleryBatch: (data) => adminRequest('gallery.batches.get', data),
+  deleteGalleryBatch: (data) => adminRequest('gallery.batches.delete', data)
 }

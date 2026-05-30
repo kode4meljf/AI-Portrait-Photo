@@ -1,7 +1,11 @@
 const cloud = require('wx-server-sdk');
 const submitAITask = require('./submitAITask');
-const { resolveStoreIdFromOpenid } = require('../lib/resolveStoreMember');
-const { PORTRAIT_COST } = require('./lib/balance');
+const { resolveStoreIdFromOpenid } = require('./lib/resolveStoreMember');
+const {
+  assertCanSubmitPortrait,
+  chargeStoreForPortrait,
+  INSUFFICIENT_BALANCE_MSG
+} = require('./lib/balance');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -28,16 +32,19 @@ async function main(event) {
     }
 
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
-    const storeRes = await db.collection('stores').doc(storeId).get();
-    const balance = storeRes.data?.balance || 0;
-    if (balance < PORTRAIT_COST) {
-      return { success: false, error: '剩余次数不足，请先充值' };
-    }
+    await assertCanSubmitPortrait(storeId);
 
-    return submitAITask.main({ photoId, styleId });
+    const submitRes = await submitAITask.main({ photoId, styleId });
+    if (!submitRes.success || !submitRes.taskId) {
+      return submitRes;
+    }
+    await chargeStoreForPortrait(storeId, submitRes.taskId);
+    return submitRes;
   } catch (err) {
     console.error('[jimengPortraitAi/retry] 失败:', err);
-    return { success: false, error: err.message || '重试提交失败' };
+    const message =
+      err.code === 'INSUFFICIENT_BALANCE' ? INSUFFICIENT_BALANCE_MSG : err.message || '重试提交失败';
+    return { success: false, error: message, code: err.code || '' };
   }
 }
 

@@ -1,8 +1,11 @@
 <view class="container">
   <view class="balance-info">
     <text class="label">当前可用次数</text>
-    <text class="value">{{storeInfo.balance || 0}} 次</text>
+    <text class="value">{{balance}} 次</text>
   </view>
+
+  <view wx:if="{{loadError}}" class="load-error">{{loadError}}</view>
+  <view wx:elif="{{!payConfigured}}" class="load-error">微信支付配置中，暂无法充值</view>
 
   <view class="package-list">
     <view wx:for="{{packages}}" wx:key="id" class="package-card {{selectedPackage.id === item.id ? 'selected' : ''}}" bindtap="selectPackage" data-pkg="{{item}}">
@@ -20,6 +23,6 @@
 
   <view class="summary">
     <text>应付金额：¥{{selectedPackage ? selectedPackage.price : 0}}</text>
-    <button class="pay-btn" bindtap="confirmRecharge" disabled="{{submitting}}">{{submitting ? '充值中...' : '立即充值'}}</button>
+    <button class="pay-btn" bindtap="confirmRecharge" disabled="{{submitting || !payConfigured || !selectedPackage}}">{{submitting ? '充值中...' : '立即充值'}}</button>
   </view>
 </view>

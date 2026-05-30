@@ -24,13 +24,17 @@
           <el-icon><User /></el-icon>
           <span>客户管理</span>
         </el-menu-item>
-        <el-menu-item index="/orders">
-          <el-icon><List /></el-icon>
-          <span>订单管理</span>
-        </el-menu-item>
         <el-menu-item index="/checkins">
           <el-icon><Calendar /></el-icon>
           <span>打卡管理</span>
+        </el-menu-item>
+        <el-menu-item index="/gallery">
+          <el-icon><FolderOpened /></el-icon>
+          <span>云相册</span>
+        </el-menu-item>
+        <el-menu-item index="/orders">
+          <el-icon><List /></el-icon>
+          <span>订单管理</span>
         </el-menu-item>
         <el-menu-item index="/styles">
           <el-icon><Picture /></el-icon>

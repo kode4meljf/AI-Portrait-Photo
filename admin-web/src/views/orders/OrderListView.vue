@@ -34,21 +34,31 @@
       <el-table-column prop="createTimeText" label="创建时间" min-width="160" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
-          <el-dropdown @command="(cmd) => changeStatus(row, cmd)">
-            <el-button link type="primary">改状态</el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item
-                  v-for="s in ORDER_STATUSES"
-                  :key="s"
-                  :command="s"
-                  :disabled="s === row.status"
-                >
-                  {{ s }}
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <div class="table-actions">
+            <el-dropdown trigger="click" @command="(cmd) => changeStatus(row, cmd)">
+              <el-button link type="primary">改状态</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="s in ORDER_STATUSES"
+                    :key="s"
+                    :command="s"
+                    :disabled="s === row.status"
+                  >
+                    {{ s }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button
+              link
+              type="danger"
+              :loading="deletingId === row._id"
+              @click="onDelete(row)"
+            >
+              删除
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -88,6 +98,7 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const deletingId = ref('')
 
 function statusTagType(status) {
   const map = {
@@ -165,6 +176,37 @@ async function changeStatus(row, status) {
   }
 }
 
+async function onDelete(row) {
+  if (!row?._id || !appStore.currentStoreId) return
+  try {
+    await ElMessageBox.confirm(
+      `确定删除订单 ${row.orderNo || row._id}？\n\n将删除：\n· frame_orders 订单记录\n· 订单成片云存储文件（若无其它订单引用）\n· 关联 photos 的成片字段与 ai_tasks\n\n不退还门店 balance，原图仍保留在云相册。`,
+      '删除订单',
+      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
+  deletingId.value = row._id
+  try {
+    const res = await api.deleteOrder({
+      orderId: row._id,
+      storeId: appStore.currentStoreId
+    })
+    const parts = [`订单已删除`]
+    if (res.deletedPortraitFiles) parts.push(`${res.deletedPortraitFiles} 个成片文件`)
+    if (res.clearedPhotos) parts.push(`${res.clearedPhotos} 条 photos 成片已清空`)
+    if (res.deletedTasks) parts.push(`${res.deletedTasks} 条 ai_tasks`)
+    ElMessage.success(parts.join('，'))
+    await loadList()
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
+  } finally {
+    deletingId.value = ''
+  }
+}
+
 watch(() => appStore.currentStoreId, () => {
   page.value = 1
   loadList()
@@ -180,5 +222,16 @@ onMounted(loadList)
 .pager {
   margin-top: 16px;
   justify-content: flex-end;
+}
+
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.table-actions :deep(.el-dropdown) {
+  vertical-align: middle;
 }
 </style>

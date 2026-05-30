@@ -537,7 +537,10 @@ async function storeUpdate(openid, payload) {
     data.contactPhone = normalizeMobilePhone(data.contactPhone)
   }
   if (payload.balanceInc !== undefined) {
-    data.balance = _.inc(Number(payload.balanceInc) || 0)
+    throw new Error('请通过充值页购买次数')
+  }
+  if (payload.packageTotal !== undefined || payload.packageUsed !== undefined || payload.packageExpireDate !== undefined) {
+    throw new Error('套餐信息仅可在充值成功后由系统更新')
   }
   if (!Object.keys(data).length) throw new Error('没有可更新字段')
 
