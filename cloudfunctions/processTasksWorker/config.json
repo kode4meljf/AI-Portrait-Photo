@@ -1,9 +1,0 @@
-{
-  "triggers": [
-    {
-      "name": "taskWorker",
-      "type": "timer",
-      "config": "*/10 * * * * * *"  
-    }
-  ]
-}

@@ -1,0 +1,12 @@
+{
+  "triggers": [
+    {
+      "name": "jimengPortraitAiWorker",
+      "type": "timer",
+      "config": "*/15 * * * * * *"
+    }
+  ],
+  "permissions": {
+    "openapi": []
+  }
+}

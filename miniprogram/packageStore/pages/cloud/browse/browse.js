@@ -5,6 +5,7 @@
 
 const app = getApp();
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
+const { submitPortraitTask, isPortraitGenerating } = require('../../../../utils/jimengPortraitAi.js');
 
 Page({
   data: {
@@ -66,8 +67,8 @@ Page({
       const thumbnails = photos.map(photo => {
         const genStatus = photo.generateStatus || 'pending';
         let statusText = "", statusClass = "";
-        if (genStatus === 'processing') {
-          statusText = "生成中";
+        if (genStatus === 'processing' || genStatus === 'pending') {
+          statusText = genStatus === 'pending' ? "排队中" : "生成中";
           statusClass = "processing";
         } else if (photo.isGenerated && photo.aiUrl) {
           statusText = "已完成";
@@ -95,10 +96,10 @@ Page({
         currentPhoto: photos[0] || null
       });
 
-      const hasProcessing = photos.some(p => p.generateStatus === 'processing');
-      if (hasProcessing && !this.pollingTimer) {
+      const hasGenerating = photos.some(p => isPortraitGenerating(p.generateStatus || 'pending'));
+      if (hasGenerating && !this.pollingTimer) {
         this.startPolling();
-      } else if (!hasProcessing && this.pollingTimer) {
+      } else if (!hasGenerating && this.pollingTimer) {
         clearInterval(this.pollingTimer);
         this.pollingTimer = null;
       }
@@ -200,16 +201,14 @@ Page({
     wx.showLoading({ title: "提交任务中...", mask: true });
     try {
       for (const photoId of selectedIds) {
-        await wx.cloud.callFunction({
-          name: "submitAITask",
-          data: { photoId, templateId: finalTemplateId }
-        });
+        await submitPortraitTask(photoId, finalTemplateId);
       }
       wx.hideLoading();
       wx.showToast({ title: `已提交 ${selectedIds.length} 个生成任务`, icon: "success" });
       // 立即刷新照片列表，此时状态应为 pending（等待处理）
       await this.loadPhotos();
-      // 启动轮询（如果照片状态中有 processing，轮询会自动开始）
+      // 启动轮询（pending / processing 均视为进行中）
+      this._pollingWatchIds = [...selectedIds];
       this.startPolling();
       // 退出多选模式
       this.setData({ isSelectionMode: false, selectedIds: [] });
@@ -224,13 +223,25 @@ Page({
     if (this.pollingTimer) clearInterval(this.pollingTimer);
     this.pollingTimer = setInterval(async () => {
       await this.loadPhotos();
-      const hasProcessing = this.data.photos.some(p => p.generateStatus === 'processing');
-      if (!hasProcessing) {
+      const stillGenerating = this.data.photos.some(p =>
+        isPortraitGenerating(p.generateStatus || 'pending')
+      );
+      if (!stillGenerating) {
         clearInterval(this.pollingTimer);
         this.pollingTimer = null;
-        const allSuccess = this.data.photos.every(p => p.generateStatus === 'completed');
-        if (allSuccess) {
-          wx.showToast({ title: "所有图片生成完成", icon: "success" });
+        const watchIds = this._pollingWatchIds || [];
+        if (watchIds.length) {
+          const watched = this.data.photos.filter((p) => watchIds.includes(p._id));
+          const allDone = watched.length > 0 && watched.every(
+            (p) => p.generateStatus === 'completed' || p.isGenerated
+          );
+          const anyFailed = watched.some((p) => p.generateStatus === 'failed');
+          if (anyFailed) {
+            wx.showToast({ title: '部分图片生成失败', icon: 'none' });
+          } else if (allDone) {
+            wx.showToast({ title: '图片生成完成', icon: 'success' });
+          }
+          this._pollingWatchIds = [];
         }
       }
     }, 3000);

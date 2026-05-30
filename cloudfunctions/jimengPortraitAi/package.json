@@ -1,0 +1,10 @@
+{
+  "name": "jimengPortraitAi",
+  "version": "1.0.0",
+  "description": "即梦 AI 写真：提交任务 + 定时 Worker",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "wx-server-sdk": "~2.6.3"
+  }
+}
