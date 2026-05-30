@@ -149,6 +149,7 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 8rpx;
+  position: relative;
 }
 
 .result-image {
@@ -251,7 +252,114 @@
 }
 
 .progress-segment.active {
-  background: rgba(0, 0, 0, 0.82);
+  background: #c49a3d;
+}
+
+.progress-segment.failed {
+  background: #e74c3c;
+}
+
+.progress-segment.active.failed {
+  background: #e74c3c;
+}
+
+.swiper-item-inner.is-failed {
+  background: #e8e8e8;
+}
+
+.swiper-item-inner.is-retrying {
+  background: #ececec;
+}
+
+.fail-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  z-index: 2;
+  padding: 40rpx;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.fail-label {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #c0392b;
+  margin-bottom: 12rpx;
+}
+
+.fail-hint {
+  font-size: 24rpx;
+  color: #888;
+}
+
+.retry-fab {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.retry-fab--active {
+  opacity: 0.82;
+  transform: scale(0.96);
+}
+
+.retry-fab-icon {
+  width: 42rpx;
+  height: 42rpx;
+  border: 4rpx solid #c49a3d;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: retry-spin 4s linear infinite;
+}
+
+@keyframes retry-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.retrying-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.78);
+  z-index: 3;
+}
+
+.retrying-spinner {
+  width: 56rpx;
+  height: 56rpx;
+  border: 4rpx solid #c49a3d;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: retry-spin 0.9s linear infinite;
+  margin-bottom: 16rpx;
+}
+
+.retrying-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.btn-primary.is-disabled {
+  opacity: 0.38;
 }
 
 .hero-tip {

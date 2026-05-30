@@ -13,7 +13,7 @@
     <view class="loading-main">
       <view class="spinner"></view>
       <text class="loading-title">AI 正在生成写真</text>
-      <text class="loading-desc">预计 8–15 秒，请勿离开页面</text>
+      <text class="loading-desc">即梦生成中，{{progressText || '请稍候…'}}</text>
       <text class="loading-hint">可稍后在「云相册」查看生成结果</text>
       <view class="loading-preview">
         <image wx:if="{{originalUrl}}" src="{{originalUrl}}" mode="aspectFit"></image>
@@ -35,23 +35,44 @@
               bindanimationfinish="onSwiperAnimationFinish"
               duration="280"
               easing-function="easeOutCubic"
-              circular="{{results.length > 1}}"
+              circular="{{false}}"
               skip-hidden-item-layout
             >
-              <swiper-item wx:for="{{results}}" wx:key="id">
+              <swiper-item wx:for="{{results}}" wx:key="photoId">
                 <view
-                  class="swiper-item-inner"
+                  class="swiper-item-inner {{item.status === 'failed' ? 'is-failed' : ''}} {{item.status === 'retrying' ? 'is-retrying' : ''}}"
                   bindtap="onPreviewImage"
                   data-index="{{index}}"
                 >
                   <image
                     id="hero-img-{{index}}"
                     class="result-image"
-                    src="{{item.url}}"
+                    src="{{item.status === 'failed' || item.status === 'retrying' ? originalUrl : item.url}}"
                     mode="aspectFit"
                     bindload="onResultImageLoad"
                     data-index="{{index}}"
                   ></image>
+
+                  <view wx:if="{{item.status === 'failed'}}" class="fail-overlay">
+                    <text class="fail-label">生成失败</text>
+                    <text class="fail-hint">点击右下角重新生成</text>
+                  </view>
+
+                  <view wx:if="{{item.status === 'retrying'}}" class="retrying-overlay">
+                    <view class="retrying-spinner"></view>
+                    <text class="retrying-text">重新生成中…</text>
+                  </view>
+
+                  <view
+                    wx:if="{{item.status === 'failed'}}"
+                    class="retry-fab"
+                    catchtap="onRetryTap"
+                    data-index="{{index}}"
+                    hover-class="retry-fab--active"
+                    hover-stay-time="80"
+                  >
+                    <view class="retry-fab-icon"></view>
+                  </view>
                 </view>
               </swiper-item>
             </swiper>
@@ -72,8 +93,8 @@
           <view wx:if="{{results.length > 1}}" class="progress-track">
             <view
               wx:for="{{results}}"
-              wx:key="id"
-              class="progress-segment {{index === currentIndex ? 'active' : ''}}"
+              wx:key="photoId"
+              class="progress-segment {{index === currentIndex ? 'active' : ''}} {{item.status === 'failed' ? 'failed' : ''}}"
             ></view>
           </view>
 
@@ -92,7 +113,11 @@
       <view class="footer">
         <view class="action-row">
           <button class="btn btn-outline" bindtap="onMakeAlbum">制作影集</button>
-          <button class="btn btn-primary" bindtap="onMakeFrame">制作摆台</button>
+          <button
+            class="btn btn-primary {{currentItemFailed ? 'is-disabled' : ''}}"
+            bindtap="onMakeFrame"
+            disabled="{{currentItemFailed}}"
+          >制作摆台</button>
         </view>
       </view>
     </view>
@@ -123,7 +148,7 @@
         current="{{previewIndex}}"
         bindchange="onPreviewSwiperChange"
         duration="280"
-        circular="{{results.length > 1}}"
+        circular="{{false}}"
       >
         <swiper-item wx:for="{{results}}" wx:key="id">
           <view class="preview-slide" bindtap="onClosePreview">
@@ -155,3 +180,13 @@
   </view>
   </view>
 </view>
+
+<portrait-retry-dialog
+  visible="{{retryDialogVisible}}"
+  styleName="{{retryStyleName}}"
+  cost="{{portraitCost}}"
+  balance="{{retryBalance}}"
+  loading="{{retryLoading}}"
+  bind:cancel="onRetryCancel"
+  bind:confirm="onRetryConfirm"
+/>

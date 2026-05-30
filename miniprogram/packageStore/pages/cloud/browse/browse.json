@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "图片浏览",
-  "usingComponents": {},
+  "usingComponents": {
+    "portrait-retry-dialog": "/components/portrait-retry-dialog/portrait-retry-dialog"
+  },
   "disableScroll": false
 }

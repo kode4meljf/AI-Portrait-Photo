@@ -1,0 +1,95 @@
+.retry-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  z-index: 1200;
+  box-sizing: border-box;
+}
+
+.retry-dialog {
+  width: 100%;
+  max-width: 600rpx;
+  background: #fff;
+  border-radius: 32rpx;
+  padding: 44rpx 40rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.retry-dialog-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 600;
+  text-align: center;
+  color: #1a1a2e;
+  margin-bottom: 12rpx;
+}
+
+.retry-dialog-style {
+  display: block;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #c49a3d;
+  margin-bottom: 28rpx;
+}
+
+.retry-dialog-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+  line-height: 1.85;
+}
+
+.retry-dialog-k {
+  color: #888;
+}
+
+.retry-dialog-v {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.retry-dialog-warn {
+  font-size: 24rpx;
+  color: #92400e;
+  background: #fffbeb;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin: 28rpx 0 32rpx;
+  line-height: 1.55;
+}
+
+.retry-dialog-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.retry-btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  padding: 0;
+  margin: 0;
+}
+
+.retry-btn::after {
+  border: none;
+}
+
+.retry-btn-cancel {
+  background: #f3f3f3;
+  color: #666;
+}
+
+.retry-btn-confirm {
+  background: #1a1a2e;
+  color: #fff;
+}

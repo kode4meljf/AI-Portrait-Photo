@@ -5,7 +5,17 @@
 
 const app = getApp();
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
-const { submitPortraitTask, isPortraitGenerating } = require('../../../../utils/jimengPortraitAi.js');
+const {
+  submitPortraitTask,
+  retryPortraitTask,
+  pollPortraitPhoto,
+  isPortraitGenerating
+} = require('../../../../utils/jimengPortraitAi.js');
+const {
+  PORTRAIT_COST,
+  fetchStoreBalance,
+  toastPortraitError
+} = require('../../../../utils/portraitBilling.js');
 
 Page({
   data: {
@@ -22,7 +32,16 @@ Page({
     templates: [],
     selectedTemplateId: null,
     pollingTimer: null,
-    aiPollingTimer: null
+    aiPollingTimer: null,
+    currentPhotoFailed: false,
+    currentPhotoRetrying: false,
+    retryDialogVisible: false,
+    retryPhotoId: '',
+    retryStyleName: '',
+    retryStyleId: '',
+    retryBalance: 0,
+    retryLoading: false,
+    portraitCost: PORTRAIT_COST
   },
 
   onLoad(options) {
@@ -95,6 +114,7 @@ Page({
         thumbnails,
         currentPhoto: photos[0] || null
       });
+      this.syncCurrentPhotoState(this.data.currentIndex);
 
       const hasGenerating = photos.some(p => isPortraitGenerating(p.generateStatus || 'pending'));
       if (hasGenerating && !this.pollingTimer) {
@@ -124,13 +144,25 @@ Page({
       currentIndex: index,
       currentPhoto: this.data.photos[index]
     });
-    this.updateStyleNameByIndex(index);
+    this.syncCurrentPhotoState(index);
+  },
+
+  syncCurrentPhotoState(index) {
+    const photo = this.data.photos[index];
+    const styleName = photo?.styleName || '';
+    const failed = photo?.generateStatus === 'failed';
+    this.setData({
+      currentStyleName: styleName || this.data.currentStyleName,
+      currentPhotoFailed: !!failed,
+      currentPhotoRetrying: false
+    });
+    if (styleName) {
+      wx.setNavigationBarTitle({ title: styleName });
+    }
   },
 
   updateStyleNameByIndex(index) {
-    const styleList = ["天使装", "公主风", "复古旗袍", "韩式简约", "法式浪漫", "古风侠客", "杂志封面", "油画质感", "清新自然"];
-    const styleName = styleList[index % styleList.length];
-    this.setData({ currentStyleName: styleName });
+    this.syncCurrentPhotoState(index);
   },
 
   onThumbTap(e) {
@@ -139,7 +171,65 @@ Page({
       currentIndex: index,
       currentPhoto: this.data.photos[index]
     });
-    this.updateStyleNameByIndex(index);
+    this.syncCurrentPhotoState(index);
+  },
+
+  async onRetryTap() {
+    const photo = this.data.photos[this.data.currentIndex];
+    if (!photo || photo.generateStatus !== 'failed') return;
+    const balance = await fetchStoreBalance();
+    this.setData({
+      retryDialogVisible: true,
+      retryPhotoId: photo._id,
+      retryStyleId: photo.styleId || '',
+      retryStyleName: photo.styleName || this.data.currentStyleName || '',
+      retryBalance: balance
+    });
+  },
+
+  onRetryCancel() {
+    if (this.data.retryLoading) return;
+    this.setData({
+      retryDialogVisible: false,
+      retryPhotoId: '',
+      retryStyleId: ''
+    });
+  },
+
+  async onRetryConfirm() {
+    const { retryPhotoId, retryStyleId, currentIndex } = this.data;
+    if (!retryPhotoId) return;
+
+    this.setData({ retryLoading: true, currentPhotoRetrying: true });
+    try {
+      await retryPortraitTask(retryPhotoId, retryStyleId);
+      this.startPolling();
+      await pollPortraitPhoto(retryPhotoId, { intervalMs: 3000, maxWaitMs: 600000 });
+      await this.loadPhotos();
+      this.setData({
+        retryDialogVisible: false,
+        retryLoading: false,
+        retryPhotoId: '',
+        retryStyleId: '',
+        currentPhotoRetrying: false,
+        currentPhotoFailed: false,
+        retryBalance: Math.max(0, (this.data.retryBalance || 0) - PORTRAIT_COST)
+      });
+      this.syncCurrentPhotoState(currentIndex);
+      wx.showToast({ title: '生成完成', icon: 'success' });
+    } catch (err) {
+      console.error('[browse] 重试失败', err);
+      await this.loadPhotos();
+      this.setData({
+        retryDialogVisible: false,
+        retryLoading: false,
+        retryPhotoId: '',
+        retryStyleId: '',
+        currentPhotoRetrying: false,
+        currentPhotoFailed: true
+      });
+      toastPortraitError(err, '重试失败');
+    }
   },
 
   onImageLongPress() {
@@ -172,8 +262,8 @@ Page({
         itemList,
         success: (res) => {
           const selected = templates[res.tapIndex];
-          const templateId = selected.id;   // ✅ 使用自定义 id 字段
-          resolve(templateId);
+          const styleId = selected.id;
+          resolve(styleId);
         },
         fail: () => resolve(null)
       });
@@ -215,7 +305,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error("提交任务失败:", err);
-      wx.showToast({ title: "提交失败", icon: "error" });
+      toastPortraitError(err, '提交失败');
     }
   },
 

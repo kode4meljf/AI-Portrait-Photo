@@ -43,18 +43,42 @@ function syncShootCustomerFromQuery(app, customerId) {
   wx.setStorageSync(STORAGE_KEY, customerId)
 }
 
+const PENDING_SHOOT_TTL_MS = 10 * 60 * 1000
+
+/** 风格列表经 URL 传递易被超长 originalUrl 截断，改走内存 */
+function setPendingShoot(payload) {
+  const app = getApp()
+  app.globalData.pendingShoot = {
+    ...payload,
+    at: Date.now()
+  }
+}
+
+function consumePendingShoot() {
+  const app = getApp()
+  const p = app.globalData.pendingShoot
+  if (!p || Date.now() - (p.at || 0) > PENDING_SHOOT_TTL_MS) {
+    app.globalData.pendingShoot = null
+    return null
+  }
+  app.globalData.pendingShoot = null
+  return p
+}
+
 /** @param {Record<string, string|number>} params 值为未编码的原始字符串 */
 function buildShootQuery(params = {}) {
   const app = getApp()
-  const entries = { ...params }
   const customerId = getShootCustomerId(app)
-  if (customerId && !entries.customerId) {
-    entries.customerId = customerId
+  const parts = []
+  const add = (key, val) => {
+    if (val == null || val === '') return
+    parts.push(`${key}=${encodeURIComponent(String(val))}`)
   }
-  return Object.keys(entries)
-    .filter((key) => entries[key] != null && entries[key] !== '')
-    .map((key) => `${key}=${encodeURIComponent(String(entries[key]))}`)
-    .join('&')
+  add('count', params.count)
+  add('styleIds', params.styleIds)
+  if (customerId && !params.customerId) add('customerId', customerId)
+  add('originalUrl', params.originalUrl)
+  return parts.join('&')
 }
 
 module.exports = {
@@ -62,5 +86,7 @@ module.exports = {
   clearShootCustomer,
   getShootCustomerId,
   getShootCustomerDisplayName,
+  setPendingShoot,
+  consumePendingShoot,
   buildShootQuery
 }

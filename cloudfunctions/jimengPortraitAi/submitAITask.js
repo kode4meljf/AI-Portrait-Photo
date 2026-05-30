@@ -6,34 +6,36 @@ const db = cloud.database();
 const STYLE_TEMPLATES_COLLECTION = 'style_templates';
 
 async function main(event) {
-  const { photoId, templateId } = event;
-  if (!photoId || !templateId) {
-    return { success: false, error: '缺少参数 photoId 或 templateId' };
+  const { photoId, styleId } = event;
+  if (!photoId || !styleId) {
+    return { success: false, error: '缺少参数 photoId 或 styleId' };
   }
 
   try {
-    const templateRes = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: templateId }).get();
-    if (!templateRes.data.length) {
-      return { success: false, error: '模板不存在' };
+    const styleRes = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: styleId }).get();
+    if (!styleRes.data.length) {
+      return { success: false, error: '风格不存在' };
     }
-    const template = templateRes.data[0];
-    const prompt = template.prompt || '';
+    const style = styleRes.data[0];
+    const prompt = style.prompt || '';
     if (!prompt) {
-      return { success: false, error: '模板缺少 prompt' };
+      return { success: false, error: '风格缺少 prompt' };
     }
-    const resolution = template.resolution || '1024:1024';
+    const resolution = style.resolution || '1024:1024';
 
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
 
     const task = {
       photoId,
-      templateId,
+      styleId,
       storeId,
       status: 'pending',
       engine: 'jimeng',
       prompt,
       resolution,
       jimengTaskId: null,
+      charged: false,
+      chargeAmount: 0,
       createTime: new Date(),
       updateTime: new Date(),
       resultFileID: null,

@@ -253,9 +253,22 @@ const resolvePhotoForOrder = async (source) => {
   return ensureCloudFileUrl(source);
 };
 
+/** 拍摄链路：压缩后上传到 photos/ 目录，返回 cloud:// fileID */
+async function uploadShootOriginalToCloud(tempFilePath) {
+  const compressedPath = await _compressImage(tempFilePath);
+  const cloudPath = `photos/${Date.now()}_${Math.random().toString(36).substr(2, 8)}.jpg`;
+  const uploadRes = await wx.cloud.uploadFile({
+    cloudPath,
+    filePath: compressedPath
+  });
+  return uploadRes.fileID;
+}
+
 module.exports = {
   chooseAndUpload,
   uploadSingle,
+  createShootBatch: _createBatch,
+  uploadShootOriginalToCloud,
   ensureCloudFileUrl,
   resolvePhotoForOrder,
   isWechatLocalPath,

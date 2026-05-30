@@ -5,7 +5,8 @@ const {
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js')
 
 const db = wx.cloud.database()
-const { buildShootQuery } = require('../../../../utils/shootContext.js')
+const { buildShootQuery, setPendingShoot } = require('../../../../utils/shootContext.js')
+const { portraitCostForCount } = require('../../../../utils/portraitBilling.js')
 
 Page({
   data: {
@@ -16,13 +17,15 @@ Page({
     currentIndex: 0,
     currentStyleName: '',
     loadingStyles: false,
-    stylesError: ''
+    stylesError: '',
+    canSubmit: false,
+    submitBtnText: '立即生成 · 耗3次'
   },
 
   onLoad(options) {
     const originalUrl = decodeURIComponent(options.originalUrl || '')
     const count = Number(options.count || 3) === 9 ? 9 : 3
-    this.setData({ originalUrl, count })
+    this.syncSubmitState({ originalUrl, count })
     this.loadStyles(count)
   },
 
@@ -39,19 +42,33 @@ Page({
     if (changedCount === 3 || changedCount === 9) {
       nextData.count = changedCount
       wx.removeStorageSync('changedStyleCount')
-      if (Object.keys(nextData).length) this.setData(nextData)
+      if (Object.keys(nextData).length) this.syncSubmitState(nextData)
       this.loadStyles(changedCount)
       return
     }
 
     if (Object.keys(nextData).length) {
-      this.setData(nextData)
+      this.syncSubmitState(nextData)
     }
     this.updateNavTitle(this.data.currentStyleName)
   },
 
+  syncSubmitState(extra = {}) {
+    const merged = { ...this.data, ...extra }
+    const { loadingStyles, styles, originalUrl, count } = merged
+    const canSubmit = !!originalUrl && !loadingStyles && styles.length > 0
+    const styleCount = count === 9 ? 9 : 3
+    let submitBtnText = `立即生成 · 耗${portraitCostForCount(styleCount)}次`
+    if (loadingStyles) {
+      submitBtnText = styles.length ? '风格切换中' : '加载风格中'
+    } else if (!styles.length) {
+      submitBtnText = '立即生成 · 耗1次'
+    }
+    this.setData({ canSubmit, submitBtnText, ...extra })
+  },
+
   async loadStyles(count) {
-    this.setData({ loadingStyles: true, stylesError: '' })
+    this.syncSubmitState({ loadingStyles: true, stylesError: '' })
     try {
       const pool = await fetchStyleTemplates(db, {
         collection: STYLE_TEMPLATES_COLLECTION,
@@ -59,12 +76,13 @@ Page({
         onlyEnabled: true
       })
       if (!pool.length) {
-        this.setData({
+        this.syncSubmitState({
           stylePool: [],
           styles: [],
           currentIndex: 0,
           currentStyleName: '',
-          stylesError: '暂无可用风格，请联系管理员配置'
+          stylesError: '暂无可用风格，请联系管理员配置',
+          loadingStyles: false
         })
         wx.showToast({ title: '暂无可用风格', icon: 'none' })
         return
@@ -74,24 +92,28 @@ Page({
       let nextIndex = this.data.currentIndex
       if (nextIndex >= styles.length) nextIndex = 0
       const currentStyleName = styles[nextIndex]?.name || ''
-      this.setData({
+      this.syncSubmitState({
         stylePool: pool,
         styles,
         currentIndex: nextIndex,
         currentStyleName,
-        stylesError: ''
+        stylesError: '',
+        loadingStyles: false
       })
       this.updateNavTitle(currentStyleName)
     } catch (err) {
       console.error('[style-selector] 加载风格失败', err)
-      this.setData({
+      this.syncSubmitState({
         stylePool: [],
         styles: [],
-        stylesError: '加载风格失败，请检查网络后重试'
+        stylesError: '加载风格失败，请检查网络后重试',
+        loadingStyles: false
       })
       wx.showToast({ title: '加载风格失败', icon: 'none' })
     } finally {
-      this.setData({ loadingStyles: false })
+      if (this.data.loadingStyles) {
+        this.syncSubmitState({ loadingStyles: false })
+      }
     }
   },
 
@@ -145,15 +167,22 @@ Page({
       wx.showToast({ title: '请先选择原图', icon: 'none' })
       return
     }
-    if (!this.data.styles.length) {
+    if (!this.data.canSubmit) return
+    const pool = this.data.stylePool
+    if (!pool.length) {
       wx.showToast({ title: '风格未加载完成', icon: 'none' })
       return
     }
-    const styleIds = this.data.styles.map((s) => s.id).join(',')
+    const count = this.data.count === 9 ? 9 : 3
+    const styles = pickStyles(pool, count)
+    setPendingShoot({
+      count,
+      styles,
+      originalUrl: this.data.originalUrl
+    })
     const qs = buildShootQuery({
-      originalUrl: this.data.originalUrl,
-      count: this.data.count,
-      styleIds
+      count,
+      originalUrl: this.data.originalUrl
     })
     wx.navigateTo({
       url: `/packageStore/pages/cloud/generate-result/generate-result?${qs}`

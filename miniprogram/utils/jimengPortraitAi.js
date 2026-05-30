@@ -16,12 +16,45 @@ function callJimengPortraitAi(data) {
   });
 }
 
-function submitPortraitTask(photoId, templateId) {
+function submitPortraitTask(photoId, styleId) {
   return callJimengPortraitAi({
     action: 'submit',
     photoId,
-    templateId
+    styleId
   });
+}
+
+function retryPortraitTask(photoId, styleId) {
+  return callJimengPortraitAi({
+    action: 'retry',
+    photoId,
+    styleId
+  });
+}
+
+async function pollPortraitPhoto(photoId, options = {}) {
+  const db = wx.cloud.database();
+  const { intervalMs = 3000, maxWaitMs = 600000, onTick } = options;
+  const deadline = Date.now() + maxWaitMs;
+
+  while (Date.now() < deadline) {
+    const res = await db.collection('photos').doc(photoId).get();
+    const photo = res.data;
+    if (!photo) {
+      throw new Error('照片记录不存在');
+    }
+    const st = photo.generateStatus || 'pending';
+    if (onTick) onTick(photo);
+    if (st === 'completed' || (photo.isGenerated && photo.aiUrl)) {
+      return photo;
+    }
+    if (st === 'failed') {
+      const err = new Error(photo.errorMsg || '生成失败');
+      throw err;
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error('生成超时，请稍后在云相册查看');
 }
 
 function isPortraitGenerating(generateStatus) {
@@ -31,5 +64,7 @@ function isPortraitGenerating(generateStatus) {
 module.exports = {
   callJimengPortraitAi,
   submitPortraitTask,
+  retryPortraitTask,
+  pollPortraitPhoto,
   isPortraitGenerating
 };

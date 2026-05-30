@@ -7,5 +7,7 @@
   "backgroundColorBottom": "#f3f3f3",
   "enablePullDownRefresh": false,
   "disableScroll": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "portrait-retry-dialog": "/components/portrait-retry-dialog/portrait-retry-dialog"
+  }
 }

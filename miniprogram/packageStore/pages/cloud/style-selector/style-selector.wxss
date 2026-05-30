@@ -214,4 +214,6 @@
 .submit-btn--disabled {
   opacity: 0.45;
   box-shadow: none;
+  background: #9ca3af;
+  color: #f3f4f6;
 }

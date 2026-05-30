@@ -44,6 +44,11 @@
   </view>
 
   <view class="submit-wrap">
-    <view class="submit-btn {{styles.length ? '' : 'submit-btn--disabled'}}" hover-class="submit-btn-hover" bindtap="onStartGenerate">开始生成</view>
+    <view
+      class="submit-btn {{canSubmit ? '' : 'submit-btn--disabled'}}"
+      hover-class="{{canSubmit ? 'submit-btn-hover' : ''}}"
+      hover-stay-time="80"
+      bindtap="onStartGenerate"
+    >{{submitBtnText}}</view>
   </view>
 </view>

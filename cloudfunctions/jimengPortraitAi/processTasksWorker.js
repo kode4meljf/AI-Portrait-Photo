@@ -1,10 +1,13 @@
 const cloud = require('wx-server-sdk');
 const { submitJimengTask, pollJimengTask, DEFAULT_POLL_BUDGET_MS } = require('./lib/jimeng');
 const { deleteReplacedCloudFile } = require('./lib/cloudFile');
+const { chargeStoreForPortrait } = require('./lib/balance');
+const { toUserFacingError, TIMEOUT_FAIL } = require('./lib/userFacingError');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const STYLE_TEMPLATES_COLLECTION = 'style_templates';
+const STALE_TASK_MS = 30 * 60 * 1000;
 
 async function getImageUrl(photoFileID) {
   if (photoFileID && String(photoFileID).startsWith('cloud')) {
@@ -29,26 +32,44 @@ function parseResolution(resolution) {
 
 async function resolvePrompt(task) {
   if (task.prompt) return task.prompt;
-  const templateRes = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: task.templateId }).get();
-  if (!templateRes.data.length) {
-    throw new Error(`模板不存在，templateId: ${task.templateId}`);
+  const styleId = task.styleId;
+  if (!styleId) {
+    throw new Error('任务缺少 styleId');
   }
-  const prompt = templateRes.data[0].prompt;
-  if (!prompt) throw new Error('模板缺少 prompt');
+  const styleRes = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: styleId }).get();
+  if (!styleRes.data.length) {
+    throw new Error(`风格不存在，styleId: ${styleId}`);
+  }
+  const prompt = styleRes.data[0].prompt;
+  if (!prompt) throw new Error('风格缺少 prompt');
   return prompt;
 }
 
-async function markTaskFailed(task, errMsg) {
+async function markTaskFailed(task, errMsg, technicalMsg) {
+  const userMsg = toUserFacingError(errMsg);
   await db.collection('ai_tasks').doc(task._id).update({
-    data: { status: 'failed', errorMsg: errMsg, updateTime: new Date() }
+    data: {
+      status: 'failed',
+      errorMsg: technicalMsg || String(errMsg || ''),
+      userErrorMsg: userMsg,
+      updateTime: new Date()
+    }
   });
   await db
     .collection('photos')
     .doc(task.photoId)
     .update({
-      data: { generateStatus: 'failed', errorMsg: errMsg, updateTime: new Date() }
+      data: { generateStatus: 'failed', errorMsg: userMsg, updateTime: new Date() }
     })
     .catch((e) => console.warn('[jimengPortraitAi/worker] 更新照片失败状态失败', e.message || e));
+}
+
+function isTaskStale(task) {
+  const raw = task.createTime || task.updateTime;
+  if (!raw) return false;
+  const ts = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
+  if (!ts || Number.isNaN(ts)) return false;
+  return Date.now() - ts > STALE_TASK_MS;
 }
 
 async function completeTask(task, resultBuffer, previousAiUrl) {
@@ -89,6 +110,12 @@ async function processTask(task) {
   let jimengTaskId = task.jimengTaskId || null;
 
   if (!jimengTaskId) {
+    if (!task.charged) {
+      const storeId = task.storeId || photo.storeId;
+      await chargeStoreForPortrait(storeId, task._id);
+      task.charged = true;
+    }
+
     const imageUrl = await getImageUrl(photo.originalUrl);
     console.log('[jimengPortraitAi/worker] 提交即梦', task._id);
     jimengTaskId = await submitJimengTask(imageUrl, prompt, { width, height });
@@ -141,6 +168,12 @@ async function pollOnce() {
 
   console.log('[jimengPortraitAi/worker] 处理任务', task._id, 'status=', task.status);
 
+  if (isTaskStale(task)) {
+    console.warn('[jimengPortraitAi/worker] 任务超时', task._id);
+    await markTaskFailed(task, TIMEOUT_FAIL, 'task stale timeout');
+    return { processed: 0, error: TIMEOUT_FAIL };
+  }
+
   if (task.status === 'pending') {
     await db.collection('ai_tasks').doc(task._id).update({
       data: { status: 'processing', updateTime: new Date() }
@@ -163,8 +196,8 @@ async function pollOnce() {
         /* ignore */
       }
     }
-    await markTaskFailed(task, err.message);
-    return { processed: 0, error: err.message };
+    await markTaskFailed(task, err.message, err.message);
+    return { processed: 0, error: toUserFacingError(err) };
   }
 }
 

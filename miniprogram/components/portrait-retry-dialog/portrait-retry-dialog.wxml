@@ -1,0 +1,19 @@
+<view wx:if="{{visible}}" class="retry-mask" catchtouchmove="preventMove">
+  <view class="retry-dialog">
+    <text class="retry-dialog-title">重新生成</text>
+    <text class="retry-dialog-style">{{styleName}}</text>
+    <view class="retry-dialog-row">
+      <text class="retry-dialog-k">本次消耗</text>
+      <text class="retry-dialog-v">{{cost}} 次</text>
+    </view>
+    <view class="retry-dialog-row">
+      <text class="retry-dialog-k">剩余次数</text>
+      <text class="retry-dialog-v">{{balance}} 次</text>
+    </view>
+    <view class="retry-dialog-warn">将向即梦发起新生成并立即扣减次数。生成失败不退还。</view>
+    <view class="retry-dialog-actions">
+      <button class="retry-btn retry-btn-cancel" disabled="{{loading}}" bindtap="onCancel">取消</button>
+      <button class="retry-btn retry-btn-confirm" loading="{{loading}}" disabled="{{loading}}" bindtap="onConfirm">确认生成</button>
+    </view>
+  </view>
+</view>

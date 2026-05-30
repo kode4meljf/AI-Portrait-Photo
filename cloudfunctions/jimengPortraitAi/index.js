@@ -1,4 +1,5 @@
 const submitAITask = require('./submitAITask');
+const retryPortrait = require('./retryPortrait');
 const processTasksWorker = require('./processTasksWorker');
 
 exports.main = async (event, context) => {
@@ -12,5 +13,9 @@ exports.main = async (event, context) => {
     return submitAITask.main(event);
   }
 
-  return { success: false, error: '未知请求，小程序请传 action: "submit"' };
+  if (event.action === 'retry') {
+    return retryPortrait.main(event);
+  }
+
+  return { success: false, error: '未知请求，小程序请传 action: "submit" 或 "retry"' };
 };

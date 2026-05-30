@@ -5,7 +5,22 @@
     <swiper class="preview-swiper" current="{{currentIndex}}" bindchange="onSwiperChange" circular="{{true}}">
       <block wx:for="{{photos}}" wx:key="_id">
         <swiper-item>
-          <image src="{{item.aiUrl || item.originalUrl}}" mode="aspectFit" class="preview-image" bindlongpress="onImageLongPress"></image>
+          <view class="preview-slide-wrap">
+            <image
+              src="{{item.generateStatus === 'failed' || (currentPhotoRetrying && currentIndex === index) ? item.originalUrl : (item.aiUrl || item.originalUrl)}}"
+              mode="aspectFit"
+              class="preview-image"
+              bindlongpress="onImageLongPress"
+            ></image>
+            <view wx:if="{{item.generateStatus === 'failed' && currentIndex === index && !isSelectionMode}}" class="browse-fail-overlay">
+              <text class="browse-fail-label">生成失败</text>
+              <text class="browse-fail-hint">点击右下角重新生成</text>
+            </view>
+            <view wx:if="{{currentPhotoRetrying && currentIndex === index}}" class="browse-retrying-overlay">
+              <view class="browse-retrying-spinner"></view>
+              <text class="browse-retrying-text">重新生成中…</text>
+            </view>
+          </view>
           <!-- 多选模式下的复选框 -->
           <view wx:if="{{isSelectionMode}}" class="preview-checkbox" data-id="{{item._id}}" catchtap="onSelectPhoto">
             <view class="checkbox {{selectedIds.indexOf(item._id) !== -1 ? 'checked' : ''}}">
@@ -15,6 +30,15 @@
         </swiper-item>
       </block>
     </swiper>
+    <view
+      wx:if="{{currentPhotoFailed && !isSelectionMode && !currentPhotoRetrying}}"
+      class="browse-retry-fab"
+      bindtap="onRetryTap"
+      hover-class="browse-retry-fab--active"
+      hover-stay-time="80"
+    >
+      <view class="browse-retry-fab-icon"></view>
+    </view>
     <view class="image-counter">{{currentIndex+1}}/{{photos.length}}</view>
   </view>
 
@@ -66,3 +90,13 @@
     <text>AI生成中，请稍后...</text>
   </view>
 </view>
+
+<portrait-retry-dialog
+  visible="{{retryDialogVisible}}"
+  styleName="{{retryStyleName}}"
+  cost="{{portraitCost}}"
+  balance="{{retryBalance}}"
+  loading="{{retryLoading}}"
+  bind:cancel="onRetryCancel"
+  bind:confirm="onRetryConfirm"
+/>

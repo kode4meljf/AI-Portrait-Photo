@@ -1,7 +1,15 @@
 const SWIPE_HINT_KEY = 'ai_portrait_swipe_hint_shown';
 const { fetchStylesByIds, pickStyles } = require('../../../../config/styles.js');
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
-const { pickRandomCloudPhotoFileId, isCloudFileId } = require('../../../../utils/cloudPhoto.js');
+const { consumePendingShoot } = require('../../../../utils/shootContext.js');
+const { isCloudFileId } = require('../../../../utils/cloudPhoto.js');
+const { runShootPortraitGeneration } = require('../../../../utils/shootGenerate.js');
+const { retryPortraitTask, pollPortraitPhoto } = require('../../../../utils/jimengPortraitAi.js');
+const {
+  PORTRAIT_COST,
+  fetchStoreBalance,
+  toastPortraitError
+} = require('../../../../utils/portraitBilling.js');
 const db = wx.cloud.database();
 
 const PREVIEW_ANIM_MS = 360;
@@ -25,42 +33,70 @@ Page({
     previewCurrentUrl: '',
     previewFlyStyle: '',
     statusBarHeight: 20,
-    navTitle: '生成中'
+    navTitle: '生成中',
+    currentStyleName: '',
+    currentItemFailed: false,
+    retryDialogVisible: false,
+    retryTargetIndex: -1,
+    retryStyleName: '',
+    retryBalance: 0,
+    retryLoading: false,
+    portraitCost: PORTRAIT_COST
   },
 
   onLoad(options) {
     const sys = wx.getWindowInfo();
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 });
-    const originalUrl = decodeURIComponent(options.originalUrl || '');
-    const count = Number(options.count || 3) === 9 ? 9 : 3;
+    const pending = consumePendingShoot();
+    const originalUrl = decodeURIComponent(
+      (pending && pending.originalUrl) || options.originalUrl || ''
+    );
+    const count =
+      pending && pending.count != null
+        ? pending.count === 9
+          ? 9
+          : 3
+        : Number(options.count || 3) === 9
+          ? 9
+          : 3;
     const styleIds = `${options.styleIds || ''}`.split(',').filter(Boolean);
     this.setData({ originalUrl });
-    this.updateNavBar('loading');
-    this.resolveStyles(styleIds, count)
+    this.updateNavBar('');
+    this.resolveStyles({ pending, styleIds, count })
       .then((styles) => {
         this.setData({ styles });
         this.runGeneration();
       })
       .catch((err) => {
         console.error('[generate-result] 风格加载失败', err);
-        wx.showToast({ title: '风格加载失败', icon: 'none' });
+        const msg = (err && err.message) || '风格加载失败';
+        wx.showToast({ title: msg, icon: 'none', duration: 2800 });
         setTimeout(() => wx.navigateBack(), 1500);
       });
   },
 
-  async resolveStyles(styleIds, count) {
-    const list = await fetchStylesByIds(db, styleIds, {
+  async resolveStyles({ pending, styleIds, count }) {
+    const n = count === 9 ? 9 : 3
+    const pendingStyles = pending && Array.isArray(pending.styles) ? pending.styles : []
+    if (pendingStyles.length) {
+      return pendingStyles
+    }
+    if (styleIds.length) {
+      return fetchStylesByIds(db, styleIds, {
+        collection: STYLE_TEMPLATES_COLLECTION,
+        limit: 20,
+        onlyEnabled: true
+      })
+    }
+    const pool = await fetchStylesByIds(db, [], {
       collection: STYLE_TEMPLATES_COLLECTION,
       limit: 20,
       onlyEnabled: true
     })
-    if (!list.length) {
+    if (!pool.length) {
       throw new Error('未获取到风格模板')
     }
-    if (styleIds.length) {
-      return list
-    }
-    return pickStyles(list, count)
+    return pickStyles(pool, n)
   },
 
   onReady() {
@@ -81,9 +117,9 @@ Page({
       .exec();
   },
 
-  updateNavBar(phase) {
-    const navTitle = phase === 'loading' ? '生成中' : '生成结果';
-    this.setData({ navTitle });
+  updateNavBar(styleName) {
+    const navTitle = styleName || (this.data.phase === 'loading' ? '生成中' : '');
+    this.setData({ navTitle, currentStyleName: styleName || this.data.currentStyleName });
   },
 
   onNavBack() {
@@ -93,48 +129,48 @@ Page({
 
   async runGeneration() {
     try {
-      const results = await this.callGenerateApi();
-      const progressText = results.length ? `1 / ${results.length}` : '';
+      const { results, failedCount, cloudOriginalUrl } = await this.callGenerateApi();
       const firstName = results[0]?.name || '';
       this.setData({
         phase: 'success',
+        originalUrl: cloudOriginalUrl || this.data.originalUrl,
         results,
         currentIndex: 0,
         currentStyleName: firstName,
-        progressText
+        progressText: results.length > 1 ? `1 / ${results.length}` : ''
       });
-      this.updateNavBar('success');
+      this.syncCurrentIndex(0);
+      if (failedCount > 0) {
+        wx.showToast({
+          title: failedCount === results.length ? '全部生成失败' : `${failedCount} 个风格失败`,
+          icon: 'none'
+        });
+      }
       wx.nextTick(() => {
         this.updateSwiperHeight();
         this.maybeShowSwipeToast(results.length);
       });
     } catch (err) {
       console.error('[generate-result] 生成失败', err);
-      wx.showToast({
-        title: (err && err.message) || '生成失败',
-        icon: 'none'
-      });
+      toastPortraitError(err, '生成失败');
       setTimeout(() => wx.navigateBack(), 1500);
     }
   },
 
-  callGenerateApi() {
+  async callGenerateApi() {
     const { originalUrl, styles } = this.data;
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (!originalUrl && !styles.length) {
-          reject(new Error('缺少原图或风格信息'));
-          return;
+    if (!originalUrl || !styles.length) {
+      throw new Error('缺少原图或风格信息');
+    }
+
+    return runShootPortraitGeneration(originalUrl, styles, {
+      onProgress: ({ completed, total }) => {
+        if (total > 0) {
+          this.setData({
+            progressText: `已完成 ${completed} / ${total}`
+          });
         }
-        const results = styles.map((style, i) => ({
-          id: style.id,
-          name: style.name,
-          url: originalUrl || style.sampleFileId,
-          imageMode: 'portrait',
-          aspectRatio: i % 2 === 0 ? 3 / 4 : 16 / 9
-        }));
-        resolve(results);
-      }, 2500);
+      }
     });
   },
 
@@ -177,10 +213,14 @@ Page({
   syncCurrentIndex(index) {
     const item = this.data.results[index];
     if (!item) return;
+    const failed = item.status === 'failed';
     this.setData({
       currentIndex: index,
-      progressText: `${index + 1} / ${this.data.results.length}`
+      currentStyleName: item.name || '',
+      currentItemFailed: failed,
+      progressText: this.data.results.length > 1 ? `${index + 1} / ${this.data.results.length}` : ''
     });
+    this.updateNavBar(item.name || '');
   },
 
   onResultImageLoad(e) {
@@ -212,7 +252,7 @@ Page({
   onPreviewImage(e) {
     const index = Number(e.currentTarget.dataset.index ?? this.data.currentIndex);
     const item = this.data.results[index];
-    if (!item) return;
+    if (!item || item.status === 'failed' || item.status === 'retrying') return;
 
     const selector = `#hero-img-${index}`;
     wx.createSelectorQuery()
@@ -409,6 +449,66 @@ Page({
     });
   },
 
+  async onRetryTap(e) {
+    const index = Number(e.currentTarget.dataset.index ?? this.data.currentIndex);
+    const item = this.data.results[index];
+    if (!item || item.status !== 'failed') return;
+    const balance = await fetchStoreBalance();
+    this.setData({
+      retryDialogVisible: true,
+      retryTargetIndex: index,
+      retryStyleName: item.name || '',
+      retryBalance: balance
+    });
+  },
+
+  onRetryCancel() {
+    if (this.data.retryLoading) return;
+    this.setData({ retryDialogVisible: false, retryTargetIndex: -1 });
+  },
+
+  async onRetryConfirm() {
+    const index = this.data.retryTargetIndex;
+    const item = this.data.results[index];
+    if (!item || item.status !== 'failed') return;
+
+    this.setData({ retryLoading: true });
+    try {
+      await retryPortraitTask(item.photoId, item.styleId || item.id);
+      this.setData({ [`results[${index}].status`]: 'retrying' });
+
+      const photo = await pollPortraitPhoto(item.photoId, {
+        intervalMs: 3000,
+        maxWaitMs: 600000
+      });
+
+      this.setData({
+        [`results[${index}].status`]: 'success',
+        [`results[${index}].url`]: photo.aiUrl || photo.originalUrl,
+        retryDialogVisible: false,
+        retryLoading: false,
+        retryTargetIndex: -1,
+        retryBalance: Math.max(0, (this.data.retryBalance || 0) - PORTRAIT_COST)
+      });
+      if (index === this.data.currentIndex) {
+        this.setData({ currentItemFailed: false });
+      }
+      wx.showToast({ title: '生成完成', icon: 'success' });
+    } catch (err) {
+      console.error('[generate-result] 重试失败', err);
+      this.setData({
+        [`results[${index}].status`]: 'failed',
+        retryDialogVisible: false,
+        retryLoading: false,
+        retryTargetIndex: -1
+      });
+      if (index === this.data.currentIndex) {
+        this.setData({ currentItemFailed: true });
+      }
+      toastPortraitError(err, '重试失败');
+    }
+  },
+
   onMakeAlbum() {
     const item = this.data.results[this.data.currentIndex];
     wx.showToast({
@@ -419,22 +519,19 @@ Page({
 
   async onMakeFrame() {
     const item = this.data.results[this.data.currentIndex];
+    if (!item || item.status === 'failed' || item.status === 'retrying') {
+      wx.showToast({ title: '当前风格未生成成功', icon: 'none' });
+      return;
+    }
     if (!item || !item.url) {
       wx.showToast({ title: '请先生成照片', icon: 'none' });
       return;
     }
 
-    let photoFileId = item.url;
+    const photoFileId = item.url;
     if (!isCloudFileId(photoFileId)) {
-      wx.showLoading({ title: '准备成片...', mask: true });
-      try {
-        photoFileId = await pickRandomCloudPhotoFileId();
-      } catch (e) {
-        wx.showToast({ title: e.message || '暂无云存储样片', icon: 'none' });
-        return;
-      } finally {
-        wx.hideLoading();
-      }
+      wx.showToast({ title: '成片须为云存储文件', icon: 'none' });
+      return;
     }
 
     const app = getApp();
