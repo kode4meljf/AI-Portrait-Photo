@@ -1,5 +1,5 @@
 const app = getApp()
-const { ensureCustomerPage } = require('../../../utils/customerGuard')
+const { ensureCustomerPage } = require('../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
 const { parseCloudDate } = require('../../../utils/cloudDate')
 const {

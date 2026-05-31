@@ -1,5 +1,5 @@
 const app = getApp()
-const { ensureCustomerPage } = require('../../../utils/customerGuard')
+const { ensureCustomerPage } = require('../../utils/customerGuard')
 
 Page({
   behaviors: [require('../../behaviors/customerPageNav')],

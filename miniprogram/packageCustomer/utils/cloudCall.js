@@ -1,7 +1,7 @@
 /**
  * 统一云函数调用：校验 errMsg / success，并固定云环境 ID
  */
-const { CLOUD_ENV_ID } = require('../config/cloudEnv')
+const { CLOUD_ENV_ID } = require('../../config/cloudEnv')
 
 function parseCloudResult(res, name) {
   if (!res) throw new Error(`${name || '云函数'}无响应`)

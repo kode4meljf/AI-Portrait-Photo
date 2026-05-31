@@ -1,7 +1,7 @@
 /**
  * 顾客端订单列表展示（方案 A：成片卡片）
  */
-const { PLACEHOLDER_THUMB } = require('../../utils/frameOrderDetailView')
+const { PLACEHOLDER_THUMB } = require('./frameOrderDetailView')
 
 const STATUS_FLOW = ['待处理', '制作中', '已发货', '已完成']
 const PROGRESS_WIDTH = ['25%', '50%', '75%', '100%']

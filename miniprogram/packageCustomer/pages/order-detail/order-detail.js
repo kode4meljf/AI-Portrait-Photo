@@ -1,7 +1,7 @@
 const app = getApp()
-const { ensureCustomerPage } = require('../../../utils/customerGuard')
+const { ensureCustomerPage } = require('../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
-const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../../utils/frameOrderDetailView')
+const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../utils/frameOrderDetailView')
 
 Page({
   behaviors: [require('../../behaviors/customerPageNav')],

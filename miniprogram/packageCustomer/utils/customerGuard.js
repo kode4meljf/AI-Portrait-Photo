@@ -1,6 +1,6 @@
-const { resolveSessionIfNeeded } = require('./storeSession')
-const { reLaunchLaunch } = require('./sessionDirty')
-const { isDevCustomerPreview } = require('./devCustomerPreview')
+const { resolveSessionIfNeeded } = require('../../utils/storeSession')
+const { reLaunchLaunch } = require('../../utils/sessionDirty')
+const { isDevCustomerPreview } = require('../../utils/devCustomerPreview')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const LAUNCH = '/pages/launch/launch'

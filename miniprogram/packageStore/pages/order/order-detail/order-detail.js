@@ -5,7 +5,7 @@
 const app = getApp();
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { fetchPlatformSupportPhone } = require('../../../../utils/platformSettings');
-const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../../../utils/frameOrderDetailView');
+const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../../utils/frameOrderDetailView');
 
 /** 已激活的门店成员（owner/staff）；页面复用时非门店账号不展示「联系平台」 */
 function isStoreStaffAccount() {

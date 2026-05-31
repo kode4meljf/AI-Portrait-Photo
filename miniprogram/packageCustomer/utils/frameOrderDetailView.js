@@ -1,4 +1,4 @@
-const { getCustomerDisplayName } = require('./customerDisplay')
+const { getCustomerDisplayName } = require('../../utils/customerDisplay')
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png'
 const STATUS_FLOW = ['待处理', '制作中', '已发货', '已完成']

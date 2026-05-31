@@ -3,7 +3,7 @@
  */
 
 const app = getApp()
-const { getCurrentDate } = require('../../../../utils/date')
+const { getCurrentDate } = require('../../../utils/date')
 const { storeCustomersWhere } = require('../../../utils/customerQuery')
 const {
   mergeDayCheckinMap,
