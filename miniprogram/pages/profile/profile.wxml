@@ -1,6 +1,14 @@
 <!--packageProfile/pages/profile/profile.wxml-->
 <view class="profile-container">
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{refreshing}}">
+  <scroll-view
+    class="scroll-area"
+    scroll-y="{{!showPriceModal}}"
+    enhanced
+    show-scrollbar="{{false}}"
+    refresher-enabled="{{!showPriceModal}}"
+    bindrefresherrefresh="onPullDownRefresh"
+    refresher-triggered="{{refreshing}}"
+  >
 
     <!-- 门店信息头部 -->
     <view class="store-header">
@@ -34,31 +42,34 @@
     <view class="balance-card">
       <view class="balance-top">
         <view class="balance-left">
-          <view class="label">门店可用余额（人次）</view>
-          <view class="amount-row">
+          <view class="label">门店可用积分</view>
+          <view class="amount-row" bindtap="onBalanceTap">
             <text class="amount-prefix">剩余</text>
-            <text class="amount-num">{{storeInfo.balance || 0}}</text>
-            <text class="amount-suffix">人次</text>
+            <text class="amount-num amount-num--{{balanceDisplay.size}}">{{balanceDisplay.text}}</text>
+            <text class="amount-suffix">积分</text>
           </view>
         </view>
-        <view class="level-badge">
+        <view class="level-badge" bindtap="onOpenPriceList" hover-class="level-badge--press" hover-stay-time="80">
           <text>{{storeInfo.level || '普通会员'}}</text>
         </view>
       </view>
 
-      <view class="quota-row">
-        <view class="quota-item">
-          <view class="q-label">本月已用</view>
-          <view class="q-val">{{storeInfo.packageUsed || 0}} <text>/ {{storeInfo.packageTotal || 0}} 人次</text></view>
-          <view class="progress-bar">
-            <view class="progress-fill" style="width: {{packageProgress}}%;"></view>
+      <view class="use-panel use-panel--inset-a">
+        <view class="use-hd">约可兑换</view>
+        <view class="use-row">
+          <view class="use-item">
+            <text class="use-ico">📸</text>
+            <view class="use-body">
+              <view class="use-nm">9 张写真</view>
+              <view class="use-cnt">{{useGrid.shoot9Text}}<text class="use-unit"> 次</text></view>
+            </view>
           </view>
-        </view>
-        <view class="quota-item">
-          <view class="q-label">套餐到期</view>
-          <view class="q-val">{{expireDays}} <text>天后</text></view>
-          <view class="progress-bar">
-            <view class="progress-fill progress-fill-green" style="width: {{expireProgress}}%;"></view>
+          <view class="use-item">
+            <text class="use-ico">🖼</text>
+            <view class="use-body">
+              <view class="use-nm">摆台相框</view>
+              <view class="use-cnt">{{useGrid.frameText}}<text class="use-unit"> 个</text></view>
+            </view>
           </view>
         </view>
       </view>
@@ -116,40 +127,72 @@
     <!-- 3. 订单数据看板 -->
     <view class="section-header">
       <view class="s-title">订单数据看板</view>
-      <view class="s-more" bindtap="onDateRangeChange">本月 ›</view>
+      <view class="s-more" bindtap="onViewAllOrders" hover-class="s-more--active" hover-stay-time="80">查看全部 ›</view>
     </view>
 
-    <view class="order-summary">
+    <view
+      class="order-summary"
+      bindtap="onViewAllOrders"
+      hover-class="order-summary--active"
+      hover-stay-time="80"
+    >
       <view class="summary-amount">
-        <text class="amt-label">累计下单金额</text>
-        <text class="amt-val">¥{{stats.totalAmount}}</text>
+        <text class="amt-label">本月累计订单</text>
+        <view class="amt-val-row">
+          <text class="amt-val">{{orderStats.monthOrderCount || 0}}</text>
+          <text class="amt-unit">单</text>
+        </view>
       </view>
       <view class="category-grid">
-        <view class="cat-item">
+        <view
+          class="cat-item"
+          catchtap="onOrderCategoryTap"
+          hover-class="cat-item--active"
+          hover-stay-time="80"
+          data-cat="frame"
+        >
           <view class="cat-icon blue">🖼️</view>
           <view class="cat-info">
-            <view class="cat-num">{{stats.frameCount || 0}}</view>
+            <view class="cat-num">{{orderStats.categoryCount.frame || 0}}</view>
             <view class="cat-name">写真摆台</view>
           </view>
         </view>
-        <view class="cat-item">
+        <view
+          class="cat-item"
+          catchtap="onOrderCategoryTap"
+          hover-class="cat-item--active"
+          hover-stay-time="80"
+          data-cat="album"
+        >
           <view class="cat-icon purple">📔</view>
           <view class="cat-info">
-            <view class="cat-num">{{stats.albumCount || 0}}</view>
+            <view class="cat-num">{{orderStats.categoryCount.album || 0}}</view>
             <view class="cat-name">写真集</view>
           </view>
         </view>
-        <view class="cat-item">
+        <view
+          class="cat-item cat-item--soon"
+          catchtap="onOrderCategoryTap"
+          hover-class="cat-item--active"
+          hover-stay-time="80"
+          data-cat="video"
+        >
           <view class="cat-icon orange">🎬</view>
           <view class="cat-info">
-            <view class="cat-num">{{stats.videoCount || 0}}</view>
+            <view class="cat-num">0</view>
             <view class="cat-name">旅拍视频</view>
           </view>
         </view>
-        <view class="cat-item">
+        <view
+          class="cat-item cat-item--soon"
+          catchtap="onOrderCategoryTap"
+          hover-class="cat-item--active"
+          hover-stay-time="80"
+          data-cat="memoir"
+        >
           <view class="cat-icon green">📖</view>
           <view class="cat-info">
-            <view class="cat-num">{{stats.memoirCount || 0}}</view>
+            <view class="cat-num">0</view>
             <view class="cat-name">回忆录</view>
           </view>
         </view>
@@ -185,4 +228,18 @@
 
     <view style="height: 40rpx;"></view>
   </scroll-view>
+</view>
+
+<view wx:if="{{showPriceModal}}" class="price-mask" catchtouchmove="preventMove" bindtap="onClosePriceList">
+  <view class="price-modal" catchtap="onPriceModalTap">
+    <view class="price-modal-hd">积分价目</view>
+    <view class="price-modal-note">充值套餐含赠送积分，以下统一扣费</view>
+    <view class="price-list">
+      <view wx:for="{{priceList}}" wx:key="name" class="price-row">
+        <text class="price-name">{{item.icon}} {{item.name}}</text>
+        <text class="price-pts">{{item.pointsText}} 积分</text>
+      </view>
+    </view>
+    <view class="price-modal-btn" bindtap="onClosePriceList">知道了</view>
+  </view>
 </view>

@@ -11,40 +11,48 @@ const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { STORE_BASE } = require('../../utils/helpCenter');
 const { isStoreOwner } = require('../../utils/storeRole');
+const { getPointsPriceList, formatBalanceDisplay, formatBalanceText, PORTRAIT_POINTS_9, FRAME_POINTS } = require('../../utils/storePoints');
+const { callOrderApi } = require('../../utils/orderApi');
+const { parseCloudDate } = require('../../utils/cloudDate');
+const { computeDashboardStats, filterOrdersInMonth } = require('../../utils/orderDashboardStats');
 
-// 内置日期工具函数
-const formatDate = (date, pattern = "yyyy-MM-dd") => {
-  if (!date) return "";
+const formatDate = (date, pattern = 'yyyy-MM-dd') => {
+  if (!date) return '';
   const d = new Date(date);
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return pattern.replace("yyyy", year).replace("MM", month).replace("dd", day);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return pattern.replace('yyyy', year).replace('MM', month).replace('dd', day);
 };
 
 const getCurrentMonthStart = () => {
   const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 };
 
 const getCurrentDate = () => {
   const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const computeUseGrid = (balance) => {
+  const b = Math.floor(Number(balance) || 0);
+  const shoot9 = Math.floor(b / PORTRAIT_POINTS_9);
+  const frames = Math.floor(b / FRAME_POINTS);
+  return {
+    shoot9,
+    frames,
+    shoot9Text: formatBalanceText(shoot9),
+    frameText: formatBalanceText(frames)
+  };
 };
 
 Page({
   data: {
     storeInfo: {},
-    dateRange: {
-      startDate: getCurrentMonthStart(),
-      endDate: getCurrentDate()
-    },
-    stats: {
-      totalAmount: 0,
-      frameCount: 0,
-      albumCount: 0,
-      videoCount: 0,
-      memoirCount: 0
+    orderStats: {
+      monthOrderCount: 0,
+      categoryCount: { frame: 0, album: 0, photo: 0, other: 0 }
     },
     checkinStats: {
       yesterdayCount: 0,
@@ -52,13 +60,15 @@ Page({
       todayUnchecked: 0
     },
     refreshing: false,
-    packageProgress: 0,   // 本月已用人次百分比
-    expireDays: 0,        // 套餐到期剩余天数
-    expireProgress: 0,    // 到期进度（暂用于样式，可自定义）
-    isOwner: false
+    isOwner: false,
+    showPriceModal: false,
+    priceList: [],
+    balanceDisplay: { text: '0', size: 'lg', full: '0', compact: false },
+    useGrid: { shoot9: 0, frames: 0, shoot9Text: '0', frameText: '0' }
   },
 
   onLoad() {
+    this.setData({ priceList: getPointsPriceList() });
     this.loadStoreInfo();
     this.loadOrderStats();
     this.loadCheckinStats();
@@ -101,62 +111,65 @@ Page({
       const db = wx.cloud.database();
       const res = await db.collection(getProfileCollection()).doc(storeId).get();
       const info = res.data;
-      // 计算套餐进度
-      let progress = 0;
-      if (info.packageTotal && info.packageTotal > 0) {
-        progress = Math.min(100, Math.floor((info.packageUsed / info.packageTotal) * 100));
-      }
-      // 计算到期剩余天数
-      let expireDays = 0;
-      let expireProgress = 0;
-      if (info.packageExpireDate) {
-        const expireDate = new Date(info.packageExpireDate);
-        const today = new Date();
-        const diffTime = expireDate - today;
-        expireDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-        // 假设套餐周期为30天，计算进度（可选）
-        // 如果套餐已过期，进度为100%
-        if (expireDays <= 0) expireProgress = 100;
-        else expireProgress = Math.min(100, Math.floor(((30 - expireDays) / 30) * 100));
-      }
+
       this.setData({
         storeInfo: info,
-        packageProgress: progress,
-        expireDays: expireDays,
-        expireProgress: expireProgress
+        balanceDisplay: formatBalanceDisplay(info.balance),
+        useGrid: computeUseGrid(info.balance)
       });
     } catch (error) {
-      console.error("加载门店信息失败:", error);
+      console.error('加载门店信息失败:', error);
     }
   },
 
   async loadOrderStats() {
-    const { startDate, endDate } = this.data.dateRange;
+    if (!isValidStoreId(app.globalData.storeId)) return;
+
+    const monthStart = new Date(`${getCurrentMonthStart()}T00:00:00`);
+    const collected = [];
+
     try {
-      // 调用云函数获取统计数据
-      const res = await wx.cloud.callFunction({
-        name: "storeStats",
-        data: { action: "order", startDate, endDate }
-      });
-      if (res.result) {
-        // 映射字段：设计稿需要四个品类，实际可根据订单中的商品类型分类
-        // 这里假设云函数返回 frameCount, albumCount, videoCount, memoirCount
-        this.setData({ stats: res.result });
-      } else {
-        // 降级模拟数据，防止空值
-        this.setData({ stats: { totalAmount: 0, frameCount: 0, albumCount: 0, videoCount: 0, memoirCount: 0 } });
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore && page <= 10) {
+        const res = await callOrderApi('list', {
+          statusTab: 'all',
+          page,
+          pageSize: 50
+        });
+        const list = res.list || [];
+        if (!list.length) break;
+
+        collected.push(...list);
+        hasMore = !!res.hasMore;
+
+        const oldest = list[list.length - 1];
+        const oldestDate = parseCloudDate(oldest && oldest.createTime);
+        if (oldestDate && oldestDate.getTime() < monthStart.getTime()) {
+          break;
+        }
+        page += 1;
       }
+
+      const monthOrders = filterOrdersInMonth(collected, monthStart);
+      this.setData({ orderStats: computeDashboardStats(monthOrders) });
     } catch (error) {
-      console.error("加载订单统计失败:", error);
-      this.setData({ stats: { totalAmount: 0, frameCount: 0, albumCount: 0, videoCount: 0, memoirCount: 0 } });
+      console.error('加载订单统计失败:', error);
+      this.setData({
+        orderStats: {
+          monthOrderCount: 0,
+          categoryCount: { frame: 0, album: 0, photo: 0, other: 0 }
+        }
+      });
     }
   },
 
   async loadCheckinStats() {
     try {
       const res = await wx.cloud.callFunction({
-        name: "storeStats",
-        data: { action: "checkin", storeId: app.globalData.storeId }
+        name: 'storeStats',
+        data: { action: 'checkin', storeId: app.globalData.storeId }
       });
       if (res.result) {
         this.setData({ checkinStats: res.result });
@@ -164,35 +177,36 @@ Page({
         this.setData({ checkinStats: { yesterdayCount: 0, todayCount: 0, todayUnchecked: 0 } });
       }
     } catch (error) {
-      console.error("加载打卡统计失败:", error);
+      console.error('加载打卡统计失败:', error);
       this.setData({ checkinStats: { yesterdayCount: 0, todayCount: 0, todayUnchecked: 0 } });
     }
   },
 
-  // 切换统计周期（这里简单重新加载当月数据）
-  onDateRangeChange() {
-    // 可改为弹出日期选择器，此处简化为刷新
-    this.setData({
-      dateRange: { startDate: getCurrentMonthStart(), endDate: getCurrentDate() }
-    });
-    this.loadOrderStats();
+  onViewAllOrders() {
+    wx.switchTab({ url: '/pages/order-list/order-list' });
   },
 
-  // 昨日已打卡名单
+  onOrderCategoryTap(e) {
+    const cat = e.currentTarget.dataset.cat;
+    if (cat === 'video' || cat === 'memoir') {
+      wx.showToast({ title: '即将上线', icon: 'none' });
+      return;
+    }
+    this.onViewAllOrders();
+  },
+
   onViewUncheckedYesterday() {
     wx.navigateTo({
       url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${this.getYesterdayDate()}&mode=checked`
     });
   },
 
-  // 今日已打卡名单
   onViewCheckedToday() {
     wx.navigateTo({
       url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&mode=checked`
     });
   },
 
-  // 今日尚未打卡名单
   onViewUncheckedToday() {
     wx.navigateTo({
       url: `/packageStore/pages/profile/unchecked-list/unchecked-list?date=${getCurrentDate()}&mode=unchecked`
@@ -202,10 +216,9 @@ Page({
   getYesterdayDate() {
     const date = new Date();
     date.setDate(date.getDate() - 1);
-    return formatDate(date, "yyyy-MM-dd");
+    return formatDate(date, 'yyyy-MM-dd');
   },
 
-  // 编辑门店信息
   previewStoreAvatar() {
     const url = this.data.storeInfo?.avatarUrl;
     if (!url) return;
@@ -220,9 +233,9 @@ Page({
     safeNavigateTo({
       url: '/packageStore/pages/profile/edit-store/edit-store',
       fail: (err) => {
-        console.error("导航到编辑页面失败:", err);
-        const msg = (err && (err.errMsg || err.message)) ? String(err.errMsg || err.message) : "未知错误";
-        wx.showToast({ title: msg.length > 20 ? "页面打开失败" : msg, icon: "none", duration: 3000 });
+        console.error('导航到编辑页面失败:', err);
+        const msg = (err && (err.errMsg || err.message)) ? String(err.errMsg || err.message) : '未知错误';
+        wx.showToast({ title: msg.length > 20 ? '页面打开失败' : msg, icon: 'none', duration: 3000 });
       }
     });
   },
@@ -230,6 +243,25 @@ Page({
   onRecharge() {
     safeNavigateTo({ url: '/packageStore/pages/profile/recharge/recharge' });
   },
+
+  onOpenPriceList() {
+    this.setData({ showPriceModal: true });
+  },
+
+  onBalanceTap() {
+    const { compact, full } = this.data.balanceDisplay || {};
+    if (compact && full) {
+      wx.showToast({ title: `${full} 积分`, icon: 'none', duration: 2000 });
+    }
+  },
+
+  onClosePriceList() {
+    this.setData({ showPriceModal: false });
+  },
+
+  onPriceModalTap() {},
+
+  preventMove() {},
 
   onViewAllCustomers() {
     safeNavigateTo({ url: '/packageStore/pages/profile/customer-list/customer-list?selectMode=false' });
@@ -251,7 +283,6 @@ Page({
     safeNavigateTo({ url: `${STORE_BASE}/index` });
   },
 
-  // 下拉刷新
   onPullDownRefresh() {
     this.setData({ refreshing: true });
     Promise.all([this.loadStoreInfo(), this.loadOrderStats(), this.loadCheckinStats()])

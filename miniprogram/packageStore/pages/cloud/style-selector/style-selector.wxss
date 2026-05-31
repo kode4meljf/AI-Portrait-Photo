@@ -197,9 +197,9 @@
   background: #111827;
   color: #fff;
   font-size: 30rpx;
-  line-height: 92rpx;
-  text-align: center;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   box-shadow: 0 6rpx 20rpx rgba(17, 24, 39, 0.18);
 }

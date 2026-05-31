@@ -1,14 +1,16 @@
 const cloud = require('wx-server-sdk');
+const {
+  PORTRAIT_POINTS_SINGLE,
+  INSUFFICIENT_POINTS_MSG,
+  portraitPointsForStyleCount
+} = require('./points');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
-const PORTRAIT_COST = 1;
-const INSUFFICIENT_BALANCE_MSG = '剩余次数不足，请先充值';
-
 function insufficientBalanceError() {
-  const err = new Error(INSUFFICIENT_BALANCE_MSG);
+  const err = new Error(INSUFFICIENT_POINTS_MSG);
   err.code = 'INSUFFICIENT_BALANCE';
   throw err;
 }
@@ -31,22 +33,23 @@ function assertBalanceAtLeast(balance, required) {
   if (Number(balance) < need) insufficientBalanceError();
 }
 
-/** 单条 submit / retry：余额须覆盖未扣费排队 + 本次 1 次 */
+/** 单条 submit / retry：余额须覆盖未扣费排队 + 本次单张积分 */
 async function assertCanSubmitPortrait(storeId) {
   if (!storeId) insufficientBalanceError();
 
   const storeRes = await db.collection('stores').doc(storeId).get();
   const balance = Number(storeRes.data?.balance) || 0;
-  assertBalanceAtLeast(balance, 1);
+  assertBalanceAtLeast(balance, PORTRAIT_POINTS_SINGLE);
 
   const pending = await countPendingUnchargedTasks(storeId);
-  if (balance <= pending) insufficientBalanceError();
+  const reserved = pending * PORTRAIT_POINTS_SINGLE;
+  if (balance < reserved + PORTRAIT_POINTS_SINGLE) insufficientBalanceError();
 }
 
-/** 批次 submitBatch：一次性预检 balance >= N */
-async function assertCanSubmitPortraitBatch(storeId, count) {
+/** 批次 submitBatch：一次性预检 balance >= 套系积分 */
+async function assertCanSubmitPortraitBatch(storeId, styleCount) {
   if (!storeId) insufficientBalanceError();
-  const need = Math.max(1, Number(count) || 0);
+  const need = portraitPointsForStyleCount(styleCount);
   if (!need) insufficientBalanceError();
 
   const storeRes = await db.collection('stores').doc(storeId).get();
@@ -54,21 +57,21 @@ async function assertCanSubmitPortraitBatch(storeId, count) {
   assertBalanceAtLeast(balance, need);
 }
 
-async function markTasksCharged(taskIds, chargeAmount = PORTRAIT_COST) {
+async function markTasksCharged(taskIds, chargeAmount) {
   const now = new Date();
   for (const taskId of taskIds) {
     await db.collection('ai_tasks').doc(taskId).update({
       data: {
         charged: true,
         chargedAt: now,
-        chargeAmount,
+        chargeAmount: Number(chargeAmount) || 0,
         updateTime: now
       }
     });
   }
 }
 
-/** Worker / 单条 retry：提交即梦前扣 1 次（失败不退） */
+/** Worker / 单条 retry：提交即梦前扣单张积分（失败不退） */
 async function chargeStoreForPortrait(storeId, taskId) {
   if (!storeId) insufficientBalanceError();
 
@@ -76,11 +79,11 @@ async function chargeStoreForPortrait(storeId, taskId) {
     .collection('stores')
     .where({
       _id: storeId,
-      balance: _.gte(PORTRAIT_COST)
+      balance: _.gte(PORTRAIT_POINTS_SINGLE)
     })
     .update({
       data: {
-        balance: _.inc(-PORTRAIT_COST),
+        balance: _.inc(-PORTRAIT_POINTS_SINGLE),
         updateTime: new Date()
       }
     });
@@ -89,25 +92,26 @@ async function chargeStoreForPortrait(storeId, taskId) {
     insufficientBalanceError();
   }
 
-  await markTasksCharged([taskId], PORTRAIT_COST);
-  return PORTRAIT_COST;
+  await markTasksCharged([taskId], PORTRAIT_POINTS_SINGLE);
+  return PORTRAIT_POINTS_SINGLE;
 }
 
-/** 批次 submitBatch：一次性扣 N 次并标记各 task 已扣费 */
-async function chargeStoreForPortraitBatch(storeId, taskIds) {
+/** 批次 submitBatch：一次性扣套系积分并标记各 task 已扣费 */
+async function chargeStoreForPortraitBatch(storeId, taskIds, styleCount) {
   const ids = (taskIds || []).filter(Boolean);
-  const count = ids.length;
-  if (!storeId || !count) insufficientBalanceError();
+  if (!storeId || !ids.length) insufficientBalanceError();
+
+  const totalPoints = portraitPointsForStyleCount(styleCount || ids.length);
 
   const updateRes = await db
     .collection('stores')
     .where({
       _id: storeId,
-      balance: _.gte(count)
+      balance: _.gte(totalPoints)
     })
     .update({
       data: {
-        balance: _.inc(-count),
+        balance: _.inc(-totalPoints),
         updateTime: new Date()
       }
     });
@@ -116,16 +120,19 @@ async function chargeStoreForPortraitBatch(storeId, taskIds) {
     insufficientBalanceError();
   }
 
-  await markTasksCharged(ids, PORTRAIT_COST);
-  return count * PORTRAIT_COST;
+  for (let i = 0; i < ids.length; i += 1) {
+    await markTasksCharged([ids[i]], i === 0 ? totalPoints : 0);
+  }
+  return totalPoints;
 }
 
 module.exports = {
-  PORTRAIT_COST,
-  INSUFFICIENT_BALANCE_MSG,
+  PORTRAIT_POINTS_SINGLE,
+  INSUFFICIENT_POINTS_MSG,
   insufficientBalanceError,
   assertCanSubmitPortrait,
   assertCanSubmitPortraitBatch,
   chargeStoreForPortrait,
-  chargeStoreForPortraitBatch
+  chargeStoreForPortraitBatch,
+  portraitPointsForStyleCount
 };

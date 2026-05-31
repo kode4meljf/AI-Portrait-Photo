@@ -5,35 +5,60 @@ const COLLECTION = 'recharge_packages'
 const DEFAULT_PACKAGES = [
   {
     id: 1,
-    name: '体验套餐',
-    times: 10,
-    price: 0.5,
-    originalPrice: 1,
-    tag: '限时5折',
-    expireDays: 30,
+    name: '尝鲜包',
+    points: 30,
+    bonusPoints: 0,
+    price: 3,
+    originalPrice: 3,
+    slogan: '新客试拍，低门槛体验',
+    group: 'casual',
+    tag: '1人9张',
+    expireDays: 365,
     sort: 10,
     enabled: true
   },
   {
-    id: 2,
-    name: '标准套餐',
-    times: 50,
-    price: 399,
-    originalPrice: 599,
-    tag: '推荐',
-    expireDays: 30,
-    sort: 20,
+    id: 3,
+    name: '优享包',
+    points: 860,
+    bonusPoints: 80,
+    price: 78,
+    originalPrice: 90,
+    slogan: '客流稳定，性价比之选',
+    group: 'casual',
+    tag: '约28人',
+    expireDays: 365,
+    sort: 30,
     enabled: true
   },
   {
-    id: 3,
-    name: '尊享套餐',
-    times: 200,
-    price: 1299,
-    originalPrice: 1999,
-    tag: '超值',
-    expireDays: 30,
-    sort: 30,
+    id: 5,
+    name: '至尊套餐',
+    points: 21800,
+    bonusPoints: 2000,
+    price: 1980,
+    originalPrice: 1980,
+    slogan: '年度主推 · 会员价 + 约 10% 赠送',
+    group: 'annual',
+    badge: 'hot',
+    tag: '至尊会员',
+    expireDays: 365,
+    sort: 100,
+    enabled: true
+  },
+  {
+    id: 6,
+    name: '荣耀套餐',
+    points: 44800,
+    bonusPoints: 5000,
+    price: 3980,
+    originalPrice: 3980,
+    slogan: '高客流门店 · 约 12% 赠送',
+    group: 'annual',
+    badge: 'crown',
+    tag: '荣耀会员',
+    expireDays: 365,
+    sort: 110,
     enabled: true
   }
 ]
@@ -50,9 +75,17 @@ function formatDateTime(value) {
   return `${y}-${m}-${day} ${h}:${min}`
 }
 
+function resolveRowPoints(row) {
+  if (row.points != null && row.points !== '') return Number(row.points) || 0
+  return Number(row.times) || 0
+}
+
 function formatRow(row) {
+  const points = resolveRowPoints(row)
   return {
     ...row,
+    points,
+    times: points,
     enabled: row.enabled !== false,
     createTimeText: formatDateTime(row.createTime),
     updateTimeText: formatDateTime(row.updateTime)
@@ -63,8 +96,9 @@ function normalizePayload(payload, isCreate) {
   const name = String(payload.name || '').trim()
   if (!name) throw new Error('请填写套餐名称')
 
-  const times = Math.floor(Number(payload.times))
-  if (!times || times < 1) throw new Error('人次须为大于 0 的整数')
+  const pointsRaw = payload.points != null ? payload.points : payload.times
+  const points = Math.floor(Number(pointsRaw))
+  if (!points || points < 1) throw new Error('积分须为大于 0 的整数')
 
   const price = Number(payload.price)
   if (Number.isNaN(price) || price < 0) throw new Error('售价不能为负数')
@@ -72,12 +106,13 @@ function normalizePayload(payload, isCreate) {
   const originalPrice = Number(payload.originalPrice)
   if (Number.isNaN(originalPrice) || originalPrice < 0) throw new Error('原价不能为负数')
 
-  const expireDays = Math.floor(Number(payload.expireDays) || 30)
+  const expireDays = Math.floor(Number(payload.expireDays) || 365)
   if (expireDays < 1 || expireDays > 3650) throw new Error('有效期须在 1～3650 天之间')
 
   const data = {
     name,
-    times,
+    points,
+    times: points,
     price,
     originalPrice,
     tag: String(payload.tag || '').trim(),
@@ -114,7 +149,7 @@ async function seedDefaultPackages() {
   const now = new Date()
   for (const pkg of DEFAULT_PACKAGES) {
     await db.collection(COLLECTION).add({
-      data: { ...pkg, createTime: now, updateTime: now }
+      data: { ...pkg, times: pkg.points, createTime: now, updateTime: now }
     })
   }
   return { seeded: DEFAULT_PACKAGES.length, message: '已写入默认套餐' }
@@ -211,15 +246,6 @@ async function deleteRechargePackage(payload) {
   if (!docId) throw new Error('缺少 _id')
   const current = await db.collection(COLLECTION).doc(docId).get()
   if (!current.data) throw new Error('套餐不存在')
-
-  const pending = await db
-    .collection('recharge_orders')
-    .where({ packageId: current.data.id, status: 'pending' })
-    .limit(1)
-    .get()
-  if (pending.data && pending.data.length) {
-    throw new Error('该套餐存在待支付订单，请稍后再删或先下架')
-  }
 
   await db.collection(COLLECTION).doc(docId).remove()
   return { _id: docId, id: current.data.id, deleted: true }

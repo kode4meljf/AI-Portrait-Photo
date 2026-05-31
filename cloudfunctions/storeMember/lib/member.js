@@ -429,7 +429,7 @@ async function storeCreate(openid, payload) {
     longitude: lng,
     avatarUrl: '',
     level: '普通会员',
-    balance: 100,
+    balance: 30,
     packageTotal: 0,
     packageUsed: 0,
     packageExpireDate: null,
@@ -537,7 +537,7 @@ async function storeUpdate(openid, payload) {
     data.contactPhone = normalizeMobilePhone(data.contactPhone)
   }
   if (payload.balanceInc !== undefined) {
-    throw new Error('请通过充值页购买次数')
+    throw new Error('请通过充值页购买积分')
   }
   if (payload.packageTotal !== undefined || payload.packageUsed !== undefined || payload.packageExpireDate !== undefined) {
     throw new Error('套餐信息仅可在充值成功后由系统更新')

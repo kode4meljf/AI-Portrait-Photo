@@ -1,4 +1,3 @@
-const app = getApp();
 const { fetchStoreBalance } = require('../../../../utils/portraitBilling');
 const { safeNavigateBack } = require('../../../../utils/navigation');
 const {
@@ -9,19 +8,55 @@ const {
   waitRechargePaid,
   queryRechargeOrder
 } = require('../../../../utils/payApi');
+const {
+  splitPackages,
+  pickDefaultPackage,
+  formatPointsNum
+} = require('../../../../utils/rechargePackages');
+const { getPointsPriceList, formatBalanceDisplay } = require('../../../../utils/storePoints');
 
 Page({
   data: {
     packages: [],
+    casualPackages: [],
+    annualPackages: [],
     selectedPackage: null,
+    selectedPrice: 0,
+    selectedPointsText: '0',
+    selectedBonusText: '',
     submitting: false,
     payConfigured: false,
     balance: 0,
-    loadError: ''
+    balanceDisplay: { text: '0', size: 'lg', full: '0', compact: false },
+    loadError: '',
+    showPriceModal: false,
+    priceList: [],
+    priceModalPageStyle: ''
   },
 
   onLoad() {
+    this.setData({ priceList: getPointsPriceList() });
     this.loadPageData();
+  },
+
+  syncSelected(pkg) {
+    if (!pkg) {
+      this.setData({
+        selectedPackage: null,
+        selectedPrice: 0,
+        selectedPointsText: '0',
+        selectedBonusText: ''
+      });
+      return;
+    }
+    const bonusText =
+      pkg.bonusPoints > 0 ? `（含赠送 ${formatPointsNum(pkg.bonusPoints)}）` : '';
+    this.setData({
+      selectedPackage: pkg,
+      selectedPrice: pkg.price,
+      selectedPointsText: pkg.pointsText || formatPointsNum(pkg.points),
+      selectedBonusText: bonusText
+    });
   },
 
   async loadPageData() {
@@ -32,29 +67,55 @@ Page({
         fetchRechargePackages(),
         fetchStoreBalance()
       ]);
+      const { enriched, casualPackages, annualPackages } = splitPackages(packages);
+      const selectedPackage = pickDefaultPackage(enriched);
       this.setData({
         payConfigured: !!status.configured,
-        packages,
-        selectedPackage: packages[0] || null,
+        packages: enriched,
+        casualPackages,
+        annualPackages,
         balance,
-        loadError: packages.length ? '' : '暂无可用套餐'
+        balanceDisplay: formatBalanceDisplay(balance),
+        loadError: enriched.length ? '' : '暂无可用套餐'
       });
+      this.syncSelected(selectedPackage);
     } catch (err) {
       console.error('[recharge] 加载失败', err);
       this.setData({
         loadError: err.message || '加载失败',
         packages: [],
-        selectedPackage: null
+        casualPackages: [],
+        annualPackages: []
       });
+      this.syncSelected(null);
     } finally {
       wx.hideLoading();
     }
   },
 
   selectPackage(e) {
-    const pkg = e.currentTarget.dataset.pkg;
-    this.setData({ selectedPackage: pkg });
+    const id = Number(e.currentTarget.dataset.id);
+    const pkg = this.data.packages.find((p) => p.id === id);
+    if (pkg) this.syncSelected(pkg);
   },
+
+  onOpenPriceList() {
+    this.setData({
+      showPriceModal: true,
+      priceModalPageStyle: 'overflow:hidden;height:100vh;'
+    });
+  },
+
+  onClosePriceList() {
+    this.setData({
+      showPriceModal: false,
+      priceModalPageStyle: ''
+    });
+  },
+
+  onPriceModalTap() {},
+
+  preventMove() {},
 
   async confirmRecharge() {
     if (!this.data.selectedPackage || this.data.submitting) return;
@@ -64,18 +125,18 @@ Page({
     }
 
     this.setData({ submitting: true });
-    wx.showLoading({ title: '创建订单...', mask: true });
+    wx.showLoading({ title: '调起支付...', mask: true });
 
     try {
       const order = await createRechargeOrder(this.data.selectedPackage.id);
+      const points = order.points || order.times || this.data.selectedPackage.points;
 
       if (order.mockPaid) {
         wx.hideLoading();
-        await this.onRechargeSuccess(order.times);
+        await this.onRechargeSuccess(points);
         return;
       }
 
-      wx.showLoading({ title: '调起支付...', mask: true });
       await requestWxPayment(order.payment);
 
       wx.showLoading({ title: '确认到账...', mask: true });
@@ -84,14 +145,14 @@ Page({
       } catch (pollErr) {
         const latest = await queryRechargeOrder(order.outTradeNo).catch(() => null);
         if (latest && latest.status === 'paid') {
-          await this.onRechargeSuccess(latest.times);
+          await this.onRechargeSuccess(latest.points || latest.times);
           return;
         }
         throw pollErr;
       }
 
       wx.hideLoading();
-      await this.onRechargeSuccess(this.data.selectedPackage.times);
+      await this.onRechargeSuccess(points);
     } catch (err) {
       console.error('[recharge] 支付失败', err);
       wx.hideLoading();
@@ -107,17 +168,20 @@ Page({
     }
   },
 
-  async onRechargeSuccess(times) {
+  async onRechargeSuccess(points) {
     this.setData({ submitting: false });
     try {
       const balance = await fetchStoreBalance();
-      this.setData({ balance });
+      this.setData({
+        balance,
+        balanceDisplay: formatBalanceDisplay(balance)
+      });
     } catch (e) {
       /* ignore */
     }
     safeNavigateBack({
       success: () => {
-        wx.showToast({ title: `充值成功 +${times}次`, icon: 'success' });
+        wx.showToast({ title: `充值成功 +${points}积分`, icon: 'success' });
       }
     });
   }

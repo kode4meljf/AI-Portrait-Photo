@@ -16,7 +16,7 @@
       <el-table-column prop="contactName" label="联系人" width="100" />
       <el-table-column prop="contactPhone" label="电话" width="130" />
       <el-table-column prop="level" label="等级" width="100" />
-      <el-table-column prop="balance" label="余额" width="90" />
+      <el-table-column prop="balance" label="积分" width="90" />
       <el-table-column label="套餐用量" width="120">
         <template #default="{ row }">
           {{ row.packageUsed || 0 }} / {{ row.packageTotal || 0 }}

@@ -1,32 +1,31 @@
 const cloud = require('wx-server-sdk');
+const { FRAME_POINTS, INSUFFICIENT_POINTS_MSG } = require('./points');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
-
-const FRAME_COST = 1;
 
 async function chargeStoreForFrame(storeId) {
   const updateRes = await db
     .collection('stores')
     .where({
       _id: storeId,
-      balance: _.gte(FRAME_COST)
+      balance: _.gte(FRAME_POINTS)
     })
     .update({
       data: {
-        balance: _.inc(-FRAME_COST),
+        balance: _.inc(-FRAME_POINTS),
         updateTime: db.serverDate()
       }
     });
 
   if (!updateRes.stats || updateRes.stats.updated === 0) {
-    return { ok: false, error: '摆件相框次数不足，请充值' };
+    return { ok: false, error: INSUFFICIENT_POINTS_MSG };
   }
-  return { ok: true };
+  return { ok: true, points: FRAME_POINTS };
 }
 
-async function refundStoreFrame(storeId, amount = FRAME_COST) {
+async function refundStoreFrame(storeId, amount = FRAME_POINTS) {
   if (!storeId || !amount) return;
   await db
     .collection('stores')
@@ -43,7 +42,8 @@ async function refundStoreFrame(storeId, amount = FRAME_COST) {
 }
 
 module.exports = {
-  FRAME_COST,
+  FRAME_POINTS,
+  INSUFFICIENT_POINTS_MSG,
   chargeStoreForFrame,
   refundStoreFrame
 };

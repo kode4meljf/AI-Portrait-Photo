@@ -81,7 +81,7 @@ function buildFrameOrderView(order, options = {}) {
       heroSub =
         audience === 'customer'
           ? '门店确认后将开始制作，预计 3–5 个工作日'
-          : '确认后将扣减摆台次数并开始制作，预计 3–5 个工作日'
+          : '确认后将扣减 99 积分并开始制作，预计 3–5 个工作日'
       logisticsEmptyIcon = '📦'
       logisticsEmptyTitle = audience === 'customer' ? '等待门店确认制作' : '确认制作后进入生产流程'
       logisticsEmptySub = '发货后将在此展示物流轨迹'

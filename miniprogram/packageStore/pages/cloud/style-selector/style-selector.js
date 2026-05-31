@@ -19,7 +19,9 @@ Page({
     loadingStyles: false,
     stylesError: '',
     canSubmit: false,
-    submitBtnText: '立即生成 · 耗3次'
+    submitShowCost: true,
+    submitCost: 10,
+    submitPlainText: '立即生成'
   },
 
   onLoad(options) {
@@ -58,13 +60,16 @@ Page({
     const { loadingStyles, styles, originalUrl, count } = merged
     const canSubmit = !!originalUrl && !loadingStyles && styles.length > 0
     const styleCount = count === 9 ? 9 : 3
-    let submitBtnText = `立即生成 · 耗${portraitCostForCount(styleCount)}次`
+    let submitShowCost = true
+    let submitPlainText = '立即生成'
+    let submitCost = portraitCostForCount(styleCount)
     if (loadingStyles) {
-      submitBtnText = styles.length ? '风格切换中' : '加载风格中'
+      submitShowCost = false
+      submitPlainText = styles.length ? '风格切换中' : '加载风格中'
     } else if (!styles.length) {
-      submitBtnText = '立即生成 · 耗1次'
+      submitCost = portraitCostForCount(3)
     }
-    this.setData({ canSubmit, submitBtnText, ...extra })
+    this.setData({ canSubmit, submitShowCost, submitPlainText, submitCost, ...extra })
   },
 
   async loadStyles(count) {

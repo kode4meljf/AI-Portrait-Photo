@@ -1,5 +1,7 @@
-/** 摆台下单固定消耗点数（不写库） */
-const FRAME_ORDER_COST = 20
+const { FRAME_POINTS } = require('../utils/storePoints.js')
+
+/** 摆台下单固定消耗积分（与 Excel 9.9 元/个 对齐：99 积分） */
+const FRAME_ORDER_COST = FRAME_POINTS
 
 const LOCAL_COVERS = [
   '/assets/frames/frame-f01-flamingo.png',

@@ -374,7 +374,7 @@
   opacity: 0.6;
 }
 
-.cost {
-  margin-left: 8rpx;
-  font-weight: 600;
+.submit-btn .points-cost--md {
+  font-size: 32rpx;
 }
+

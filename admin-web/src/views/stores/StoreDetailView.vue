@@ -37,18 +37,19 @@
         :closable="false"
         show-icon
         class="asset-alert"
-        title="余额与套餐为真实资产。调整须向管理员手机发送验证码，验证通过后立即生效。"
+        title="积分与充值记录为真实资产。调整须向管理员手机发送验证码，验证通过后立即生效。"
       />
 
       <div class="asset-readonly">
         <div class="asset-item">
-          <span class="asset-label">账户余额</span>
+          <span class="asset-label">账户积分</span>
           <span class="asset-value">{{ form.balance ?? 0 }}</span>
-          <span class="asset-unit">次</span>
+          <span class="asset-unit">积分</span>
         </div>
         <div class="asset-item">
-          <span class="asset-label">套餐用量</span>
+          <span class="asset-label">最近充值</span>
           <span class="asset-value">{{ form.packageUsed ?? 0 }} / {{ form.packageTotal ?? 0 }}</span>
+          <span class="asset-unit">积分</span>
         </div>
       </div>
 
@@ -75,13 +76,13 @@
 
     <el-dialog v-model="adjustVisible" title="调整门店资产" width="500px" destroy-on-close @closed="resetAdjustDialog">
       <el-form :model="adjustForm" label-width="100px">
-        <el-form-item label="账户余额">
-          <el-input-number v-model="adjustForm.balance" :min="0" />
+        <el-form-item label="账户积分">
+          <el-input-number v-model="adjustForm.balance" :min="0" :step="10" />
         </el-form-item>
-        <el-form-item label="套餐总量">
-          <el-input-number v-model="adjustForm.packageTotal" :min="0" />
+        <el-form-item label="充值总量">
+          <el-input-number v-model="adjustForm.packageTotal" :min="0" :step="10" />
         </el-form-item>
-        <el-form-item label="已用套餐">
+        <el-form-item label="已用积分">
           <el-input-number v-model="adjustForm.packageUsed" :min="0" />
         </el-form-item>
         <el-form-item label="调整原因" required>

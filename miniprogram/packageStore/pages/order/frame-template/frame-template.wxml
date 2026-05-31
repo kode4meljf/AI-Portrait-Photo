@@ -37,7 +37,7 @@
   <view class="bottom-bar">
     <view class="total-price">
       <text class="total-label">消耗</text>
-      <text class="total-value">⚡ {{frameCost}}</text>
+      <points-cost value="{{frameCost}}" suffix="积分" theme="light" size="lg" />
     </view>
     <button class="confirm-btn" bindtap="confirmOrder" disabled="{{submitting}}">{{submitting ? '提交中...' : '确认生成订单'}}</button>
   </view>

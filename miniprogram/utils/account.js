@@ -12,7 +12,7 @@ const STORE_DEFAULT_PROFILE = {
   address: '默认地址',
   avatarUrl: '',
   level: '普通会员',
-  balance: 100,
+  balance: 30,
   packageTotal: 0,
   packageUsed: 0,
   packageExpireDate: null

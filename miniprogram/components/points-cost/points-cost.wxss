@@ -1,0 +1,105 @@
+.points-cost {
+  --points-accent: #2ec4b6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.points-cost__label {
+  font-weight: 500;
+}
+
+.points-cost__icon {
+  flex-shrink: 0;
+  background-color: var(--points-accent);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M13 2 3 14h8l-1 8 10-12h-8l1-8z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M13 2 3 14h8l-1 8 10-12h-8l1-8z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.points-cost__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.points-cost__suffix {
+  font-weight: 500;
+}
+
+.points-cost--md {
+  font-size: 30rpx;
+}
+
+.points-cost--sm {
+  font-size: 28rpx;
+}
+
+.points-cost--md .points-cost__label {
+  margin-right: 10rpx;
+}
+
+.points-cost--md .points-cost__icon {
+  width: 26rpx;
+  height: 26rpx;
+  margin: 0 6rpx 0 8rpx;
+}
+
+.points-cost--md .points-cost__suffix {
+  margin-left: 6rpx;
+}
+
+.points-cost--sm .points-cost__label {
+  margin-right: 8rpx;
+}
+
+.points-cost--sm .points-cost__icon {
+  width: 22rpx;
+  height: 22rpx;
+  margin: 0 4rpx 0 6rpx;
+}
+
+.points-cost--sm .points-cost__suffix {
+  margin-left: 4rpx;
+}
+
+.points-cost--lg .points-cost__icon {
+  width: 34rpx;
+  height: 34rpx;
+  margin: 0 8rpx 0 0;
+}
+
+.points-cost--lg .points-cost__suffix {
+  margin-left: 8rpx;
+}
+
+.points-cost--on-dark {
+  color: #fff;
+}
+
+.points-cost--on-dark .points-cost__suffix {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.points-cost--light {
+  color: #111827;
+}
+
+.points-cost--light .points-cost__suffix {
+  color: #6b7280;
+}
+
+.points-cost--lg.points-cost--light .points-cost__value {
+  font-size: 48rpx;
+  color: #111827;
+}
+
+.points-cost--lg.points-cost--light .points-cost__suffix {
+  font-size: 28rpx;
+}

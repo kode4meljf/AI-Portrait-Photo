@@ -12,7 +12,7 @@ const {
 } = require('../../../../utils/jimengPortraitAi.js');
 const { normalizePhotos } = require('../../../../utils/portraitViewer/normalizeItems.js');
 const {
-  PORTRAIT_COST,
+  PORTRAIT_POINTS_SINGLE,
   fetchStoreBalance,
   assertPortraitBalance,
   isInsufficientBalanceError,
@@ -42,7 +42,7 @@ Page({
     retryStyleName: '',
     retryBalance: 0,
     retryLoading: false,
-    portraitCost: PORTRAIT_COST
+    portraitCost: PORTRAIT_POINTS_SINGLE
   },
 
   onLoad(options) {
@@ -363,7 +363,7 @@ Page({
         retryDialogVisible: false,
         retryLoading: false,
         retryTargetIndex: -1,
-        retryBalance: Math.max(0, (this.data.retryBalance || 0) - PORTRAIT_COST)
+        retryBalance: Math.max(0, (this.data.retryBalance || 0) - PORTRAIT_POINTS_SINGLE)
       });
       wx.showToast({ title: '生成完成', icon: 'success' });
     } catch (err) {

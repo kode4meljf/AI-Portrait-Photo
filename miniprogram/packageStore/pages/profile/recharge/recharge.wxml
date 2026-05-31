@@ -1,28 +1,102 @@
-<view class="container">
-  <view class="balance-info">
-    <text class="label">当前可用次数</text>
-    <text class="value">{{balance}} 次</text>
-  </view>
-
-  <view wx:if="{{loadError}}" class="load-error">{{loadError}}</view>
-  <view wx:elif="{{!payConfigured}}" class="load-error">微信支付配置中，暂无法充值</view>
-
-  <view class="package-list">
-    <view wx:for="{{packages}}" wx:key="id" class="package-card {{selectedPackage.id === item.id ? 'selected' : ''}}" bindtap="selectPackage" data-pkg="{{item}}">
-      <view class="package-header">
-        <text class="name">{{item.name}}</text>
-        <text class="tag">{{item.tag}}</text>
+<page-meta page-style="{{priceModalPageStyle}}" />
+<view class="page">
+  <view class="balance-mini">
+    <view class="balance-top">
+      <view class="balance-main">
+        <text class="balance-lbl">当前积分</text>
+        <text class="balance-num balance-num--{{balanceDisplay.size}}">{{balanceDisplay.text}}</text>
       </view>
-      <view class="package-detail">
-        <text class="times">{{item.times}} 人次</text>
-        <text class="price">¥{{item.price}}</text>
-        <text class="original-price">¥{{item.originalPrice}}</text>
+      <view class="price-entry" catchtap="onOpenPriceList">
+        <text>积分价目</text>
       </view>
     </view>
   </view>
 
-  <view class="summary">
-    <text>应付金额：¥{{selectedPackage ? selectedPackage.price : 0}}</text>
-    <button class="pay-btn" bindtap="confirmRecharge" disabled="{{submitting || !payConfigured || !selectedPackage}}">{{submitting ? '充值中...' : '立即充值'}}</button>
+  <view wx:if="{{loadError}}" class="load-error">{{loadError}}</view>
+
+  <view class="pkg-group" wx:if="{{casualPackages.length}}">
+    <view
+      wx:for="{{casualPackages}}"
+      wx:key="id"
+      class="pkg {{item.featured ? 'featured' : ''}} {{selectedPackage.id === item.id ? 'on' : ''}}"
+      bindtap="selectPackage"
+      data-id="{{item.id}}"
+    >
+      <view class="pkg-row">
+        <view class="pkg-main">
+          <text class="pkg-name">{{item.name}}</text>
+          <text class="pkg-slogan">{{item.slogan}}</text>
+        </view>
+        <view class="pkg-right">
+          <text class="pkg-pts">{{item.pointsText}}<text class="pkg-pts-unit"> 积分</text></text>
+          <text wx:if="{{item.bonusText}}" class="pkg-bonus">含赠送 {{item.bonusText}}</text>
+        </view>
+      </view>
+      <text wx:if="{{item.eqHint}}" class="pkg-eq">{{item.eqHint}}</text>
+    </view>
+  </view>
+
+  <view class="pkg-group" wx:if="{{annualPackages.length}}">
+    <view class="group-hd group-hd--annual">
+      <view class="group-hd-bar"></view>
+      <text class="group-hd-text">年度大套餐 · 买越多送越多 · 享会员价</text>
+    </view>
+    <view
+      wx:for="{{annualPackages}}"
+      wx:key="id"
+      class="pkg {{item.featured ? 'featured' : ''}} {{selectedPackage.id === item.id ? 'on' : ''}}"
+      bindtap="selectPackage"
+      data-id="{{item.id}}"
+    >
+      <text wx:if="{{item.badge === 'hot'}}" class="pkg-badge hot">人气</text>
+      <text wx:elif="{{item.badge === 'crown'}}" class="pkg-badge crown">旗舰</text>
+      <view class="pkg-row">
+        <view class="pkg-main">
+          <text class="pkg-name">{{item.icon ? item.icon + ' ' : ''}}{{item.name}}</text>
+          <text class="pkg-slogan">{{item.slogan}}</text>
+        </view>
+        <view class="pkg-right">
+          <text class="pkg-pts">{{item.pointsText}}<text class="pkg-pts-unit"> 积分</text></text>
+          <text wx:if="{{item.bonusText}}" class="pkg-bonus">含赠送 {{item.bonusText}}</text>
+        </view>
+      </view>
+      <text wx:if="{{item.eqHint}}" class="pkg-eq">{{item.eqHint}}</text>
+    </view>
+  </view>
+
+  <view class="legend">赠送积分与充值积分合并入账，可用于全部服务。开通至尊/荣耀即享会员价。</view>
+
+  <view class="footer-spacer"></view>
+
+  <view class="footer">
+    <view class="footer-left">
+      <view class="footer-pay-line">
+        <text class="footer-label">应付 </text>
+        <text class="footer-price">¥{{selectedPrice}}</text>
+      </view>
+      <text wx:if="{{selectedPackage}}" class="footer-sub">到账 {{selectedPointsText}} 积分{{selectedBonusText}}</text>
+    </view>
+    <button
+      class="footer-btn"
+      bindtap="confirmRecharge"
+      disabled="{{submitting || !selectedPackage}}"
+      loading="{{submitting}}"
+    >
+      {{submitting ? '充值中...' : '立即充值'}}
+    </button>
+  </view>
+</view>
+
+<view wx:if="{{showPriceModal}}" class="price-mask" catchtouchmove="preventMove" bindtap="onClosePriceList">
+  <view class="price-modal" catchtap="onPriceModalTap">
+    <view class="price-modal-hd">积分价目</view>
+    <view class="price-modal-note">充值套餐含赠送积分，以下统一扣费</view>
+    <view class="price-list">
+      <view wx:for="{{priceList}}" wx:key="name" class="price-row">
+        <text class="price-name">{{item.icon}} {{item.name}}</text>
+        <text class="price-pts">{{item.pointsText}} 积分</text>
+      </view>
+    </view>
+    <view class="price-modal-btn" bindtap="onClosePriceList">知道了</view>
   </view>
 </view>

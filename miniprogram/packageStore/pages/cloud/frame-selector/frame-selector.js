@@ -6,11 +6,11 @@ const { isValidStoreId } = require('../../../../utils/storeSession');
 const { isStoreOwner } = require('../../../../utils/storeRole');
 const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../../config/frames.js');
 const {
-  assertPortraitBalance,
+  assertStorePoints,
   isInsufficientBalanceError,
   promptInsufficientBalance,
   fetchStoreBalance,
-  PORTRAIT_COST
+  FRAME_POINTS
 } = require('../../../../utils/portraitBilling.js');
 const db = wx.cloud.database();
 
@@ -222,7 +222,7 @@ Page({
     }
 
     try {
-      await assertPortraitBalance(PORTRAIT_COST);
+      await assertStorePoints(FRAME_POINTS);
     } catch (e) {
       return;
     }
@@ -250,7 +250,7 @@ Page({
       if (isInsufficientBalanceError(err)) {
         await promptInsufficientBalance({
           balance: await fetchStoreBalance(),
-          required: PORTRAIT_COST
+          required: FRAME_POINTS
         });
       } else {
         wx.showToast({

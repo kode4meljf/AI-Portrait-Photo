@@ -36,7 +36,7 @@
           <template #header>门店快览</template>
           <el-table :data="storePreview" size="small" empty-text="暂无门店">
             <el-table-column prop="name" label="门店" min-width="120" />
-            <el-table-column prop="balance" label="余额" width="90" />
+            <el-table-column prop="balance" label="积分" width="90" />
             <el-table-column prop="level" label="等级" width="100" />
           </el-table>
         </el-card>

@@ -85,7 +85,8 @@ async function createJsapiOrder({
   outTradeNo,
   description,
   amountFen,
-  payerOpenId
+  payerOpenId,
+  attach
 }) {
   const path = '/v3/pay/transactions/jsapi';
   const requestBody = {
@@ -102,6 +103,9 @@ async function createJsapiOrder({
       openid: payerOpenId
     }
   };
+  if (attach) {
+    requestBody.attach = attach;
+  }
   const body = JSON.stringify(requestBody);
   const { authorization } = buildAuthorization({
     method: 'POST',

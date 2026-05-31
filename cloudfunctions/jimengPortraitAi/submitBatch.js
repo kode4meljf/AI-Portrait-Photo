@@ -112,7 +112,7 @@ async function main(event) {
       }
     }
 
-    await chargeStoreForPortraitBatch(storeId, createdTaskIds);
+    await chargeStoreForPortraitBatch(storeId, createdTaskIds, normalized.length);
 
     return {
       success: true,

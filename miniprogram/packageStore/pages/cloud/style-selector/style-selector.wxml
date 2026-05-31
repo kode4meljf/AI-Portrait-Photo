@@ -49,6 +49,14 @@
       hover-class="{{canSubmit ? 'submit-btn-hover' : ''}}"
       hover-stay-time="80"
       bindtap="onStartGenerate"
-    >{{submitBtnText}}</view>
+    >
+      <points-cost
+        wx:if="{{submitShowCost}}"
+        label="立即生成"
+        value="{{submitCost}}"
+        theme="on-dark"
+      />
+      <text wx:else>{{submitPlainText}}</text>
+    </view>
   </view>
 </view>

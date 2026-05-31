@@ -167,12 +167,13 @@ const mockRechargePackages = [
   {
     _id: 'pkg1',
     id: 1,
-    name: '体验套餐',
-    times: 10,
-    price: 0.5,
-    originalPrice: 1,
-    tag: '限时5折',
-    expireDays: 30,
+    name: '散单·体验',
+    points: 30,
+    times: 30,
+    price: 3,
+    originalPrice: 3,
+    tag: '1人9张',
+    expireDays: 365,
     sort: 10,
     enabled: true,
     updateTimeText: '2026-05-18 10:00'
@@ -180,12 +181,13 @@ const mockRechargePackages = [
   {
     _id: 'pkg2',
     id: 2,
-    name: '标准套餐',
-    times: 50,
-    price: 399,
-    originalPrice: 599,
-    tag: '推荐',
-    expireDays: 30,
+    name: '散单·小包',
+    points: 280,
+    times: 280,
+    price: 28,
+    originalPrice: 30,
+    tag: '约10人',
+    expireDays: 365,
     sort: 20,
     enabled: true,
     updateTimeText: '2026-05-18 10:00'
@@ -249,7 +251,7 @@ export async function mockRequest(action, payload = {}, query = {}) {
         payload.packageTotal !== undefined ||
         payload.packageUsed !== undefined
       ) {
-        throw new Error('账户余额与套餐须通过「调整资产」并完成短信验证')
+        throw new Error('账户积分与充值记录须通过「调整资产」并完成短信验证')
       }
       const next = { ...base, ...payload }
       if (idx >= 0) mockStores[idx] = next
@@ -580,15 +582,17 @@ export async function mockRequest(action, payload = {}, query = {}) {
       const id = mockRechargePackages.length
         ? Math.max(...mockRechargePackages.map((r) => r.id)) + 1
         : 1
+      const points = payload.points != null ? payload.points : payload.times
       const row = {
         _id: `pkg${Date.now()}`,
         id,
         name: payload.name,
-        times: payload.times,
+        points,
+        times: points,
         price: payload.price,
         originalPrice: payload.originalPrice,
         tag: payload.tag || '',
-        expireDays: payload.expireDays || 30,
+        expireDays: payload.expireDays || 365,
         sort: payload.sort || 0,
         enabled: payload.enabled !== false,
         updateTimeText: new Date().toLocaleString('zh-CN')
@@ -599,10 +603,12 @@ export async function mockRequest(action, payload = {}, query = {}) {
     case 'rechargePackages.update': {
       const idx = mockRechargePackages.findIndex((r) => r._id === payload._id)
       if (idx < 0) throw new Error('套餐不存在')
+      const points = payload.points != null ? payload.points : payload.times
       mockRechargePackages[idx] = {
         ...mockRechargePackages[idx],
         name: payload.name,
-        times: payload.times,
+        points,
+        times: points,
         price: payload.price,
         originalPrice: payload.originalPrice,
         tag: payload.tag || '',
@@ -627,12 +633,13 @@ export async function mockRequest(action, payload = {}, query = {}) {
         {
           _id: 'pkg1',
           id: 1,
-          name: '体验套餐',
-          times: 10,
-          price: 0.5,
-          originalPrice: 1,
-          tag: '限时5折',
-          expireDays: 30,
+          name: '散单·体验',
+          points: 30,
+          times: 30,
+          price: 3,
+          originalPrice: 3,
+          tag: '1人9张',
+          expireDays: 365,
           sort: 10,
           enabled: true,
           updateTimeText: '-'
@@ -640,12 +647,13 @@ export async function mockRequest(action, payload = {}, query = {}) {
         {
           _id: 'pkg2',
           id: 2,
-          name: '标准套餐',
-          times: 50,
-          price: 399,
-          originalPrice: 599,
-          tag: '推荐',
-          expireDays: 30,
+          name: '散单·小包',
+          points: 280,
+          times: 280,
+          price: 28,
+          originalPrice: 30,
+          tag: '约10人',
+          expireDays: 365,
           sort: 20,
           enabled: true,
           updateTimeText: '-'

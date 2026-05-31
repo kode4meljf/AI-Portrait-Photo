@@ -161,12 +161,7 @@
 .total-label {
   font-size: 24rpx;
   color: #999;
-}
-.total-value {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #ff69b4;
-  line-height: 1.2;
+  margin-bottom: 6rpx;
 }
 .confirm-btn {
   background: linear-gradient(135deg, #ff69b4, #ff8c69);

@@ -1,0 +1,6 @@
+<view class="points-cost points-cost--{{theme}} points-cost--{{size}}">
+  <text wx:if="{{label}}" class="points-cost__label">{{label}}</text>
+  <view class="points-cost__icon" aria-hidden="true"></view>
+  <text class="points-cost__value">{{value}}</text>
+  <text wx:if="{{suffix}}" class="points-cost__suffix">{{suffix}}</text>
+</view>

@@ -13,7 +13,7 @@
         </view>
         <view class="quick-stats">
           <view class="stat-chip">今日到店 <text class="val">{{todayVisitCount}}</text> 人</view>
-          <view class="stat-chip">剩余额度 <text class="val">{{storeInfo.balance || 0}}</text> 次</view>
+          <view class="stat-chip">剩余积分 <text class="val">{{storeInfo.balance || 0}}</text></view>
         </view>
       </view>
 

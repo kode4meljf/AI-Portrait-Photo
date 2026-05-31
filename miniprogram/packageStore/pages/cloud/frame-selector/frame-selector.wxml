@@ -46,7 +46,7 @@
     disabled="{{submitting}}"
     hover-class="submit-btn-hover"
   >
-    一键相框 <text class="cost">⚡ {{frameCost}}</text>
+    <points-cost label="一键相框" value="{{frameCost}}" theme="on-dark" size="md" />
   </button>
 </view>
 

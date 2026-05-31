@@ -1,7 +1,7 @@
 <template>
   <div class="page-card">
     <el-alert
-      title="小程序充值页展示「已启用」的套餐；下单价格以保存时配置为准，已支付订单不受影响。"
+      title="小程序充值页展示「已启用」的套餐；10 积分 = 1 元。下单价格以保存时配置为准，已支付订单不受影响。"
       type="info"
       show-icon
       :closable="false"
@@ -25,7 +25,7 @@
     <el-table :data="list" v-loading="loading" stripe empty-text="暂无套餐，可点「初始化默认套餐」">
       <el-table-column prop="id" label="编号" width="72" />
       <el-table-column prop="name" label="名称" min-width="120" />
-      <el-table-column prop="times" label="人次" width="80" align="center" />
+      <el-table-column prop="points" label="积分" width="88" align="center" />
       <el-table-column label="售价" width="100">
         <template #default="{ row }">¥{{ row.price }}</template>
       </el-table-column>
@@ -79,8 +79,9 @@
         <el-form-item label="名称" required>
           <el-input v-model="editForm.name" placeholder="名称不可重复" />
         </el-form-item>
-        <el-form-item label="人次" required>
-          <el-input-number v-model="editForm.times" :min="1" :max="999999" :step="1" />
+        <el-form-item label="积分" required>
+          <el-input-number v-model="editForm.points" :min="1" :max="9999999" :step="10" />
+          <div class="form-tip">10 积分 = 1 元；30 积分 ≈ 1 人 9 张写真</div>
         </el-form-item>
         <el-form-item label="售价(元)" required>
           <el-input-number v-model="editForm.price" :min="0" :precision="2" :step="1" />
@@ -89,7 +90,7 @@
           <el-input-number v-model="editForm.originalPrice" :min="0" :precision="2" :step="1" />
         </el-form-item>
         <el-form-item label="角标标签">
-          <el-input v-model="editForm.tag" placeholder="如 推荐、限时5折" maxlength="16" />
+          <el-input v-model="editForm.tag" placeholder="如 推荐、约10人" maxlength="16" />
         </el-form-item>
         <el-form-item label="有效天数" required>
           <el-input-number v-model="editForm.expireDays" :min="1" :max="3650" :step="1" />
@@ -160,11 +161,11 @@ function openCreate() {
   const maxSort = list.value.reduce((m, r) => Math.max(m, Number(r.sort) || 0), 0)
   editForm.value = {
     name: '',
-    times: 10,
-    price: 0,
-    originalPrice: 0,
+    points: 30,
+    price: 3,
+    originalPrice: 3,
     tag: '',
-    expireDays: 30,
+    expireDays: 365,
     sort: maxSort + 10,
     enabled: true
   }
@@ -177,11 +178,11 @@ function openEdit(row) {
     _id: row._id,
     id: row.id,
     name: row.name,
-    times: row.times,
+    points: row.points != null ? row.points : row.times,
     price: row.price,
     originalPrice: row.originalPrice,
     tag: row.tag || '',
-    expireDays: row.expireDays != null ? row.expireDays : 30,
+    expireDays: row.expireDays != null ? row.expireDays : 365,
     sort: row.sort != null ? row.sort : 0,
     enabled: row.enabled !== false
   }
@@ -195,11 +196,12 @@ async function savePackage() {
   }
   saving.value = true
   try {
+    const payload = { ...editForm.value, times: editForm.value.points }
     if (isCreate.value) {
-      await api.createRechargePackage({ ...editForm.value })
+      await api.createRechargePackage(payload)
       ElMessage.success('已创建')
     } else {
-      await api.updateRechargePackage({ ...editForm.value })
+      await api.updateRechargePackage(payload)
       ElMessage.success('已保存')
     }
     dialogVisible.value = false
@@ -225,7 +227,7 @@ async function onDelete(row) {
 async function onSeedDefaults() {
   try {
     await ElMessageBox.confirm(
-      '仅在云库尚无套餐时写入体验/标准/尊享三档默认数据，已有数据不会覆盖。',
+      '仅在云库尚无套餐时写入散单/相框默认积分套餐，已有数据不会覆盖。',
       '初始化默认套餐',
       { type: 'info' }
     )

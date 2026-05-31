@@ -106,8 +106,8 @@
           <text class="v">{{view.styleName}}</text>
         </view>
         <view class="product-row">
-          <text class="k">消耗次数</text>
-          <text class="v">摆台 1 次</text>
+          <text class="k">消耗积分</text>
+          <text class="v">摆台 99 积分</text>
         </view>
       </view>
     </view>
