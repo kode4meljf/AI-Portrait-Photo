@@ -3,10 +3,10 @@
  */
 const app = getApp();
 const db = wx.cloud.database();
-const { createShootBatch, uploadShootOriginalToCloud, isWechatLocalPath } = require('./media.js');
-const { isValidStoreId } = require('./storeSession.js');
-const { submitPortraitBatch, kickPortraitWorker, isPortraitGenerating } = require('./jimengPortraitAi.js');
-const { portraitFailPresentation } = require('./portraitBilling.js');
+const { createShootBatch, uploadShootOriginalToCloud, isWechatLocalPath } = require('../../utils/media.js');
+const { isValidStoreId } = require('../../utils/storeSession.js');
+const { submitPortraitBatch, kickPortraitWorker, isPortraitGenerating } = require('../../utils/jimengPortraitAi.js');
+const { portraitFailPresentation } = require('../../utils/portraitBilling.js');
 
 async function ensureCloudOriginalUrl(originalUrl) {
   const src = String(originalUrl || '').trim();

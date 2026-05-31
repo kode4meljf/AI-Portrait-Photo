@@ -20,7 +20,7 @@ function storeCustomersWhere(db, storeId, extraAnd = null) {
  * @returns {Promise<object|null>}
  */
 async function findStoreCustomerByPhone(storeId, phone) {
-  const { normalizeMobilePhone } = require('./phone')
+  const { normalizeMobilePhone } = require('../../utils/phone')
   const phoneResult = normalizeMobilePhone(phone)
   if (!phoneResult.ok) return null
 

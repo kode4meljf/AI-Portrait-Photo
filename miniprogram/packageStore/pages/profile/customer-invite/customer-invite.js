@@ -1,5 +1,5 @@
 const { callStoreMember } = require('../../../../utils/storeSession')
-const { getInviteEnvVersion } = require('../../../../utils/inviteEnv')
+const { getInviteEnvVersion } = require('../../../utils/inviteEnv')
 
 function formatExpire(ts) {
   if (!ts) return ''

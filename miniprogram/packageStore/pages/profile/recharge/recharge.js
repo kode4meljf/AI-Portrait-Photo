@@ -7,12 +7,12 @@ const {
   requestWxPayment,
   waitRechargePaid,
   queryRechargeOrder
-} = require('../../../../utils/payApi');
+} = require('../../../utils/payApi');
 const {
   splitPackages,
   pickDefaultPackage,
   formatPointsNum
-} = require('../../../../utils/rechargePackages');
+} = require('../../../utils/rechargePackages');
 const { getPointsPriceList, formatBalanceDisplay } = require('../../../../utils/storePoints');
 
 Page({

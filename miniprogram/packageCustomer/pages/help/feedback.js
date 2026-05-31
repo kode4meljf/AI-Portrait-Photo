@@ -1,4 +1,4 @@
-const { submitFeedback } = require('../../../utils/feedbackApi')
+const { submitFeedback } = require('../../utils/feedbackApi')
 
 Page({
   data: {

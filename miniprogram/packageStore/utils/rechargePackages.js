@@ -1,4 +1,4 @@
-const { PORTRAIT_POINTS_9 } = require('./storePoints');
+const { PORTRAIT_POINTS_9 } = require('../../utils/storePoints');
 
 /** 充值页展示的四档套餐 id */
 const RECHARGE_CATALOG_IDS = [1, 3, 5, 6];
@@ -137,11 +137,7 @@ function pickDefaultPackage(enriched) {
 }
 
 module.exports = {
-  RECHARGE_CATALOG_IDS,
-  enrichPackage,
-  mergeFallbackPackages,
   splitPackages,
   pickDefaultPackage,
-  formatPointsNum,
-  portrait9Hint
+  formatPointsNum
 };

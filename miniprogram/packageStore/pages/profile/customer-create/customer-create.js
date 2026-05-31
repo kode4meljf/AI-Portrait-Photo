@@ -1,7 +1,7 @@
 const app = getApp()
 const { callCustomer, isValidStoreId } = require('../../../../utils/storeSession')
 const { normalizeMobilePhone } = require('../../../../utils/phone')
-const { findStoreCustomerByPhone } = require('../../../../utils/customerQuery')
+const { findStoreCustomerByPhone } = require('../../../utils/customerQuery')
 const {
   validateStoreCustomerForm,
   showCustomerPhoneError,

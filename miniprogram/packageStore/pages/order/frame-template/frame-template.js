@@ -2,7 +2,7 @@
 const app = getApp();
 const { resolvePhotoForOrder } = require('../../../../utils/media');
 const { callOrderApi } = require('../../../../utils/orderApi');
-const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../../config/frames.js');
+const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../config/frames.js');
 const db = wx.cloud.database();
 
 Page({

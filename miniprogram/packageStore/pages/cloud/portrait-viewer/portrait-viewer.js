@@ -2,8 +2,8 @@ const app = getApp();
 const { fetchStylesByIds, pickStyles } = require('../../../../config/styles.js');
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
 const { consumePendingShoot } = require('../../../../utils/shootContext.js');
-const { isCloudFileId } = require('../../../../utils/cloudPhoto.js');
-const { runShootPortraitGeneration } = require('../../../../utils/shootGenerate.js');
+const { isCloudFileId } = require('../../../utils/cloudPhoto.js');
+const { runShootPortraitGeneration } = require('../../../utils/shootGenerate.js');
 const {
   isPortraitGenerating,
   retryPortraitTask,

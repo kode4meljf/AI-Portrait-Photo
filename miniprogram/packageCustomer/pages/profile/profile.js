@@ -39,7 +39,7 @@ function applyProfileToPage(page, profile) {
 }
 
 Page({
-  behaviors: [require('../../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav')],
 
   data: {
     profile: null,

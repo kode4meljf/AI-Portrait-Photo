@@ -1,18 +1,11 @@
 /** 10 积分 = 1 元；stores.balance 存积分 */
-const POINTS_PER_YUAN = 10;
 const PORTRAIT_POINTS_3 = 10;
 const PORTRAIT_POINTS_9 = 30;
 const PORTRAIT_POINTS_SINGLE = 3;
 const FRAME_POINTS = 99;
 const ALBUM_POINTS_MEMBER = 590;
-const ALBUM_POINTS_STD = 690;
 const PHOTOBOOK_POINTS = 1290;
 const INSUFFICIENT_POINTS_MSG = '剩余积分不足，请先充值';
-
-function isPremiumMemberLevel(level) {
-  const s = String(level || '');
-  return /至尊|荣耀|VIP/i.test(s);
-}
 
 function formatBalanceText(points) {
   const n = Math.floor(Number(points) || 0);
@@ -62,29 +55,6 @@ function portraitPointsForStyleCount(count) {
   return n * PORTRAIT_POINTS_SINGLE;
 }
 
-function pointsToYuan(points) {
-  return (Number(points) || 0) / POINTS_PER_YUAN;
-}
-
-function formatPointsUsageHint(balance) {
-  const b = Number(balance) || 0;
-  const shoot9 = Math.floor(b / PORTRAIT_POINTS_9);
-  const shoot3 = Math.floor(b / PORTRAIT_POINTS_3);
-  const frames = Math.floor(b / FRAME_POINTS);
-  return `约 ${shoot9} 次9张 / ${shoot3} 次3张 / ${frames} 个相框`;
-}
-
-function formatWalletUsageHint(balance, isMember) {
-  const b = Number(balance) || 0;
-  const shoot9 = Math.floor(b / PORTRAIT_POINTS_9);
-  const frames = Math.floor(b / FRAME_POINTS);
-  const albums = Math.floor(b / ALBUM_POINTS_MEMBER);
-  if (albums > 0) {
-    return `约 ${shoot9} 次 9 张写真 · ${frames} 个相框 · ${albums} 本照片集`;
-  }
-  return `约 ${shoot9} 次 9 张写真 · ${frames} 个相框`;
-}
-
 /** 门店端展示用：单一积分价（套餐赠送已体现优惠，不再区分会员价） */
 function getPointsPriceList() {
   const rows = [
@@ -102,21 +72,13 @@ function getPointsPriceList() {
 }
 
 module.exports = {
-  POINTS_PER_YUAN,
   PORTRAIT_POINTS_3,
   PORTRAIT_POINTS_9,
   PORTRAIT_POINTS_SINGLE,
   FRAME_POINTS,
-  ALBUM_POINTS_MEMBER,
-  ALBUM_POINTS_STD,
-  PHOTOBOOK_POINTS,
   INSUFFICIENT_POINTS_MSG,
-  isPremiumMemberLevel,
   formatBalanceText,
   formatBalanceDisplay,
   portraitPointsForStyleCount,
-  pointsToYuan,
-  formatPointsUsageHint,
-  formatWalletUsageHint,
   getPointsPriceList
 };

@@ -4,7 +4,7 @@
 
 const app = getApp()
 const { getCurrentDate } = require('../../../../utils/date')
-const { storeCustomersWhere } = require('../../../../utils/customerQuery')
+const { storeCustomersWhere } = require('../../../utils/customerQuery')
 const {
   mergeDayCheckinMap,
   resolveMode,
@@ -16,7 +16,7 @@ const {
   filterByChips,
   emptyHint,
   emptySubHint
-} = require('../../../../utils/checkinListPage')
+} = require('../../../utils/checkinListPage')
 
 Page({
   data: {

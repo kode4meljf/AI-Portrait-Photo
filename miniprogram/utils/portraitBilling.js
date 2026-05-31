@@ -8,8 +8,7 @@ const {
   PORTRAIT_POINTS_9,
   FRAME_POINTS,
   INSUFFICIENT_POINTS_MSG,
-  portraitPointsForStyleCount,
-  formatPointsUsageHint
+  portraitPointsForStyleCount
 } = require('./storePoints.js');
 
 const RECHARGE_URL = '/packageStore/pages/profile/recharge/recharge';
@@ -111,7 +110,6 @@ module.exports = {
   fetchStoreBalance,
   portraitCostForCount,
   portraitPointsForStyleCount,
-  formatPointsUsageHint,
   isInsufficientBalanceError,
   portraitFailPresentation,
   promptInsufficientBalance,

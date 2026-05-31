@@ -1,10 +1,10 @@
 const app = getApp();
-const { isCloudFileId } = require('../../../../utils/cloudPhoto');
+const { isCloudFileId } = require('../../../utils/cloudPhoto');
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { isStoreAccount, getProfileCollection } = require('../../../../utils/account');
 const { isValidStoreId } = require('../../../../utils/storeSession');
 const { isStoreOwner } = require('../../../../utils/storeRole');
-const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../../config/frames.js');
+const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../config/frames.js');
 const {
   assertStorePoints,
   isInsufficientBalanceError,

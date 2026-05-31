@@ -3,8 +3,8 @@
  */
 
 const app = getApp()
-const { fetchStyleTemplates, attachSampleDisplayUrls } = require('../config/styles.js')
-const { STYLE_TEMPLATES_COLLECTION } = require('../config/constants.js')
+const { fetchStyleTemplates } = require('../../config/styles.js')
+const { STYLE_TEMPLATES_COLLECTION } = require('../../config/constants.js')
 
 function pickOne(list) {
   if (!list.length) return null

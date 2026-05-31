@@ -1,5 +1,5 @@
-const { resolveSessionIfNeeded } = require('./storeSession')
-const { ensureCustomerPage } = require('./customerGuard')
+const { resolveSessionIfNeeded } = require('../../utils/storeSession')
+const { ensureCustomerPage } = require('../../utils/customerGuard')
 
 /** 风格画册内页：门店成员与注册顾客均可进入 */
 async function ensureStyleShowcasePage() {

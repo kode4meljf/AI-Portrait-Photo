@@ -1,4 +1,4 @@
-const { ensureStyleShowcasePage } = require('../../../utils/styleShowcaseGuard')
+const { ensureStyleShowcasePage } = require('../../utils/styleShowcaseGuard')
 const { fetchStyleTemplates } = require('../../../config/styles')
 
 /** 无后台 desc 时的氛围副标题（可按风格名扩展） */
@@ -43,7 +43,7 @@ function calcHeroHeightPx() {
 }
 
 Page({
-  behaviors: [require('../../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav')],
 
   data: {
     templates: [],

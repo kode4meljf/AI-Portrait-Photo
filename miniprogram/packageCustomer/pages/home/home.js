@@ -13,7 +13,7 @@ const { fetchStyleTemplates } = require('../../../config/styles')
 const QR_UNAVAILABLE_HINT = '暂无法显示打卡码，请联系店长协助处理'
 
 Page({
-  behaviors: [require('../../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav')],
 
   data: {
     customer: null,

@@ -2,23 +2,6 @@
  * @file 风格模板：云库读取与展示字段归一化
  */
 
-const LOCAL_SAMPLES = [
-  '/assets/templates/simple.jpg',
-  '/assets/templates/flower.jpg',
-  '/assets/templates/hanfu.jpg'
-]
-
-/** 仅在网络/数据库不可用时兜底（风格选择页不再默认使用） */
-const DEFAULT_STYLES = [
-  { id: 'S01', name: '机长照', prompt: 'professional airline pilot portrait', sort: 10 },
-  { id: 'S02', name: '港风街拍', prompt: 'Hong Kong street fashion portrait', sort: 20 },
-  { id: 'S03', name: '法式复古', prompt: 'French vintage portrait', sort: 30 }
-].map((item, index) => ({
-  ...item,
-  enabled: true,
-  sampleFileId: LOCAL_SAMPLES[index] || LOCAL_SAMPLES[0]
-}))
-
 function parseStyleCode(id) {
   const m = String(id || '').match(/^S(\d{1,2})$/i)
   return m ? Number(m[1]) : 9999
@@ -146,10 +129,6 @@ function pickStyles(pool, count) {
 }
 
 module.exports = {
-  DEFAULT_STYLES: DEFAULT_STYLES.map(normalizeStyle),
-  normalizeStyle,
-  sortStyles,
-  attachSampleDisplayUrls,
   fetchStyleTemplates,
   fetchStylesByIds,
   pickStyles

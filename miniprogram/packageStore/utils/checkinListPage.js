@@ -1,8 +1,8 @@
 /**
  * 门店端打卡名单页：数据整理、排序、展示字段
  */
-const { formatDate, getCurrentDate, daysBetween } = require('./date')
-const { mapCustomerRow } = require('./customerListDisplay')
+const { formatDate, getCurrentDate, daysBetween } = require('../../utils/date')
+const { mapCustomerRow } = require('../../utils/customerListDisplay')
 
 const WEEKDAY = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 

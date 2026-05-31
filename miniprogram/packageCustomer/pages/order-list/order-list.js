@@ -5,13 +5,13 @@ const { parseCloudDate } = require('../../../utils/cloudDate')
 const {
   formatCustomerOrderRow,
   calcOrderSummary
-} = require('../../../utils/customerOrderListDisplay')
+} = require('../../utils/customerOrderListDisplay')
 
 const CACHE_STORAGE_KEY = 'customer_orders_list_v1'
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 Page({
-  behaviors: [require('../../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav')],
 
   data: {
     orders: [],

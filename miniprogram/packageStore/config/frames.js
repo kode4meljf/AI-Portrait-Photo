@@ -1,43 +1,7 @@
-const { FRAME_POINTS } = require('../utils/storePoints.js')
+const { FRAME_POINTS } = require('../../utils/storePoints.js')
 
 /** 摆台下单固定消耗积分（与 Excel 9.9 元/个 对齐：99 积分） */
 const FRAME_ORDER_COST = FRAME_POINTS
-
-const LOCAL_COVERS = [
-  '/assets/frames/frame-f01-flamingo.png',
-  '/assets/frames/frame-f02-sheep.png',
-  '/assets/frames/frame-f03-wedding.png'
-]
-
-const DEFAULT_FRAMES = [
-  {
-    id: 'F01',
-    name: '原木火烈鸟',
-    coverFileId: LOCAL_COVERS[0],
-    sizeFirst: 20,
-    sizeSecond: 25,
-    sizeUnit: 'cm',
-    material: '原木'
-  },
-  {
-    id: 'F02',
-    name: '黑色小羊',
-    coverFileId: LOCAL_COVERS[1],
-    sizeFirst: 20,
-    sizeSecond: 25,
-    sizeUnit: 'cm',
-    material: '金属'
-  },
-  {
-    id: 'F03',
-    name: '简约婚纱',
-    coverFileId: LOCAL_COVERS[2],
-    sizeFirst: 20,
-    sizeSecond: 30,
-    sizeUnit: 'cm',
-    material: '亚克力'
-  }
-]
 
 function parseFrameCode(id) {
   const m = String(id || '').match(/^F(\d{1,2})$/i)
@@ -147,9 +111,5 @@ function sortFrames(list) {
 
 module.exports = {
   FRAME_ORDER_COST,
-  DEFAULT_FRAMES: DEFAULT_FRAMES.map(normalizeFrame),
-  normalizeFrame,
-  sortFrames,
-  attachCoverDisplayUrls,
   fetchFrameTemplates
 }
