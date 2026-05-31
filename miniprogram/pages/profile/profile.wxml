@@ -1,5 +1,6 @@
 <!--packageProfile/pages/profile/profile.wxml-->
-<view class="profile-container">
+<page-meta page-style="{{priceModalPageStyle}}" />
+<view class="profile-container {{showPriceModal ? 'profile-container--locked' : ''}}">
   <scroll-view
     class="scroll-area"
     scroll-y="{{!showPriceModal}}"

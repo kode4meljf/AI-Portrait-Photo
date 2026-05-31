@@ -4,6 +4,8 @@
  * - 关联表 / 会话：字段 storeId = 指向 stores._id 的外键
  */
 
+const { isSessionDirty, clearSessionDirty } = require('./sessionDirty')
+
 function isValidStoreId(storeId) {
   return typeof storeId === 'string' && /^store_[a-z0-9]{8,32}$/i.test(storeId)
 }
@@ -77,6 +79,33 @@ async function applySessionToApp(app) {
   return data
 }
 
+function getCachedMembership(app) {
+  if (!app || !app.globalData.membership) return null
+  const kind = app.globalData.accountKind
+  if (kind === 'store' && isValidStoreId(app.globalData.storeId)) {
+    return app.globalData.membership
+  }
+  if (kind === 'customer') {
+    return app.globalData.membership
+  }
+  return null
+}
+
+/** launch 已 resolve 且 session 未脏时跳过重复 account.resolve */
+async function resolveSessionIfNeeded(app, options = {}) {
+  const force = !!(options && options.force)
+  if (!force && !isSessionDirty(app)) {
+    const cached = getCachedMembership(app)
+    if (cached) return cached
+  }
+  if (!app.globalData.openId) {
+    await app.ensureLogin()
+  }
+  const account = await applySessionToApp(app)
+  clearSessionDirty(app)
+  return account
+}
+
 function callStoreMember(action, data = {}) {
   return wx.cloud
     .callFunction({ name: 'storeMember', data: { action, ...data } })
@@ -98,6 +127,8 @@ module.exports = {
   isValidStoreId,
   resolveAccount,
   applySessionToApp,
+  resolveSessionIfNeeded,
+  getCachedMembership,
   callStoreMember,
   updateStoreProfile,
   callCustomer

@@ -76,12 +76,13 @@ Page({
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
         this._relaunching = true;
-        const { applySessionToApp } = require('../../utils/storeSession');
         const { reLaunchLaunch } = require('../../utils/sessionDirty');
-        applySessionToApp(app)
+        const { resolveSessionIfNeeded } = require('../../utils/storeSession');
+        resolveSessionIfNeeded(app, { force: true })
           .then((account) => {
             if (account.canUseStore && isValidStoreId(account.storeId)) {
               this._relaunching = false;
+              this._onShowStore();
               return;
             }
             reLaunchLaunch({

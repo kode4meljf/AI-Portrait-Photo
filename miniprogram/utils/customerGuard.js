@@ -1,4 +1,4 @@
-const { applySessionToApp } = require('./storeSession')
+const { resolveSessionIfNeeded } = require('./storeSession')
 const { reLaunchLaunch } = require('./sessionDirty')
 const { isDevCustomerPreview } = require('./devCustomerPreview')
 
@@ -14,10 +14,7 @@ function hideWechatHomeButton() {
 async function ensureCustomerPage(pageInstance) {
   hideWechatHomeButton()
   const app = getApp()
-  if (!app.globalData.openId) {
-    await app.ensureLogin()
-  }
-  const account = await applySessionToApp(app)
+  const account = await resolveSessionIfNeeded(app)
   const devPreview = isDevCustomerPreview()
   if (account.accountKind === 'store' && account.canUseStore) {
     if (devPreview) return true

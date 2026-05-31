@@ -8,7 +8,7 @@ const { isValidStoreId } = require('../../utils/storeSession');
 const { getProfileCollection } = require('../../utils/account');
 const { safeNavigateTo } = require('../../utils/navigation');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
-const { syncStoreTabBar } = require('../../utils/storeTabBar');
+const { syncStoreTabBar, setStoreTabBarHidden } = require('../../utils/storeTabBar');
 const { STORE_BASE } = require('../../utils/helpCenter');
 const { isStoreOwner } = require('../../utils/storeRole');
 const { getPointsPriceList, formatBalanceDisplay, formatBalanceText, PORTRAIT_POINTS_9, FRAME_POINTS } = require('../../utils/storePoints');
@@ -62,6 +62,7 @@ Page({
     refreshing: false,
     isOwner: false,
     showPriceModal: false,
+    priceModalPageStyle: '',
     priceList: [],
     balanceDisplay: { text: '0', size: 'lg', full: '0', compact: false },
     useGrid: { shoot9: 0, frames: 0, shoot9Text: '0', frameText: '0' }
@@ -83,6 +84,9 @@ Page({
 
   _onShowStoreProfile() {
     syncStoreTabBar(this);
+    if (!this.data.showPriceModal) {
+      setStoreTabBarHidden(this, false);
+    }
     this.setData({ isOwner: isStoreOwner(app) });
     if (!isValidStoreId(app.globalData.storeId)) {
       if (!this._relaunching) {
@@ -182,6 +186,19 @@ Page({
     }
   },
 
+  onHide() {
+    if (this.data.showPriceModal) {
+      setStoreTabBarHidden(this, false);
+      this.setData({ showPriceModal: false, priceModalPageStyle: '' });
+    }
+  },
+
+  onUnload() {
+    if (this.data.showPriceModal) {
+      setStoreTabBarHidden(this, false);
+    }
+  },
+
   onViewAllOrders() {
     wx.switchTab({ url: '/pages/order-list/order-list' });
   },
@@ -245,7 +262,11 @@ Page({
   },
 
   onOpenPriceList() {
-    this.setData({ showPriceModal: true });
+    setStoreTabBarHidden(this, true);
+    this.setData({
+      showPriceModal: true,
+      priceModalPageStyle: 'overflow:hidden;height:100vh;'
+    });
   },
 
   onBalanceTap() {
@@ -256,7 +277,11 @@ Page({
   },
 
   onClosePriceList() {
-    this.setData({ showPriceModal: false });
+    setStoreTabBarHidden(this, false);
+    this.setData({
+      showPriceModal: false,
+      priceModalPageStyle: ''
+    });
   },
 
   onPriceModalTap() {},

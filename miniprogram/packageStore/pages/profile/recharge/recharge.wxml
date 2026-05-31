@@ -18,7 +18,7 @@
     <view
       wx:for="{{casualPackages}}"
       wx:key="id"
-      class="pkg {{item.featured ? 'featured' : ''}} {{selectedPackage.id === item.id ? 'on' : ''}}"
+      class="pkg {{selectedPackage.id === item.id ? 'on' : ''}}"
       bindtap="selectPackage"
       data-id="{{item.id}}"
     >
@@ -29,7 +29,7 @@
         </view>
         <view class="pkg-right">
           <text class="pkg-pts">{{item.pointsText}}<text class="pkg-pts-unit"> 积分</text></text>
-          <text wx:if="{{item.bonusText}}" class="pkg-bonus">含赠送 {{item.bonusText}}</text>
+          <text wx:if="{{item.bonusText}}" class="pkg-bonus">赠送 {{item.bonusText}}</text>
         </view>
       </view>
       <text wx:if="{{item.eqHint}}" class="pkg-eq">{{item.eqHint}}</text>
@@ -44,7 +44,7 @@
     <view
       wx:for="{{annualPackages}}"
       wx:key="id"
-      class="pkg {{item.featured ? 'featured' : ''}} {{selectedPackage.id === item.id ? 'on' : ''}}"
+      class="pkg {{selectedPackage.id === item.id ? 'on' : ''}}"
       bindtap="selectPackage"
       data-id="{{item.id}}"
     >
@@ -57,7 +57,7 @@
         </view>
         <view class="pkg-right">
           <text class="pkg-pts">{{item.pointsText}}<text class="pkg-pts-unit"> 积分</text></text>
-          <text wx:if="{{item.bonusText}}" class="pkg-bonus">含赠送 {{item.bonusText}}</text>
+          <text wx:if="{{item.bonusText}}" class="pkg-bonus">赠送 {{item.bonusText}}</text>
         </view>
       </view>
       <text wx:if="{{item.eqHint}}" class="pkg-eq">{{item.eqHint}}</text>
@@ -74,7 +74,8 @@
         <text class="footer-label">应付 </text>
         <text class="footer-price">¥{{selectedPrice}}</text>
       </view>
-      <text wx:if="{{selectedPackage}}" class="footer-sub">到账 {{selectedPointsText}} 积分{{selectedBonusText}}</text>
+      <text wx:if="{{selectedPackage}}" class="footer-sub">到账 {{selectedTotalText}} 积分</text>
+      <text wx:if="{{selectedBonusLine}}" class="footer-sub-bonus">{{selectedBonusLine}}</text>
     </view>
     <button
       class="footer-btn"

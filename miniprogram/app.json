@@ -13,10 +13,6 @@
     "pages/profile/profile": {
       "network": "all",
       "packages": ["store"]
-    },
-    "pages/index/index": {
-      "network": "all",
-      "packages": ["store", "customer"]
     }
   },
   "subPackages": [

@@ -10,8 +10,7 @@ const PACKAGE_UI = {
     name: '优享包',
     slogan: '客流稳定，性价比之选',
     group: 'casual',
-    bonusPoints: 80,
-    featured: true
+    bonusPoints: 80
   },
   5: {
     name: '至尊套餐',
@@ -19,8 +18,7 @@ const PACKAGE_UI = {
     group: 'annual',
     badge: 'hot',
     bonusPoints: 2000,
-    icon: '👑',
-    featured: true
+    icon: '👑'
   },
   6: {
     name: '荣耀套餐',
@@ -85,6 +83,7 @@ function enrichPackage(raw) {
     raw.bonusPoints != null && raw.bonusPoints !== ''
       ? Number(raw.bonusPoints) || 0
       : (ui.bonusPoints || 0);
+  const basePoints = Math.max(0, points - bonusPoints);
   const group = raw.group || ui.group || 'casual';
   const eqHint = portrait9Hint(points);
   let subHint = eqHint;
@@ -103,8 +102,8 @@ function enrichPackage(raw) {
     group,
     badge: raw.badge || ui.badge || '',
     icon: ui.icon || '',
-    featured: ui.featured === true,
-    pointsText: formatPointsNum(points),
+    pointsText: formatPointsNum(basePoints),
+    totalPointsText: formatPointsNum(points),
     bonusText: bonusPoints > 0 ? formatPointsNum(bonusPoints) : '',
     eqHint: subHint
   };

@@ -1,17 +1,15 @@
-const { applySessionToApp } = require('./storeSession')
+const { resolveSessionIfNeeded } = require('./storeSession')
+const { isSessionDirty } = require('./sessionDirty')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 
 async function redirectCustomerIfNeeded() {
   const app = getApp()
-  if (app.globalData.accountKind === 'customer') {
+  if (!isSessionDirty(app) && app.globalData.accountKind === 'customer') {
     wx.reLaunch({ url: CUSTOMER_HOME })
     return true
   }
-  if (!app.globalData.openId) {
-    await app.ensureLogin()
-  }
-  const account = await applySessionToApp(app)
+  const account = await resolveSessionIfNeeded(app)
   if (account.accountKind === 'customer') {
     wx.reLaunch({ url: CUSTOMER_HOME })
     return true

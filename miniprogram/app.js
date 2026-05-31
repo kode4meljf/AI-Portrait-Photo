@@ -1,6 +1,6 @@
 // app.js
 const { CLOUD_ENV_ID } = require('./config/cloudEnv');
-const { applySessionToApp, isValidStoreId } = require('./utils/storeSession');
+const { applySessionToApp, isValidStoreId, resolveSessionIfNeeded } = require('./utils/storeSession');
 
 App({
   globalData: {
@@ -78,7 +78,7 @@ App({
 
   async refreshStoreSession() {
     await this.ensureLogin();
-    return applySessionToApp(this);
+    return resolveSessionIfNeeded(this, { force: true });
   },
 
   requireStoreId() {

@@ -8,7 +8,7 @@ const { callOrderApi } = require('../../utils/orderApi');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
-const { isValidStoreId, applySessionToApp } = require('../../utils/storeSession');
+const { isValidStoreId, resolveSessionIfNeeded } = require('../../utils/storeSession');
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
 const { parseCloudDate } = require('../../utils/cloudDate');
@@ -81,8 +81,7 @@ Page({
   },
 
   async ensureStoreReady() {
-    await app.ensureLogin();
-    await applySessionToApp(app);
+    await resolveSessionIfNeeded(app);
     if (!isValidStoreId(app.globalData.storeId)) {
       const { reLaunchLaunch } = require('../../utils/sessionDirty');
       reLaunchLaunch();

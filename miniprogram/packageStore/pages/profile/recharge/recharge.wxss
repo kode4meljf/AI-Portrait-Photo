@@ -123,20 +123,10 @@
   position: relative;
 }
 
-.pkg.featured {
-  border-color: rgba(201, 146, 42, 0.72);
-  box-shadow: 0 4rpx 16rpx rgba(201, 146, 42, 0.06);
-}
-
 .pkg.on {
   border-color: #c9922a;
   background: #fffbf5;
   box-shadow: 0 4rpx 16rpx rgba(201, 146, 42, 0.12);
-}
-
-.pkg.featured.on {
-  border-color: #c9922a;
-  background: #fffbf5;
 }
 
 .pkg-badge {
@@ -278,6 +268,14 @@
   font-size: 20rpx;
   color: #9ca3af;
   margin-top: 6rpx;
+  line-height: 1.35;
+}
+
+.footer-sub-bonus {
+  display: block;
+  font-size: 20rpx;
+  color: #b8860b;
+  margin-top: 2rpx;
   line-height: 1.35;
 }
 

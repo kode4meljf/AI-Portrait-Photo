@@ -22,8 +22,8 @@ Page({
     annualPackages: [],
     selectedPackage: null,
     selectedPrice: 0,
-    selectedPointsText: '0',
-    selectedBonusText: '',
+    selectedTotalText: '0',
+    selectedBonusLine: '',
     submitting: false,
     payConfigured: false,
     balance: 0,
@@ -44,18 +44,16 @@ Page({
       this.setData({
         selectedPackage: null,
         selectedPrice: 0,
-        selectedPointsText: '0',
-        selectedBonusText: ''
+        selectedTotalText: '0',
+        selectedBonusLine: ''
       });
       return;
     }
-    const bonusText =
-      pkg.bonusPoints > 0 ? `（含赠送 ${formatPointsNum(pkg.bonusPoints)}）` : '';
     this.setData({
       selectedPackage: pkg,
       selectedPrice: pkg.price,
-      selectedPointsText: pkg.pointsText || formatPointsNum(pkg.points),
-      selectedBonusText: bonusText
+      selectedTotalText: pkg.totalPointsText || formatPointsNum(pkg.points),
+      selectedBonusLine: pkg.bonusText ? `赠送 ${pkg.bonusText}` : ''
     });
   },
 
