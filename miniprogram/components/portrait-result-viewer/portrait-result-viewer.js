@@ -1,8 +1,6 @@
 const SWIPE_HINT_KEY = 'ai_portrait_swipe_hint_shown';
 const { downloadCountText } = require('../../utils/portraitViewer/normalizeItems.js');
-const { downloadAllItems, saveOneToAlbum } = require('../../utils/portraitViewer/downloadPhotos.js');
-
-const PREVIEW_ANIM_MS = 360;
+const { downloadAllItems } = require('../../utils/portraitViewer/downloadPhotos.js');
 
 Component({
   properties: {
@@ -44,13 +42,6 @@ Component({
     swiperHeight: 420,
     showOriginFloat: false,
     showSwipeToast: false,
-    previewVisible: false,
-    previewOpen: false,
-    previewSettled: false,
-    previewAnimating: false,
-    previewIndex: 0,
-    previewShellStyle: '',
-    previewFallback: false,
     currentItemFailed: false,
     downloadCountText: '',
     thumbScrollIntoView: ''
@@ -75,7 +66,6 @@ Component({
   lifetimes: {
     detached() {
       if (this._toastTimer) clearTimeout(this._toastTimer);
-      if (this._previewTimer) clearTimeout(this._previewTimer);
     }
   },
 
@@ -112,8 +102,24 @@ Component({
     },
 
     onNavBack() {
-      if (this.data.previewVisible) return;
       this.triggerEvent('navback');
+    },
+
+    isPreviewableItem(item) {
+      return (
+        item &&
+        item.url &&
+        item.status !== 'failed' &&
+        item.status !== 'retrying' &&
+        item.status !== 'generating'
+      );
+    },
+
+    collectPreviewUrls() {
+      return (this.properties.results || [])
+        .filter((item) => this.isPreviewableItem(item))
+        .map((item) => String(item.url).trim())
+        .filter(Boolean);
     },
 
     onSwiperChange(e) {
@@ -157,208 +163,22 @@ Component({
       wx.previewImage({ urls: [url], current: url });
     },
 
-    preventMove() {},
-
-    stopActionBubble() {},
-
     onPreviewImage(e) {
       const index = Number(e.currentTarget.dataset.index ?? this.properties.currentIndex);
-      const item = this.properties.results[index];
-      if (!item || item.status === 'failed' || item.status === 'retrying' || item.status === 'generating') {
-        return;
-      }
+      const item = (this.properties.results || [])[index];
+      if (!this.isPreviewableItem(item)) return;
 
-      const selector = `#hero-img-${index}`;
-      wx.createSelectorQuery()
-        .in(this)
-        .select(selector)
-        .boundingClientRect((rect) => {
-          if (!rect || !rect.width) {
-            this.openPreviewFallback(index);
-            return;
-          }
-          this.openPreviewWithRect(index, rect);
-        })
-        .exec();
-    },
-
-    computePreviewTarget(rect, index) {
-      const sys = wx.getWindowInfo();
-      const ww = sys.windowWidth;
-      const wh = sys.windowHeight;
-      const bottomReserve = 140;
-      const maxW = ww * 0.96;
-      const maxH = wh - bottomReserve;
-
-      let aspect = rect.width / rect.height;
-      const item = this.properties.results[index];
-      if (item && item.aspectRatio) {
-        aspect = item.aspectRatio;
-      } else if (!aspect || !Number.isFinite(aspect)) {
-        aspect = 3 / 4;
-      }
-
-      let w = maxW;
-      let h = w / aspect;
-      if (h > maxH) {
-        h = maxH;
-        w = h * aspect;
-      }
-
-      const left = (ww - w) / 2;
-      const top = Math.max(0, (wh - h - bottomReserve) / 2);
-      return { left, top, width: w, height: h };
-    },
-
-    buildShellStyle(target, tx, ty, scale) {
-      return [
-        `left:${target.left}px`,
-        `top:${target.top}px`,
-        `width:${target.width}px`,
-        `height:${target.height}px`,
-        `transform:translate(${tx}px,${ty}px) scale(${scale})`
-      ].join(';');
-    },
-
-    clearPreviewTimer() {
-      if (this._previewTimer) {
-        clearTimeout(this._previewTimer);
-        this._previewTimer = null;
-      }
-    },
-
-    openPreviewWithRect(index, rect) {
-      const target = this.computePreviewTarget(rect, index);
-      const cx0 = rect.left + rect.width / 2;
-      const cy0 = rect.top + rect.height / 2;
-      const cx1 = target.left + target.width / 2;
-      const cy1 = target.top + target.height / 2;
-      const scale = Math.min(rect.width / target.width, rect.height / target.height);
-      const tx = cx0 - cx1;
-      const ty = cy0 - cy1;
-
-      this.clearPreviewTimer();
-      this.setData({
-        previewVisible: true,
-        previewOpen: false,
-        previewSettled: false,
-        previewAnimating: false,
-        previewFallback: false,
-        previewIndex: index,
-        previewShellStyle: this.buildShellStyle(target, tx, ty, scale)
-      });
-      this.triggerEvent('previewchange', { visible: true });
-
-      wx.nextTick(() => {
-        this.setData({
-          previewAnimating: true,
-          previewOpen: true,
-          previewShellStyle: this.buildShellStyle(target, 0, 0, 1)
-        });
-        this._previewTimer = setTimeout(() => {
-          this.setData({ previewSettled: true, previewAnimating: false });
-        }, PREVIEW_ANIM_MS);
-      });
-    },
-
-    openPreviewFallback(index) {
-      this.clearPreviewTimer();
-      this.setData({
-        previewVisible: true,
-        previewOpen: true,
-        previewSettled: true,
-        previewAnimating: false,
-        previewFallback: true,
-        previewIndex: index,
-        previewShellStyle: ''
-      });
-      this.triggerEvent('previewchange', { visible: true });
-    },
-
-    onPreviewSwiperChange(e) {
-      const index = Number(e.detail.current || 0);
-      if (!this.properties.results[index]) return;
-      this.setData({ previewIndex: index });
-      this.notifyIndexChange(index);
-    },
-
-    onClosePreview() {
-      if (!this.data.previewVisible || this._closingPreview) return;
-
-      if (this.data.previewFallback || !this.data.previewOpen) {
-        this.resetPreview();
-        return;
-      }
-
-      const index = this.data.previewIndex;
-      wx.createSelectorQuery()
-        .in(this)
-        .select(`#hero-img-${index}`)
-        .boundingClientRect((rect) => {
-          if (!rect || !rect.width) {
-            this.resetPreview();
-            return;
-          }
-          this.closePreviewWithRect(index, rect);
-        })
-        .exec();
-    },
-
-    closePreviewWithRect(index, rect) {
-      const target = this.computePreviewTarget(rect, index);
-      const cx0 = rect.left + rect.width / 2;
-      const cy0 = rect.top + rect.height / 2;
-      const cx1 = target.left + target.width / 2;
-      const cy1 = target.top + target.height / 2;
-      const scale = Math.min(rect.width / target.width, rect.height / target.height);
-      const tx = cx0 - cx1;
-      const ty = cy0 - cy1;
-
-      this._closingPreview = true;
-      this.clearPreviewTimer();
-      this.setData({
-        previewSettled: false,
-        previewOpen: false,
-        previewAnimating: true,
-        previewShellStyle: this.buildShellStyle(target, 0, 0, 1)
-      });
-
-      wx.nextTick(() => {
-        this.setData({
-          previewShellStyle: this.buildShellStyle(target, tx, ty, scale)
-        });
-      });
-
-      this._previewTimer = setTimeout(() => {
-        this._closingPreview = false;
-        this.resetPreview();
-      }, PREVIEW_ANIM_MS);
-    },
-
-    resetPreview() {
-      this.clearPreviewTimer();
-      this.setData({
-        previewVisible: false,
-        previewOpen: false,
-        previewSettled: false,
-        previewAnimating: false,
-        previewFallback: false,
-        previewShellStyle: ''
-      });
-      this.triggerEvent('previewchange', { visible: false });
-    },
-
-    onDownloadPreview() {
-      const item = this.properties.results[this.data.previewIndex];
-      if (!item || !item.url) {
+      const current = String(item.url).trim();
+      const urls = this.collectPreviewUrls();
+      if (!urls.length) {
         wx.showToast({ title: '暂无图片', icon: 'none' });
         return;
       }
-      wx.showLoading({ title: '保存中' });
-      saveOneToAlbum(item.url)
-        .then(() => wx.showToast({ title: '已保存到相册', icon: 'success' }))
-        .catch(() => wx.showToast({ title: '保存失败', icon: 'none' }))
-        .finally(() => wx.hideLoading());
+
+      wx.previewImage({
+        urls,
+        current: urls.includes(current) ? current : urls[0]
+      });
     },
 
     onDownloadAll() {

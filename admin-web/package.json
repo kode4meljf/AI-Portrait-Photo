@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:hosting": "npm run build && npx tcb hosting deploy dist -e ai-ymcx-d0gcwabfjd375ffae"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -18,6 +19,7 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@cloudbase/cli": "^2.6.16",
     "@vitejs/plugin-vue": "^5.2.3",
     "vite": "^6.2.3"
   }

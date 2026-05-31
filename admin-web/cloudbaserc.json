@@ -1,0 +1,13 @@
+{
+  "envId": "ai-ymcx-d0gcwabfjd375ffae",
+  "hosting": {
+    "public": "dist",
+    "ignore": ["node_modules/**", ".git/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

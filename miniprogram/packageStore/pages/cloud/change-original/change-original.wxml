@@ -18,7 +18,7 @@
     <view class="section-title">照片样例</view>
 
     <view class="samples">
-      <view wx:for="{{sampleList}}" wx:key="url" class="sample">
+      <view wx:for="{{sampleList}}" wx:key="id" class="sample">
         <view class="sample-img-wrap">
           <image class="sample-img" src="{{item.url}}" mode="aspectFill"></image>
           <view class="badge {{item.good ? 'ok' : 'bad'}}">{{item.good ? '✓' : '×'}}</view>

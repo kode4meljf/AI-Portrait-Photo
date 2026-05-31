@@ -6,6 +6,8 @@
   "scripts": {
     "dev:admin": "npm run dev --prefix admin-web",
     "build:admin": "npm run build --prefix admin-web",
+    "preview:admin": "npm run preview --prefix admin-web",
+    "deploy:admin": "npm run deploy:hosting --prefix admin-web",
     "seed:styles": "node scripts/seed-styles.js",
     "process:style-samples": "node scripts/process-style-sample-images.js",
     "print:style-sample-prompts": "node scripts/print-style-sample-prompts.js",

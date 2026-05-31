@@ -1,5 +1,5 @@
 <view class="page-shell">
-  <view wx:if="{{!previewVisible}}" class="result-nav" style="padding-top: {{statusBarHeight}}px;">
+  <view class="result-nav" style="padding-top: {{statusBarHeight}}px;">
     <view class="result-nav-inner">
       <view class="nav-back" bindtap="onNavBack" hover-class="nav-back--active" hover-stay-time="80">
         <view class="nav-back-chevron"></view>
@@ -115,6 +115,7 @@
             <view class="hero-tip-row">
               <text class="hero-tip">* 默认以当前展示写真制作实物摆台</text>
               <view
+                wx:if="{{!currentItemFailed}}"
                 class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"
                 hover-class="origin-toggle--press"
                 hover-stay-time="80"
@@ -173,50 +174,5 @@
         </view>
       </view>
     </block>
-
-    <view wx:if="{{previewVisible}}" class="preview-layer" catchtouchmove="preventMove">
-      <view class="preview-dim {{previewOpen ? 'is-open' : ''}}" bindtap="onClosePreview"></view>
-
-      <view
-        class="preview-shell {{previewAnimating ? 'is-animating' : ''}} {{previewFallback ? 'is-fallback' : ''}}"
-        style="{{previewShellStyle}}"
-      >
-        <swiper
-          class="preview-swiper"
-          current="{{previewIndex}}"
-          bindchange="onPreviewSwiperChange"
-          duration="280"
-          circular="{{false}}"
-        >
-          <swiper-item wx:for="{{results}}" wx:key="photoId">
-            <view class="preview-slide" bindtap="onClosePreview">
-              <image class="preview-slide-img" src="{{item.url}}" mode="aspectFit"></image>
-            </view>
-          </swiper-item>
-        </swiper>
-      </view>
-
-      <view class="preview-chrome {{previewSettled ? 'is-visible' : ''}}">
-        <view wx:if="{{results.length > 1}}" class="preview-progress-track">
-          <view
-            wx:for="{{results}}"
-            wx:key="photoId"
-            class="preview-segment {{index === previewIndex ? 'active' : ''}}"
-          ></view>
-        </view>
-
-        <view class="preview-actions" catchtap="stopActionBubble">
-          <view class="preview-action-btn" catchtap="onClosePreview">
-            <view class="preview-icon-close"></view>
-          </view>
-          <view class="preview-action-btn" catchtap="onDownloadPreview">
-            <view class="preview-icon-down">
-              <view class="preview-icon-down-stem"></view>
-              <view class="preview-icon-down-head"></view>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
   </view>
 </view>

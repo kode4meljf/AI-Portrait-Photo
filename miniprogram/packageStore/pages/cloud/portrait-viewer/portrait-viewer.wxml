@@ -1,4 +1,4 @@
-<page-meta page-style="{{previewPageStyle}}" />
+<page-meta page-style="overflow:hidden;height:100vh;" />
 <portrait-result-viewer
   id="viewer"
   phase="{{phase}}"
@@ -16,7 +16,6 @@
   bind:makealbum="onMakeAlbum"
   bind:makeframe="onMakeFrame"
   bind:patchresults="onPatchResults"
-  bind:previewchange="onPreviewChange"
 />
 
 <portrait-retry-dialog

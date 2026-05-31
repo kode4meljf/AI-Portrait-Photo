@@ -15,7 +15,8 @@ const JIMENG_REGION = 'cn-north-1';
 const JIMENG_VERSION = '2022-08-31';
 
 const POLL_INTERVAL_MS = 3000;
-const DEFAULT_POLL_BUDGET_MS = 45000;
+/** 单次 Worker poll 预算，与 processTasksWorker POLL_BUDGET_MS 对齐 */
+const DEFAULT_POLL_BUDGET_MS = 10000;
 
 function hmacSha256(key, msg) {
   return crypto.createHmac('sha256', key).update(msg, 'utf8').digest();

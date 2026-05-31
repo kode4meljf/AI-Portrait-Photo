@@ -1,25 +1,4 @@
-const SAMPLE_LIST = [
-  {
-    url: 'https://picsum.photos/seed/change-sample-ok1/300/300',
-    good: true,
-    caption: '微笑、清晰'
-  },
-  {
-    url: 'https://picsum.photos/seed/change-sample-bad/300/300',
-    good: false,
-    caption: '不正视'
-  },
-  {
-    url: 'https://picsum.photos/seed/change-sample-ok2/300/300',
-    good: true,
-    caption: '微笑、清晰'
-  },
-  {
-    url: 'https://picsum.photos/seed/change-sample-ok3/300/300',
-    good: true,
-    caption: '微笑、清晰'
-  }
-];
+const { PHOTO_SAMPLE_LIST } = require('../../../../config/photoSamples.js');
 
 Page({
   data: {
@@ -27,7 +6,7 @@ Page({
     pendingPath: '',
     displayUrl: '',
     count: 3,
-    sampleList: SAMPLE_LIST
+    sampleList: PHOTO_SAMPLE_LIST
   },
 
   onLoad(options) {

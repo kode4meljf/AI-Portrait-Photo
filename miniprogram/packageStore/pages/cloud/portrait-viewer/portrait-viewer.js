@@ -36,7 +36,6 @@ Page({
     loadingProgressText: '',
     statusBarHeight: 20,
     navTitle: '生成中',
-    previewPageStyle: 'overflow:hidden;height:100vh;',
     retryDialogVisible: false,
     retryTargetIndex: -1,
     retryStyleName: '',
@@ -219,15 +218,6 @@ Page({
       return;
     }
     wx.switchTab({ url: '/pages/gallery/gallery' });
-  },
-
-  onPreviewChange(e) {
-    const visible = !!(e.detail && e.detail.visible);
-    this.setData({
-      previewPageStyle: visible
-        ? 'background-color:#000000;overflow:hidden;'
-        : 'overflow:hidden;height:100vh;'
-    });
   },
 
   onViewerIndexChange(e) {

@@ -29,6 +29,26 @@ cd admin-web && npm install && npm run dev
 
 默认开发配置见 `admin-web/.env.development`（Mock 模式可用 `admin` / `admin123`）。
 
+### 管理后台 · 静态托管上线
+
+仓库已备好：
+
+- `admin-web/.env.production` — 生产 API 地址（build 时打入前端）
+- `admin-web/cloudbaserc.json` — 云开发环境 ID 与 SPA 路由回退
+- `npm run build:admin` — 仅构建
+- `npm run deploy:admin` — 构建并上传到静态网站托管（需先 `tcb login`）
+
+控制台开通静态托管、首次上传等步骤见下方「静态托管上线清单」。
+
+#### 静态托管上线清单（需人工）
+
+1. [微信云开发控制台](https://console.cloud.tencent.com/tcb) → 环境 `ai-ymcx-d0gcwabfjd375ffae` → **静态网站托管** → **开通**
+2. 云函数 **adminApi** → **HTTP 访问服务** 已开启，URL 与 `.env.production` 中一致
+3. 本机：`cd admin-web && npm install` → `npx tcb login` → 仓库根目录 `npm run deploy:admin`（无需全局安装 CLI）
+4. 控制台 **静态网站托管 → 基础配置**：索引文档 `index.html`，错误文档 `index.html`（与 cloudbaserc rewrites 二选一即可）
+5. 浏览器打开托管默认域名，用 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录验证
+6. （可选）域名管理 → 绑定自有域名
+
 ### 云函数
 
 进入各云函数目录执行 `npm install` 后，在微信开发者工具中部署。
