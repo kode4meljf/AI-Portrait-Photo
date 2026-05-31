@@ -3,21 +3,29 @@ const { submitJimengTask, pollJimengTask } = require('./lib/jimeng');
 const { deleteReplacedCloudFile } = require('./lib/cloudFile');
 const { chargeStoreForPortrait } = require('./lib/balance');
 const { toUserFacingError, TIMEOUT_FAIL } = require('./lib/userFacingError');
+const { isJimengRateLimitError } = require('./lib/jimengRateLimit');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const STYLE_TEMPLATES_COLLECTION = 'style_templates';
 const STALE_TASK_MS = 30 * 60 * 1000;
+const MAX_SUBMIT_ATTEMPTS = 4;
+const STUCK_PROCESSING_GRACE_MS = 8000;
 
-/** 单次云函数预算（与 jimengPortraitWorker timeout 60s 对齐，留 ~5s 缓冲） */
-const WORKER_BUDGET_MS = 55000;
+/** 单次云函数预算（与 jimengPortraitWorker timeout 120s 对齐，留 ~5s 缓冲） */
+const WORKER_BUDGET_MS = 115000;
 const SUBMIT_MIN_REMAINING_MS = 3500;
 const POLL_BUDGET_MS = 14000;
 
 async function getImageUrl(photoFileID) {
   if (photoFileID && String(photoFileID).startsWith('cloud')) {
     const res = await cloud.getTempFileURL({ fileList: [photoFileID] });
-    return res.fileList[0].tempFileURL;
+    const item = res.fileList && res.fileList[0];
+    if (!item || item.status !== 0 || !item.tempFileURL) {
+      const detail = (item && item.errMsg) || 'unknown';
+      throw new Error(`原图临时链接获取失败: ${detail}`);
+    }
+    return item.tempFileURL;
   }
   return photoFileID;
 }
@@ -65,6 +73,109 @@ async function markTaskFailed(task, errMsg, technicalMsg) {
     .catch((e) => console.warn('[jimengPortraitWorker] 更新照片失败状态失败', e.message || e));
 }
 
+function taskTimestamp(task) {
+  const raw = task.updateTime || task.createTime;
+  if (!raw) return 0;
+  const ts = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function pickByBatchFirst(list, priorityBatchId) {
+  const batchId = String(priorityBatchId || '').trim();
+  if (!batchId || !list.length) return list[0] || null;
+  return list.find((t) => String(t.batchId || '') === batchId) || list[0] || null;
+}
+
+function isTransientError(err) {
+  if (!err) return false;
+  if (isJimengRateLimitError(err)) return true;
+  const msg = String(err.message || '');
+  if (/timeout|ECONNRESET|ETIMEDOUT|socket hang up|network|502|503|504/i.test(msg)) {
+    return true;
+  }
+  const status = err.response && err.response.status;
+  return status === 429 || (status >= 500 && status < 600);
+}
+
+async function claimTaskForSubmit(task) {
+  const jimengTaskId = (task.jimengTaskId || '').trim();
+  if (jimengTaskId) return false;
+
+  if (task.status === 'pending') {
+    const res = await db
+      .collection('ai_tasks')
+      .where({ _id: task._id, status: 'pending' })
+      .update({
+        data: { status: 'processing', updateTime: new Date() }
+      });
+    return !!(res.stats && res.stats.updated);
+  }
+
+  if (task.status === 'processing') {
+    const age = Date.now() - taskTimestamp(task);
+    return age >= STUCK_PROCESSING_GRACE_MS;
+  }
+
+  return false;
+}
+
+async function requeueTaskAfterTransientFailure(task, err) {
+  const attempts = Number(task.submitAttempts || 0) + 1;
+  if (attempts >= MAX_SUBMIT_ATTEMPTS) {
+    await markTaskFailed(task, err.message, err.message);
+    return { processed: 0, error: toUserFacingError(err) };
+  }
+
+  console.warn(
+    `[jimengPortraitWorker] 临时失败，回队重试 ${attempts}/${MAX_SUBMIT_ATTEMPTS}`,
+    task._id,
+    err.message
+  );
+
+  await db.collection('ai_tasks').doc(task._id).update({
+    data: {
+      status: 'pending',
+      jimengTaskId: null,
+      submitAttempts: attempts,
+      lastError: String(err.message || ''),
+      updateTime: new Date()
+    }
+  });
+  await db
+    .collection('photos')
+    .doc(task.photoId)
+    .update({
+      data: { generateStatus: 'pending', errorMsg: null, updateTime: new Date() }
+    })
+    .catch(() => {});
+
+  return { processed: 0, retried: true, taskId: task._id };
+}
+
+async function handleStepFailure(task, err) {
+  console.error('[jimengPortraitWorker] 步骤失败', task._id, err.message);
+  if (err.response) {
+    try {
+      console.error(
+        '[jimengPortraitWorker] 响应:',
+        JSON.stringify(err.response.data).substring(0, 1000)
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  const freshRes = await db.collection('ai_tasks').doc(task._id).get().catch(() => null);
+  const freshTask = (freshRes && freshRes.data) || task;
+
+  if (isTransientError(err)) {
+    return requeueTaskAfterTransientFailure(freshTask, err);
+  }
+
+  await markTaskFailed(freshTask, err.message, err.message);
+  return { processed: 0, error: toUserFacingError(err) };
+}
+
 function isTaskStale(task) {
   const raw = task.createTime || task.updateTime;
   if (!raw) return false;
@@ -100,23 +211,27 @@ async function completeTask(task, resultBuffer, previousAiUrl) {
 }
 
 async function pickTaskForSubmit(priorityBatchId) {
-  const res = await db
+  const pendingRes = await db
     .collection('ai_tasks')
     .where({ status: 'pending', engine: 'jimeng' })
     .orderBy('createTime', 'asc')
     .limit(30)
     .get();
-  const list = res.data || [];
-  if (!list.length) return null;
-  const batchId = String(priorityBatchId || '').trim();
-  if (batchId) {
-    const hit = list.find((t) => String(t.batchId || '') === batchId);
-    if (hit) return hit;
-  }
-  return list[0];
+  const pending = pendingRes.data || [];
+  const pendingHit = pickByBatchFirst(pending, priorityBatchId);
+  if (pendingHit) return pendingHit;
+
+  const procRes = await db
+    .collection('ai_tasks')
+    .where({ status: 'processing', engine: 'jimeng' })
+    .orderBy('updateTime', 'asc')
+    .limit(20)
+    .get();
+  const stuck = (procRes.data || []).filter((t) => !(t.jimengTaskId || '').trim());
+  return pickByBatchFirst(stuck, priorityBatchId);
 }
 
-async function pickTaskForPoll() {
+async function pickTaskForPoll(priorityBatchId) {
   const res = await db
     .collection('ai_tasks')
     .where({ status: 'processing', engine: 'jimeng' })
@@ -124,7 +239,7 @@ async function pickTaskForPoll() {
     .limit(15)
     .get();
   const list = (res.data || []).filter((t) => (t.jimengTaskId || '').trim());
-  return list[0] || null;
+  return pickByBatchFirst(list, priorityBatchId);
 }
 
 /** 阶段 A：扣费（若未预扣）→ submit 即梦 → 写 jimengTaskId */
@@ -135,20 +250,24 @@ async function runSubmitPhase(task) {
     return { processed: 0, error: TIMEOUT_FAIL };
   }
 
+  const claimed = await claimTaskForSubmit(task);
+  if (!claimed) {
+    return { processed: 0, skipped: true };
+  }
+
+  const freshRes = await db.collection('ai_tasks').doc(task._id).get();
+  if (!freshRes.data) throw new Error('任务不存在');
+  task = freshRes.data;
+
   const photoRes = await db.collection('photos').doc(task.photoId).get();
   if (!photoRes.data) throw new Error('照片不存在');
   const photo = photoRes.data;
 
-  if (task.status === 'pending') {
-    await db.collection('ai_tasks').doc(task._id).update({
-      data: { status: 'processing', updateTime: new Date() }
-    });
-    await db
-      .collection('photos')
-      .doc(task.photoId)
-      .update({ data: { generateStatus: 'processing', updateTime: new Date() } })
-      .catch(() => {});
-  }
+  await db
+    .collection('photos')
+    .doc(task.photoId)
+    .update({ data: { generateStatus: 'processing', errorMsg: null, updateTime: new Date() } })
+    .catch(() => {});
 
   if (!task.charged) {
     const storeId = task.storeId || photo.storeId;
@@ -160,11 +279,17 @@ async function runSubmitPhase(task) {
   const { width, height } = parseResolution(task.resolution);
   const imageUrl = await getImageUrl(photo.originalUrl);
 
-  console.log('[jimengPortraitWorker] 提交即梦', task._id);
+  console.log('[jimengPortraitWorker] 提交即梦', task._id, task.styleId || '');
   const jimengTaskId = await submitJimengTask(imageUrl, prompt, { width, height });
 
   await db.collection('ai_tasks').doc(task._id).update({
-    data: { jimengTaskId, status: 'processing', updateTime: new Date() }
+    data: {
+      jimengTaskId,
+      status: 'processing',
+      submitAttempts: 0,
+      lastError: null,
+      updateTime: new Date()
+    }
   });
   await db.collection('photos').doc(task.photoId).update({
     data: { generateStatus: 'processing', updateTime: new Date() }
@@ -212,36 +337,27 @@ async function workerStep(event, deadline) {
 
   const priorityBatchId = String(event.priorityBatchId || '').trim();
   const pendingTask = await pickTaskForSubmit(priorityBatchId);
-  const pollTask = await pickTaskForPoll();
+  const pollTask = await pickTaskForPoll(priorityBatchId);
+  let activeTask = null;
 
   try {
     if (pendingTask && remaining > SUBMIT_MIN_REMAINING_MS) {
+      activeTask = pendingTask;
       return await runSubmitPhase(pendingTask);
     }
     if (pollTask) {
+      activeTask = pollTask;
       const budget = Math.min(POLL_BUDGET_MS, remaining - 800);
       return await runPollPhase(pollTask, budget);
     }
     if (pendingTask) {
+      activeTask = pendingTask;
       return await runSubmitPhase(pendingTask);
     }
     return { processed: 0 };
   } catch (err) {
-    const active = pendingTask || pollTask;
-    if (active) {
-      console.error('[jimengPortraitWorker] 步骤失败', active._id, err.message);
-      if (err.response) {
-        try {
-          console.error(
-            '[jimengPortraitWorker] 响应:',
-            JSON.stringify(err.response.data).substring(0, 1000)
-          );
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      await markTaskFailed(active, err.message, err.message);
-      return { processed: 0, error: toUserFacingError(err) };
+    if (activeTask) {
+      return handleStepFailure(activeTask, err);
     }
     throw err;
   }
@@ -273,6 +389,9 @@ async function main(event, context) {
       continue;
     }
     if (lastResult.continuing) {
+      continue;
+    }
+    if (lastResult.skipped || lastResult.retried) {
       continue;
     }
     if (lastResult.error) {

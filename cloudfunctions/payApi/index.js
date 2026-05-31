@@ -1,10 +1,16 @@
 const cloud = require('wx-server-sdk');
 const { parseHttpEvent } = require('./lib/http');
-const { isPayConfigured } = require('./lib/config');
+const { isPayConfigured, getPayConfigSummary, assertPayConfigured, getPayConfig } = require('./lib/config');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
+const { verifyMerchantCredentials } = require('./lib/wxpay');
 const recharge = require('./lib/recharge');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+
+function payOptions() {
+  const wxContext = cloud.getWXContext();
+  return { runtimeAppId: wxContext.APPID || '' };
+}
 
 function ok(data) {
   return { success: true, data };
@@ -15,17 +21,28 @@ function fail(error, code) {
 }
 
 async function dispatchCallFunction(action, event, openid) {
+  const opts = payOptions();
   switch (action) {
     case 'pay.status':
-      return ok({ configured: isPayConfigured() });
+      return ok({
+        configured: isPayConfigured(opts),
+        ...getPayConfigSummary(opts)
+      });
+
+    case 'pay.verify': {
+      assertPayConfigured(opts);
+      const cfg = getPayConfig(opts);
+      const result = await verifyMerchantCredentials(cfg);
+      return ok(result);
+    }
 
     case 'packages.list':
-      return ok({ packages: recharge.listPackages() });
+      return ok({ packages: await recharge.listPackages() });
 
     case 'recharge.create': {
       const storeId = await resolveStoreIdFromOpenid(openid);
       const packageId = event.packageId;
-      const data = await recharge.createRechargeOrder(openid, storeId, packageId);
+      const data = await recharge.createRechargeOrder(openid, storeId, packageId, opts);
       return ok(data);
     }
 
@@ -64,11 +81,14 @@ exports.main = async (event) => {
     };
   }
 
-  const openid = cloud.getWXContext().OPENID;
-  if (!openid) return fail('未登录', 'UNAUTHORIZED');
-
+  const openid = cloud.getWXContext().OPENID || '';
   const action = event.action;
   if (!action) return fail('缺少 action', 'MISSING_ACTION');
+
+  const publicActions = new Set(['pay.status', 'pay.verify', 'packages.list']);
+  if (!publicActions.has(action) && !openid) {
+    return fail('未登录', 'UNAUTHORIZED');
+  }
 
   try {
     return await dispatchCallFunction(action, event, openid);

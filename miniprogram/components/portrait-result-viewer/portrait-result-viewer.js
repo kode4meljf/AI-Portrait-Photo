@@ -42,14 +42,15 @@ Component({
 
   data: {
     swiperHeight: 420,
-    showOriginFloat: true,
+    showOriginFloat: false,
     showSwipeToast: false,
     previewVisible: false,
-    previewExpanded: false,
+    previewOpen: false,
+    previewSettled: false,
     previewAnimating: false,
     previewIndex: 0,
-    previewCurrentUrl: '',
-    previewFlyStyle: '',
+    previewShellStyle: '',
+    previewFallback: false,
     currentItemFailed: false,
     downloadCountText: '',
     thumbScrollIntoView: ''
@@ -173,15 +174,15 @@ Component({
         .select(selector)
         .boundingClientRect((rect) => {
           if (!rect || !rect.width) {
-            this.openPreviewFallback(index, item.url);
+            this.openPreviewFallback(index);
             return;
           }
-          this.openPreviewWithRect(index, item.url, rect);
+          this.openPreviewWithRect(index, rect);
         })
         .exec();
     },
 
-    computePreviewTarget(rect) {
+    computePreviewTarget(rect, index) {
       const sys = wx.getWindowInfo();
       const ww = sys.windowWidth;
       const wh = sys.windowHeight;
@@ -190,7 +191,7 @@ Component({
       const maxH = wh - bottomReserve;
 
       let aspect = rect.width / rect.height;
-      const item = this.properties.results[this.data.previewIndex];
+      const item = this.properties.results[index];
       if (item && item.aspectRatio) {
         aspect = item.aspectRatio;
       } else if (!aspect || !Number.isFinite(aspect)) {
@@ -206,23 +207,28 @@ Component({
 
       const left = (ww - w) / 2;
       const top = Math.max(0, (wh - h - bottomReserve) / 2);
-      return { ww, wh, left, top, width: w, height: h };
+      return { left, top, width: w, height: h };
     },
 
-    buildFlyStyle(target, tx, ty, scale) {
+    buildShellStyle(target, tx, ty, scale) {
       return [
         `left:${target.left}px`,
         `top:${target.top}px`,
         `width:${target.width}px`,
         `height:${target.height}px`,
-        `--tx:${tx}px`,
-        `--ty:${ty}px`,
-        `--scale:${scale}`
+        `transform:translate(${tx}px,${ty}px) scale(${scale})`
       ].join(';');
     },
 
-    openPreviewWithRect(index, url, rect) {
-      const target = this.computePreviewTarget(rect);
+    clearPreviewTimer() {
+      if (this._previewTimer) {
+        clearTimeout(this._previewTimer);
+        this._previewTimer = null;
+      }
+    },
+
+    openPreviewWithRect(index, rect) {
+      const target = this.computePreviewTarget(rect, index);
       const cx0 = rect.left + rect.width / 2;
       const cy0 = rect.top + rect.height / 2;
       const cx1 = target.left + target.width / 2;
@@ -231,81 +237,75 @@ Component({
       const tx = cx0 - cx1;
       const ty = cy0 - cy1;
 
+      this.clearPreviewTimer();
       this.setData({
         previewVisible: true,
-        previewExpanded: false,
+        previewOpen: false,
+        previewSettled: false,
         previewAnimating: false,
+        previewFallback: false,
         previewIndex: index,
-        previewCurrentUrl: url,
-        previewFlyStyle: this.buildFlyStyle(target, tx, ty, scale)
+        previewShellStyle: this.buildShellStyle(target, tx, ty, scale)
       });
       this.triggerEvent('previewchange', { visible: true });
 
       wx.nextTick(() => {
         this.setData({
           previewAnimating: true,
-          previewFlyStyle: this.buildFlyStyle(target, 0, 0, 1)
+          previewOpen: true,
+          previewShellStyle: this.buildShellStyle(target, 0, 0, 1)
         });
-
-        if (this._previewTimer) clearTimeout(this._previewTimer);
         this._previewTimer = setTimeout(() => {
-          this.setData({
-            previewExpanded: true,
-            previewAnimating: false
-          });
+          this.setData({ previewSettled: true, previewAnimating: false });
         }, PREVIEW_ANIM_MS);
       });
     },
 
-    openPreviewFallback(index, url) {
+    openPreviewFallback(index) {
+      this.clearPreviewTimer();
       this.setData({
         previewVisible: true,
-        previewExpanded: true,
+        previewOpen: true,
+        previewSettled: true,
         previewAnimating: false,
+        previewFallback: true,
         previewIndex: index,
-        previewCurrentUrl: url,
-        previewFlyStyle: ''
+        previewShellStyle: ''
       });
       this.triggerEvent('previewchange', { visible: true });
     },
 
     onPreviewSwiperChange(e) {
       const index = Number(e.detail.current || 0);
-      const item = this.properties.results[index];
-      if (!item) return;
-      this.setData({
-        previewIndex: index,
-        previewCurrentUrl: item.url
-      });
+      if (!this.properties.results[index]) return;
+      this.setData({ previewIndex: index });
       this.notifyIndexChange(index);
     },
 
     onClosePreview() {
-      if (!this.data.previewVisible) return;
+      if (!this.data.previewVisible || this._closingPreview) return;
 
-      if (!this.data.previewExpanded || this._closingPreview) {
+      if (this.data.previewFallback || !this.data.previewOpen) {
         this.resetPreview();
         return;
       }
 
       const index = this.data.previewIndex;
-      const selector = `#hero-img-${index}`;
-
       wx.createSelectorQuery()
         .in(this)
-        .select(selector)
+        .select(`#hero-img-${index}`)
         .boundingClientRect((rect) => {
           if (!rect || !rect.width) {
             this.resetPreview();
             return;
           }
-          this.closePreviewWithRect(rect);
+          this.closePreviewWithRect(index, rect);
         })
         .exec();
     },
 
-    closePreviewWithRect(rect) {
-      const target = this.computePreviewTarget(rect);
+    closePreviewWithRect(index, rect) {
+      const target = this.computePreviewTarget(rect, index);
       const cx0 = rect.left + rect.width / 2;
       const cy0 = rect.top + rect.height / 2;
       const cx1 = target.left + target.width / 2;
@@ -315,20 +315,20 @@ Component({
       const ty = cy0 - cy1;
 
       this._closingPreview = true;
+      this.clearPreviewTimer();
       this.setData({
-        previewExpanded: false,
-        previewVisible: true,
+        previewSettled: false,
+        previewOpen: false,
         previewAnimating: true,
-        previewFlyStyle: this.buildFlyStyle(target, 0, 0, 1)
+        previewShellStyle: this.buildShellStyle(target, 0, 0, 1)
       });
 
       wx.nextTick(() => {
         this.setData({
-          previewFlyStyle: this.buildFlyStyle(target, tx, ty, scale)
+          previewShellStyle: this.buildShellStyle(target, tx, ty, scale)
         });
       });
 
-      if (this._previewTimer) clearTimeout(this._previewTimer);
       this._previewTimer = setTimeout(() => {
         this._closingPreview = false;
         this.resetPreview();
@@ -336,11 +336,14 @@ Component({
     },
 
     resetPreview() {
+      this.clearPreviewTimer();
       this.setData({
         previewVisible: false,
-        previewExpanded: false,
+        previewOpen: false,
+        previewSettled: false,
         previewAnimating: false,
-        previewFlyStyle: ''
+        previewFallback: false,
+        previewShellStyle: ''
       });
       this.triggerEvent('previewchange', { visible: false });
     },

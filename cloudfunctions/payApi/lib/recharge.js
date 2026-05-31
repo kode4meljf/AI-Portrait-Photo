@@ -8,6 +8,7 @@ const {
   verifyNotifySignature
 } = require('./wxpay');
 
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
@@ -19,14 +20,20 @@ function buildOutTradeNo(storeId) {
   return `rc_${storeId.replace(/^store_/, '').slice(0, 12)}_${tail}`.slice(0, 32);
 }
 
-async function createRechargeOrder(openid, storeId, packageId) {
-  assertPayConfigured();
-  const pkg = getPackageById(packageId);
+async function createRechargeOrder(openid, storeId, packageId, options = {}) {
+  assertPayConfigured(options);
+  const pkg = await getPackageById(packageId);
   if (!pkg) {
     throw new Error('套餐不存在');
   }
 
-  const cfg = getPayConfig();
+  const cfg = getPayConfig(options);
+  if (cfg.appIdMismatch) {
+    console.warn(
+      '[payApi] WX_PAY_APP_ID 与当前小程序不一致，已使用运行时 APPID:',
+      cfg.runtimeAppId
+    );
+  }
   const amountFen = yuanToFen(pkg.price);
   const outTradeNo = buildOutTradeNo(storeId);
   const now = db.serverDate();
@@ -70,6 +77,12 @@ async function createRechargeOrder(openid, storeId, packageId) {
     description: `${pkg.name}-${pkg.times}人次`,
     amountFen,
     payerOpenId: openid
+  }).catch((err) => {
+    const wxMsg = (err.response && (err.response.message || err.response.code)) || err.message;
+    console.error('[payApi] createJsapiOrder failed', wxMsg, err.response || '');
+    const e = new Error(wxMsg || '微信下单失败');
+    e.code = 'WX_PAY_ORDER_FAILED';
+    throw e;
   });
 
   await db.collection(ORDERS).doc(addRes._id).update({
@@ -185,7 +198,14 @@ async function handlePayNotify(httpEvent) {
       platformPublicKey: cfg.platformPublicKey
     });
     if (!ok) {
-      return { statusCode: 401, body: { code: 'FAIL', message: '签名校验失败' } };
+      console.error('[payApi] notify signature verify failed', {
+        serial: headers['wechatpay-serial'] || headers['Wechatpay-Serial'] || '',
+        hasPlatformKey: true
+      });
+      if (!cfg.notifyRelax) {
+        return { statusCode: 401, body: { code: 'FAIL', message: '签名校验失败' } };
+      }
+      console.warn('[payApi] WX_PAY_NOTIFY_RELAX=1，跳过验签继续解密');
     }
   }
 

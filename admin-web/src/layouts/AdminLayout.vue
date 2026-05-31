@@ -44,6 +44,10 @@
           <el-icon><Grid /></el-icon>
           <span>相框管理</span>
         </el-menu-item>
+        <el-menu-item index="/packages">
+          <el-icon><Tickets /></el-icon>
+          <span>套餐管理</span>
+        </el-menu-item>
         <el-menu-item index="/feedbacks">
           <el-icon><ChatDotRound /></el-icon>
           <span>意见反馈</span>

@@ -68,6 +68,12 @@ const routes = [
         meta: { title: '相框管理' }
       },
       {
+        path: 'packages',
+        name: 'packages',
+        component: () => import('@/views/packages/PackageListView.vue'),
+        meta: { title: '套餐管理' }
+      },
+      {
         path: 'settings/platform',
         name: 'platform-settings',
         component: () => import('@/views/settings/PlatformSettingsView.vue'),

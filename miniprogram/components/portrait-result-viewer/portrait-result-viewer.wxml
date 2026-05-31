@@ -174,21 +174,13 @@
       </view>
     </block>
 
-    <view
-      wx:if="{{previewVisible}}"
-      class="preview-layer {{previewExpanded ? 'is-expanded' : ''}}"
-      catchtouchmove="preventMove"
-    >
-      <view class="preview-dim" bindtap="onClosePreview"></view>
+    <view wx:if="{{previewVisible}}" class="preview-layer" catchtouchmove="preventMove">
+      <view class="preview-dim {{previewOpen ? 'is-open' : ''}}" bindtap="onClosePreview"></view>
 
       <view
-        class="preview-fly {{previewAnimating ? 'is-animating' : ''}} {{previewExpanded ? 'is-expanded' : ''}}"
-        style="{{previewFlyStyle}}"
+        class="preview-shell {{previewAnimating ? 'is-animating' : ''}} {{previewFallback ? 'is-fallback' : ''}}"
+        style="{{previewShellStyle}}"
       >
-        <image class="preview-fly-img" src="{{previewCurrentUrl}}" mode="aspectFit"></image>
-      </view>
-
-      <view class="preview-ui {{previewExpanded ? 'is-visible' : ''}}">
         <swiper
           class="preview-swiper"
           current="{{previewIndex}}"
@@ -202,7 +194,9 @@
             </view>
           </swiper-item>
         </swiper>
+      </view>
 
+      <view class="preview-chrome {{previewSettled ? 'is-visible' : ''}}">
         <view wx:if="{{results.length > 1}}" class="preview-progress-track">
           <view
             wx:for="{{results}}"

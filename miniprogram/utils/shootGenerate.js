@@ -167,7 +167,7 @@ async function runShootPortraitGeneration(originalUrl, styles, options = {}) {
     onProgress: options.onProgress,
     onPollTick: ({ completed, failed, total }) => {
       const remaining = total - completed - failed;
-      if (remaining > 0 && Date.now() - lastWorkerKickAt > 20000) {
+      if (remaining > 0 && Date.now() - lastWorkerKickAt > 12000) {
         kickPortraitWorker({ batchId });
         lastWorkerKickAt = Date.now();
       }

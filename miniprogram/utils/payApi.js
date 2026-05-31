@@ -5,6 +5,9 @@ function parsePayResult(res) {
     if (errMsg.includes('FUNCTION_NOT_FOUND') || errMsg.includes('-501000')) {
       throw new Error('未找到云函数 payApi，请先上传部署');
     }
+    if (errMsg.includes('-504002') || /functions execute fail/i.test(errMsg)) {
+      throw new Error('充值服务异常，请确认云函数 payApi 已部署并重试');
+    }
     throw new Error(errMsg);
   }
   const result = res.result || {};

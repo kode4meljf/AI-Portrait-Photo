@@ -52,7 +52,8 @@ async function throttleJimengApi(label) {
  * @param {() => Promise<any>} fn
  */
 async function withJimengRateLimit(label, fn, options = {}) {
-  const maxRetries = options.maxRetries != null ? options.maxRetries : 3;
+  const defaultRetries = label === 'submit' ? 5 : 3;
+  const maxRetries = options.maxRetries != null ? options.maxRetries : defaultRetries;
   const minInterval = getMinIntervalMs();
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

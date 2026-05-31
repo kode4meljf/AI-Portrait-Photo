@@ -17,6 +17,14 @@ const {
 } = require('./storeAssetAdjust')
 const { deleteCloudFileSafe, deleteReplacedCloudFile } = require('./cloudFile')
 const { listGalleryBatches, getGalleryBatch, deleteGalleryBatch } = require('./gallery')
+const {
+  listRechargePackages,
+  getRechargePackage,
+  createRechargePackage,
+  updateRechargePackage,
+  deleteRechargePackage,
+  seedDefaultPackages
+} = require('./rechargePackages')
 const { deleteOrder } = require('./orders')
 
 const STORE_DOC_ID_RE = /^store_/i
@@ -1041,6 +1049,18 @@ async function dispatch(action, payload, query) {
       return getGalleryBatch(payload)
     case 'gallery.batches.delete':
       return deleteGalleryBatch(payload)
+    case 'rechargePackages.list':
+      return listRechargePackages({ ...query, ...payload })
+    case 'rechargePackages.get':
+      return getRechargePackage(payload)
+    case 'rechargePackages.create':
+      return createRechargePackage(payload)
+    case 'rechargePackages.update':
+      return updateRechargePackage(payload)
+    case 'rechargePackages.delete':
+      return deleteRechargePackage(payload)
+    case 'rechargePackages.seedDefaults':
+      return seedDefaultPackages()
     default:
       throw new Error(`未知 action: ${action}`)
   }

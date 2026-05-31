@@ -278,6 +278,16 @@ function parseQueryResult(result) {
   if (data.status === 'in_queue' || data.status === 'generating') {
     return { kind: 'pending' };
   }
+  if (
+    data.status === 'failed' ||
+    data.status === 'error' ||
+    data.status === 'done_failed' ||
+    data.status === 'fail'
+  ) {
+    const reason =
+      data.message || data.err_msg || data.reason || data.fail_reason || `status=${data.status}`;
+    throw new Error(`即梦生成失败: ${reason}`);
+  }
   if (data.status === 'not_found' || data.status === 'expired') {
     throw new Error(`即梦任务异常: status=${data.status}`);
   }

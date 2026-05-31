@@ -163,6 +163,35 @@ const mockOrders = [
   { _id: 'o2', storeId: 'store_demo0001', orderNo: 'OR20260515002', customerId: 'c2', customerName: '李婷婷', frameName: '简约金属相框', size: '8寸', material: '铝合金', price: 129, status: '待处理', createTimeText: '2026-05-15 16:45:00' }
 ]
 
+const mockRechargePackages = [
+  {
+    _id: 'pkg1',
+    id: 1,
+    name: '体验套餐',
+    times: 10,
+    price: 0.5,
+    originalPrice: 1,
+    tag: '限时5折',
+    expireDays: 30,
+    sort: 10,
+    enabled: true,
+    updateTimeText: '2026-05-18 10:00'
+  },
+  {
+    _id: 'pkg2',
+    id: 2,
+    name: '标准套餐',
+    times: 50,
+    price: 399,
+    originalPrice: 599,
+    tag: '推荐',
+    expireDays: 30,
+    sort: 20,
+    enabled: true,
+    updateTimeText: '2026-05-18 10:00'
+  }
+]
+
 const mockGalleryBatches = [
   {
     _id: 'batch_demo1',
@@ -523,6 +552,106 @@ export async function mockRequest(action, payload = {}, query = {}) {
       mockGalleryBatches.splice(idx, 1)
       return { batchId: payload.batchId, deletedPhotos: 1, deletedTasks: 1, deletedFiles: 2 }
     }
+    case 'rechargePackages.list': {
+      const keyword = (query.keyword || '').trim().toLowerCase()
+      let rows = [...mockRechargePackages]
+      if (keyword) {
+        rows = rows.filter((r) =>
+          [r.name, r.tag, String(r.id)].join(' ').toLowerCase().includes(keyword)
+        )
+      }
+      const page = Math.max(1, parseInt(query.page, 10) || 1)
+      const pageSize = Math.max(1, parseInt(query.pageSize, 10) || 20)
+      const skip = (page - 1) * pageSize
+      return {
+        list: rows.slice(skip, skip + pageSize),
+        total: rows.length,
+        page,
+        pageSize,
+        enabledCount: rows.filter((r) => r.enabled !== false).length
+      }
+    }
+    case 'rechargePackages.get': {
+      const row = mockRechargePackages.find((r) => r._id === payload._id)
+      if (!row) throw new Error('套餐不存在')
+      return { ...row }
+    }
+    case 'rechargePackages.create': {
+      const id = mockRechargePackages.length
+        ? Math.max(...mockRechargePackages.map((r) => r.id)) + 1
+        : 1
+      const row = {
+        _id: `pkg${Date.now()}`,
+        id,
+        name: payload.name,
+        times: payload.times,
+        price: payload.price,
+        originalPrice: payload.originalPrice,
+        tag: payload.tag || '',
+        expireDays: payload.expireDays || 30,
+        sort: payload.sort || 0,
+        enabled: payload.enabled !== false,
+        updateTimeText: new Date().toLocaleString('zh-CN')
+      }
+      mockRechargePackages.push(row)
+      return row
+    }
+    case 'rechargePackages.update': {
+      const idx = mockRechargePackages.findIndex((r) => r._id === payload._id)
+      if (idx < 0) throw new Error('套餐不存在')
+      mockRechargePackages[idx] = {
+        ...mockRechargePackages[idx],
+        name: payload.name,
+        times: payload.times,
+        price: payload.price,
+        originalPrice: payload.originalPrice,
+        tag: payload.tag || '',
+        expireDays: payload.expireDays,
+        sort: payload.sort,
+        enabled: payload.enabled !== false,
+        updateTimeText: new Date().toLocaleString('zh-CN')
+      }
+      return mockRechargePackages[idx]
+    }
+    case 'rechargePackages.delete': {
+      const idx = mockRechargePackages.findIndex((r) => r._id === payload._id)
+      if (idx < 0) throw new Error('套餐不存在')
+      mockRechargePackages.splice(idx, 1)
+      return { deleted: true }
+    }
+    case 'rechargePackages.seedDefaults':
+      if (mockRechargePackages.length) {
+        return { seeded: 0, message: '已有套餐数据，未写入默认项' }
+      }
+      mockRechargePackages.push(
+        {
+          _id: 'pkg1',
+          id: 1,
+          name: '体验套餐',
+          times: 10,
+          price: 0.5,
+          originalPrice: 1,
+          tag: '限时5折',
+          expireDays: 30,
+          sort: 10,
+          enabled: true,
+          updateTimeText: '-'
+        },
+        {
+          _id: 'pkg2',
+          id: 2,
+          name: '标准套餐',
+          times: 50,
+          price: 399,
+          originalPrice: 599,
+          tag: '推荐',
+          expireDays: 30,
+          sort: 20,
+          enabled: true,
+          updateTimeText: '-'
+        }
+      )
+      return { seeded: 2, message: '已写入默认套餐' }
     default:
       throw new Error(`Mock 未实现: ${action}`)
   }

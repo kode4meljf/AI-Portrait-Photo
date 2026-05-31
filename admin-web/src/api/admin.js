@@ -48,5 +48,12 @@ export const api = {
 
   listGalleryBatches: (params) => adminRequest('gallery.batches.list', {}, params),
   getGalleryBatch: (data) => adminRequest('gallery.batches.get', data),
-  deleteGalleryBatch: (data) => adminRequest('gallery.batches.delete', data)
+  deleteGalleryBatch: (data) => adminRequest('gallery.batches.delete', data),
+
+  listRechargePackages: (params) => adminRequest('rechargePackages.list', {}, params),
+  getRechargePackage: (data) => adminRequest('rechargePackages.get', data),
+  createRechargePackage: (data) => adminRequest('rechargePackages.create', data),
+  updateRechargePackage: (data) => adminRequest('rechargePackages.update', data),
+  deleteRechargePackage: (data) => adminRequest('rechargePackages.delete', data),
+  seedRechargePackages: () => adminRequest('rechargePackages.seedDefaults')
 }
