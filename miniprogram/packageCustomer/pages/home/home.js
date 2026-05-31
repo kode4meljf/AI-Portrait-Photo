@@ -5,7 +5,7 @@ const {
   activateFromOptions,
   isDevCustomerPreview,
   getMockCustomerProfile
-} = require('../../../utils/devCustomerPreview')
+} = require('../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
 const { fetchStyleTemplates } = require('../../../config/styles')

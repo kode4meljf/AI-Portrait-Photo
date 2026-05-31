@@ -1,4 +1,4 @@
-const { normalizeMobilePhone } = require('./phone')
+const { normalizeMobilePhone } = require('../../utils/phone')
 
 /**
  * 门店扫码打卡内容（与云函数 buildCheckinQrPayload 字段一致）

@@ -4,7 +4,7 @@ const { applySessionToApp } = require('../../../utils/storeSession')
 const {
   isDevCustomerPreview,
   getMockCustomerProfile
-} = require('../../../utils/devCustomerPreview')
+} = require('../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
 const { CUSTOMER_BASE } = require('../../../utils/helpCenter')
