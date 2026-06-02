@@ -249,7 +249,8 @@
   color: #6b7280;
 }
 
-.status-tag.partial {
+.status-tag.partial,
+.status-tag.failed {
   background: #fef2f2;
   color: #dc2626;
 }

@@ -108,6 +108,7 @@
         <text wx:if="{{batch.status === 'completed'}}">已完成</text>
         <text wx:elif="{{batch.status === 'generating'}}">{{batch.progressPercent}}%</text>
         <text wx:elif="{{batch.status === 'partial'}}">部分失败</text>
+        <text wx:elif="{{batch.status === 'failed'}}">生成失败</text>
         <text wx:else>待生成</text>
       </view>
       <view class="card-more" catchtap="onBatchMenu" data-batch="{{batch}}">···</view>

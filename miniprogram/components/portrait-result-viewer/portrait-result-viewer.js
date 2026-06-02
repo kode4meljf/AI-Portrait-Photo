@@ -1,6 +1,6 @@
 const SWIPE_HINT_KEY = 'ai_portrait_swipe_hint_shown';
 const { downloadCountText } = require('../../utils/portraitViewer/normalizeItems.js');
-const { downloadAllItems } = require('../../utils/portraitViewer/downloadPhotos.js');
+const { downloadAllItems, saveOneToAlbum } = require('../../utils/portraitViewer/downloadPhotos.js');
 
 Component({
   properties: {
@@ -44,7 +44,11 @@ Component({
     showSwipeToast: false,
     currentItemFailed: false,
     downloadCountText: '',
-    thumbScrollIntoView: ''
+    thumbScrollIntoView: '',
+    previewVisible: false,
+    previewIndex: 0,
+    previewScale: 1,
+    previewSwiperLock: false
   },
 
   observers: {
@@ -66,6 +70,7 @@ Component({
   lifetimes: {
     detached() {
       if (this._toastTimer) clearTimeout(this._toastTimer);
+      this._lastPreviewTapAt = 0;
     }
   },
 
@@ -163,22 +168,104 @@ Component({
       wx.previewImage({ urls: [url], current: url });
     },
 
+    resetPreviewGestures() {
+      this._lastPreviewTapAt = 0;
+      this.setData({
+        previewScale: 1,
+        previewSwiperLock: false
+      });
+    },
+
     onPreviewImage(e) {
       const index = Number(e.currentTarget.dataset.index ?? this.properties.currentIndex);
       const item = (this.properties.results || [])[index];
       if (!this.isPreviewableItem(item)) return;
 
-      const current = String(item.url).trim();
-      const urls = this.collectPreviewUrls();
-      if (!urls.length) {
-        wx.showToast({ title: '暂无图片', icon: 'none' });
+      this.resetPreviewGestures();
+      this.setData({
+        previewVisible: true,
+        previewIndex: index
+      });
+    },
+
+    onPreviewSwiperChange(e) {
+      this.resetPreviewGestures();
+      this.setData({ previewIndex: Number(e.detail.current || 0) });
+    },
+
+    onPreviewScale(e) {
+      const index = Number(e.currentTarget.dataset.index);
+      if (index !== this.data.previewIndex) return;
+      const scale = Number(e.detail.scale) || 1;
+      this.setData({
+        previewScale: scale,
+        previewSwiperLock: scale > 1.02
+      });
+    },
+
+    onPreviewImageTap(e) {
+      const index = Number(e.currentTarget.dataset.index);
+      if (index !== this.data.previewIndex) return;
+      const now = Date.now();
+      if (now - (this._lastPreviewTapAt || 0) < 280) {
+        const nextScale = this.data.previewScale > 1.05 ? 1 : 2.5;
+        this.setData({
+          previewScale: nextScale,
+          previewSwiperLock: nextScale > 1.02
+        });
+        this._lastPreviewTapAt = 0;
         return;
       }
+      this._lastPreviewTapAt = now;
+    },
 
-      wx.previewImage({
-        urls,
-        current: urls.includes(current) ? current : urls[0]
-      });
+    onPreviewTouchStart(e) {
+      if (this.data.previewScale > 1.02) return;
+      const touch = e.touches && e.touches[0];
+      this._previewTouchStartY = touch ? touch.clientY : 0;
+    },
+
+    onPreviewTouchEnd(e) {
+      if (this.data.previewScale > 1.02) return;
+      const touch = e.changedTouches && e.changedTouches[0];
+      if (!touch || this._previewTouchStartY == null) return;
+      const dy = touch.clientY - this._previewTouchStartY;
+      this._previewTouchStartY = null;
+      if (dy > 90) {
+        this.onClosePreview();
+      }
+    },
+
+    onClosePreview() {
+      this.resetPreviewGestures();
+      this.setData({ previewVisible: false });
+    },
+
+    stopActionBubble() {},
+
+    preventMove() {},
+
+    async onDownloadPreview() {
+      const item = (this.properties.results || [])[this.data.previewIndex];
+      if (!this.isPreviewableItem(item)) {
+        wx.showToast({ title: '当前图片不可下载', icon: 'none' });
+        return;
+      }
+      wx.showLoading({ title: '保存中...', mask: true });
+      try {
+        await saveOneToAlbum(item.url);
+        wx.showToast({ title: '已保存到相册', icon: 'success' });
+      } catch (err) {
+        console.error('[portrait-result-viewer] download preview', err);
+        const msg = (err && err.errMsg) || '';
+        if (/auth deny|authorize|permission/i.test(msg)) {
+          wx.showToast({ title: '请授权相册权限', icon: 'none' });
+        } else {
+          wx.showToast({ title: '保存失败', icon: 'none' });
+        }
+      } finally {
+        wx.hideLoading();
+      }
     },
 
     onDownloadAll() {

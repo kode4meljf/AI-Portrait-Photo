@@ -5,6 +5,7 @@ const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId } = require('../../utils/storeSession');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
+const { kickPortraitWorker } = require('../../utils/jimengPortraitAi');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
 const AUTO_REFRESH_INTERVAL_MS = 8000;
@@ -55,6 +56,8 @@ function deriveBatchStatus(photos) {
     status = 'generating';
   } else if (generatedCount >= photoCount) {
     status = hasFailed ? 'partial' : 'completed';
+  } else if (hasFailed) {
+    status = generatedCount > 0 ? 'partial' : 'failed';
   }
   const progressPercent = Math.min(100, Math.round((generatedCount / photoCount) * 100));
   return { status, generatedCount, photoCount, progressPercent };
@@ -235,6 +238,9 @@ Page({
 
       let batches = await this.formatBatches(res.data);
       batches = this.applyBatchCustomerPatch(batches);
+      if (silent) {
+        this._kickWorkerForGenerating(batches);
+      }
       const batchGroups = this.groupBatchesByMonth(batches);
 
       let mergedGroups;
@@ -402,6 +408,15 @@ Page({
 
   _hasGeneratingBatches() {
     return this._collectAllBatches().some((b) => b.status === 'generating');
+  },
+
+  _kickWorkerForGenerating(batches) {
+    const now = Date.now();
+    if (this._lastGalleryKickAt && now - this._lastGalleryKickAt < 12000) return;
+    const hit = (batches || []).find((b) => b.status === 'generating');
+    if (!hit || !hit._id) return;
+    this._lastGalleryKickAt = now;
+    kickPortraitWorker({ batchId: hit._id });
   },
 
   _clearAutoRefresh() {

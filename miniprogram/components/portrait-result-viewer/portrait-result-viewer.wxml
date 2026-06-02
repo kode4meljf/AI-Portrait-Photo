@@ -1,5 +1,6 @@
+<page-meta page-style="{{previewVisible ? 'overflow:hidden;' : ''}}" />
 <view class="page-shell">
-  <view class="result-nav" style="padding-top: {{statusBarHeight}}px;">
+  <view wx:if="{{!previewVisible}}" class="result-nav" style="padding-top: {{statusBarHeight}}px;">
     <view class="result-nav-inner">
       <view class="nav-back" bindtap="onNavBack" hover-class="nav-back--active" hover-stay-time="80">
         <view class="nav-back-chevron"></view>
@@ -174,5 +175,61 @@
         </view>
       </view>
     </block>
+  </view>
+
+  <view
+    wx:if="{{previewVisible}}"
+    class="preview-layer"
+    catchtouchmove="preventMove"
+    bindtouchstart="onPreviewTouchStart"
+    bindtouchend="onPreviewTouchEnd"
+  >
+    <swiper
+      class="preview-swiper"
+      current="{{previewIndex}}"
+      bindchange="onPreviewSwiperChange"
+      duration="280"
+      circular="{{false}}"
+      disable-touch="{{previewSwiperLock}}"
+    >
+      <swiper-item wx:for="{{results}}" wx:key="photoId">
+        <view class="preview-slide">
+          <movable-area
+            wx:if="{{item.url && item.status !== 'failed' && item.status !== 'retrying' && item.status !== 'generating'}}"
+            class="preview-movable-area"
+            scale-area
+          >
+            <movable-view
+              class="preview-movable-view"
+              direction="all"
+              scale
+              scale-min="1"
+              scale-max="4"
+              scale-value="{{previewIndex === index ? previewScale : 1}}"
+              bindscale="onPreviewScale"
+              bindtap="onPreviewImageTap"
+              bindlongpress="onDownloadPreview"
+              data-index="{{index}}"
+            >
+              <image class="preview-slide-img" src="{{item.url}}" mode="aspectFit"></image>
+            </movable-view>
+          </movable-area>
+        </view>
+      </swiper-item>
+    </swiper>
+    <cover-view class="preview-chrome">
+      <cover-view
+        class="preview-action-btn preview-action-btn--close"
+        bindtap="onClosePreview"
+      >
+        <cover-view class="preview-action-glyph">×</cover-view>
+      </cover-view>
+      <cover-view
+        class="preview-action-btn preview-action-btn--down"
+        bindtap="onDownloadPreview"
+      >
+        <cover-view class="preview-action-glyph">↓</cover-view>
+      </cover-view>
+    </cover-view>
   </view>
 </view>

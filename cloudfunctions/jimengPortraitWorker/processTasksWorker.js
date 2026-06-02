@@ -82,9 +82,28 @@ function taskTimestamp(task) {
 }
 
 function pickByBatchFirst(list, priorityBatchId) {
+  if (!list.length) return null;
   const batchId = String(priorityBatchId || '').trim();
-  if (!batchId || !list.length) return list[0] || null;
-  return list.find((t) => String(t.batchId || '') === batchId) || list[0] || null;
+  if (!batchId) return list[0];
+  return list.find((t) => String(t.batchId || '') === batchId) || null;
+}
+
+/** 清理超时任务，避免旧队列阻塞当前 batch */
+async function purgeStaleTasks(tasks) {
+  const active = [];
+  for (const task of tasks) {
+    if (!isTaskStale(task)) {
+      active.push(task);
+      continue;
+    }
+    console.warn('[jimengPortraitWorker] 清理 stale 任务', task._id, task.batchId || '');
+    try {
+      await markTaskFailed(task, TIMEOUT_FAIL, 'task stale timeout');
+    } catch (e) {
+      console.warn('[jimengPortraitWorker] stale 清理失败', task._id, e.message || e);
+    }
+  }
+  return active;
 }
 
 function isTransientError(err) {
@@ -271,7 +290,7 @@ async function pickTaskForSubmit(priorityBatchId) {
     .orderBy('createTime', 'asc')
     .limit(30)
     .get();
-  const pending = pendingRes.data || [];
+  let pending = await purgeStaleTasks(pendingRes.data || []);
   const pendingHit = pickByBatchFirst(pending, priorityBatchId);
   if (pendingHit) return pendingHit;
 
@@ -281,7 +300,8 @@ async function pickTaskForSubmit(priorityBatchId) {
     .orderBy('updateTime', 'asc')
     .limit(20)
     .get();
-  const stuck = (procRes.data || []).filter((t) => !(t.jimengTaskId || '').trim());
+  let stuck = (procRes.data || []).filter((t) => !(t.jimengTaskId || '').trim());
+  stuck = await purgeStaleTasks(stuck);
   return pickByBatchFirst(stuck, priorityBatchId);
 }
 
@@ -292,7 +312,8 @@ async function pickTaskForPoll(priorityBatchId) {
     .orderBy('updateTime', 'asc')
     .limit(15)
     .get();
-  const list = (res.data || []).filter((t) => (t.jimengTaskId || '').trim());
+  let list = (res.data || []).filter((t) => (t.jimengTaskId || '').trim());
+  list = await purgeStaleTasks(list);
   return pickByBatchFirst(list, priorityBatchId);
 }
 
