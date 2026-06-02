@@ -6,6 +6,7 @@ const { normalizePhotoUrl } = require('./photo');
 const { ensureStoreProfile } = require('./store');
 const { deleteCloudFileSafe } = require('./cloudFile')
 const { chargeStoreForFrame, refundStoreFrame } = require('./balance')
+const { invalidateLogisticsFields } = require('./orderLogistics')
 function getFrameConfig() { return ORDER_TYPES.frame; }
 async function assertStoreOrder(orderId, storeId) {
   const res = await db.collection(getFrameConfig().collection).doc(orderId).get();
@@ -75,12 +76,20 @@ async function getFrameOrder(event, storeId) {
   return { success: true, order: { ...order, customerInfo } };
 }
 async function updateFrameOrderStatus(event, storeId) {
-  const { orderId, status, shippingNo } = event;
+  const { orderId, status, shippingNo, shippingCom, shippingCompanyName } = event;
   if (!orderId || !status) return { success: false, error: '缺少 orderId 或 status' };
   if (!ORDER_STATUSES.includes(status)) return { success: false, error: '无效订单状态' };
-  await assertStoreOrder(orderId, storeId);
+  const order = await assertStoreOrder(orderId, storeId);
   const data = { status, updateTime: db.serverDate() };
   if (shippingNo !== undefined) data.shippingNo = shippingNo;
+  if (shippingCom !== undefined) data.shippingCom = shippingCom;
+  if (shippingCompanyName !== undefined) data.shippingCompanyName = shippingCompanyName;
+  if (status === '已发货' && !order.shippedAt) data.shippedAt = db.serverDate();
+  if (status === '已完成' && !order.completedAt) data.completedAt = db.serverDate();
+  const shippingChanged =
+    (shippingNo !== undefined && String(shippingNo || '').trim() !== String(order.shippingNo || '').trim()) ||
+    (shippingCom !== undefined && String(shippingCom || '').trim() !== String(order.shippingCom || '').trim());
+  if (shippingChanged) Object.assign(data, invalidateLogisticsFields());
   await db.collection(getFrameConfig().collection).doc(orderId).update({ data });
   const res = await db.collection(getFrameConfig().collection).doc(orderId).get();
   return { success: true, order: res.data };

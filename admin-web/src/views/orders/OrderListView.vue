@@ -160,7 +160,7 @@ function onPageChange(p) {
 async function changeStatus(row, status) {
   try {
     if (status === '已发货') {
-      const { value } = await ElMessageBox.prompt('请输入物流单号（可选）', '发货', {
+      const { value } = await ElMessageBox.prompt('请输入物流单号（可选，系统将自动识别快递公司）', '发货', {
         confirmButtonText: '确定',
         cancelButtonText: '跳过',
         inputPlaceholder: '物流单号'

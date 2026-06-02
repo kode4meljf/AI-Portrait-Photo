@@ -442,6 +442,29 @@
   font-weight: 500;
 }
 
+.tl-item.hint {
+  margin-top: 8rpx;
+}
+
+.tl-item.hint::before {
+  display: none;
+}
+
+.tl-item.hint .tl-dot {
+  display: none;
+}
+
+.tl-item.hint .tl-text .time {
+  display: none;
+}
+
+.tl-item.hint .tl-text .msg {
+  font-size: 24rpx;
+  color: #a1a1aa;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
 .logistics-empty {
   padding: 40rpx 28rpx;
   text-align: center;

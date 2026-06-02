@@ -22,7 +22,7 @@ async function main(event) {
     if (!prompt) {
       return { success: false, error: '风格缺少 prompt' };
     }
-    const resolution = style.resolution || '1024:1024';
+    const resolution = style.resolution || '1536:1152';
 
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
     await assertCanSubmitPortrait(storeId);

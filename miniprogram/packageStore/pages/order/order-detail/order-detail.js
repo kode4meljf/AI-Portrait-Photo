@@ -5,7 +5,7 @@
 const app = getApp();
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { fetchPlatformSupportPhone } = require('../../../../utils/platformSettings');
-const { buildFrameOrderView, PLACEHOLDER_THUMB } = require('../../../utils/frameOrderDetailView');
+const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../../utils/frameOrderDetailView');
 
 /** 已激活的门店成员（owner/staff）；页面复用时非门店账号不展示「联系平台」 */
 function isStoreStaffAccount() {
@@ -22,6 +22,9 @@ Page({
     view: null,
     platformSupportPhone: ''
   },
+
+  _orderRaw: null,
+  _viewOptions: null,
 
   onLoad(options) {
     const orderId = options.orderId || '';
@@ -55,7 +58,14 @@ Page({
     this.setData({ platformSupportPhone: phone });
   },
 
-  async loadOrderDetail() {
+  buildView(order, extra = {}) {
+    return buildFrameOrderView(order, {
+      ...(this._viewOptions || {}),
+      ...extra
+    });
+  },
+
+  async loadOrderDetail(skipLogistics = false) {
     this.setData({ loading: true });
     try {
       const { order } = await callOrderApi('get', {
@@ -63,15 +73,21 @@ Page({
         orderId: this.data.orderId
       });
       const isStoreStaff = isStoreStaffAccount();
+      this._orderRaw = order;
+      this._viewOptions = {
+        isStoreStaff,
+        audience: 'store',
+        storeName: app.globalData.storeName || '当前门店'
+      };
+      const view = this.buildView(order);
       this.setData({
-        view: buildFrameOrderView(order, {
-          isStoreStaff,
-          audience: 'store',
-          storeName: app.globalData.storeName || '当前门店'
-        }),
+        view,
         loading: false
       });
       this.updateScrollViewHeight();
+      if (!skipLogistics && shouldQueryLogistics(order)) {
+        this.loadLogistics(false);
+      }
     } catch (error) {
       console.error('加载订单详情失败:', error);
       this.setData({ loading: false, view: null });
@@ -79,10 +95,45 @@ Page({
     }
   },
 
+  async loadLogistics(force = false) {
+    if (!this._orderRaw || !shouldQueryLogistics(this._orderRaw)) return;
+    this.setData({ view: this.buildView(this._orderRaw, { logisticsLoading: true }) });
+    try {
+      const { logistics } = await callOrderApi('getLogistics', {
+        orderType: 'frame',
+        orderId: this.data.orderId,
+        force
+      });
+      if (logistics?.companyName) {
+        this._orderRaw = {
+          ...this._orderRaw,
+          shippingCompanyName: logistics.companyName,
+          shippingCom: logistics.companyCode || this._orderRaw.shippingCom
+        };
+      }
+      this.setData({ view: this.buildView(this._orderRaw, { logistics }) });
+    } catch (error) {
+      console.warn('查询物流失败:', error);
+      this.setData({
+        view: this.buildView(this._orderRaw, {
+          logistics: {
+            empty: true,
+            message: error.message || '物流信息查询失败，请稍后重试',
+            traces: []
+          }
+        })
+      });
+    }
+  },
+
   onPullDownRefresh() {
     Promise.all([
       this.loadPlatformPhone(),
-      this.loadOrderDetail()
+      this.loadOrderDetail(true).then(() => {
+        if (this._orderRaw && shouldQueryLogistics(this._orderRaw)) {
+          return this.loadLogistics(true);
+        }
+      })
     ]).finally(() => wx.stopPullDownRefresh());
   },
 
@@ -173,10 +224,15 @@ Page({
     const view = this.data.view;
     if (!view) return;
     if (view.shippingNo) {
+      const latest = view.stripLatest || '暂无物流信息';
       wx.showModal({
         title: '物流信息',
-        content: `运单号：${view.shippingNo}\n物流公司：${view.logisticsCompany || '顺丰速运'}\n${view.stripLatest || '运输中，请稍后查询最新状态'}`,
-        showCancel: false
+        content: `运单号：${view.shippingNo}\n快递公司：${view.logisticsCompany || '快递公司'}\n\n${latest}`,
+        confirmText: '复制单号',
+        cancelText: '关闭',
+        success: (res) => {
+          if (res.confirm) this.onCopyShippingNo();
+        }
       });
       return;
     }

@@ -70,6 +70,15 @@ cd admin-web && npm install && npm run dev
 
 部署 `adminApi` 前在 `cloudfunctions/adminApi` 执行 `npm install`（含 `tencentcloud-sdk-nodejs`）。
 
+**物流查询（快递100）**：在 **orderApi**、**customer** 云函数环境变量中配置：
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `KUAIDI100_CUSTOMER` | 是 | 快递100 授权码（customer） |
+| `KUAIDI100_KEY` | 是 | 快递100 密钥（用于签名） |
+
+未配置或查不到轨迹时，小程序展示「暂无物流信息」；有运单号时会自动识别快递公司（顺丰/圆通/中通等）。查询结果缓存约 15 分钟。
+
 **资产调整**：门店详情 → 调整资产 → 获取验证码（发至 `ADMIN_VERIFY_PHONE`）→ 输入验证码 → 验证并生效。
 
 ## 云环境

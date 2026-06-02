@@ -5,6 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const { ORDER_TYPES } = require('./lib/config');
 const frameHandlers = require('./lib/frame');
+const logisticsHandlers = require('./lib/logistics');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
 
 const HANDLERS = {
@@ -12,6 +13,7 @@ const HANDLERS = {
     create: frameHandlers.createFrameOrder,
     list: frameHandlers.listFrameOrders,
     get: frameHandlers.getFrameOrder,
+    getLogistics: logisticsHandlers.getFrameOrderLogistics,
     updateStatus: frameHandlers.updateFrameOrderStatus,
     countByStatus: frameHandlers.countFrameOrdersByStatus
   }

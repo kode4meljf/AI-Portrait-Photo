@@ -4,6 +4,7 @@ const { deleteReplacedCloudFile } = require('./lib/cloudFile');
 const { chargeStoreForPortrait } = require('./lib/balance');
 const { toUserFacingError, TIMEOUT_FAIL } = require('./lib/userFacingError');
 const { isJimengRateLimitError } = require('./lib/jimengRateLimit');
+const { getJimengMaxConcurrency } = require('./lib/platformJimengConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -16,6 +17,8 @@ const STUCK_PROCESSING_GRACE_MS = 8000;
 /** 微信云函数最长 60s，留 ~5s 缓冲给平台收尾 */
 const WORKER_BUDGET_MS = 55000;
 const POLL_BUDGET_MS = 10000;
+/** 多任务并行时单次 poll 切片，避免占满整轮 budget */
+const POLL_SLICE_MS = 6000;
 
 async function getImageUrl(photoFileID) {
   if (photoFileID && String(photoFileID).startsWith('cloud')) {
@@ -314,7 +317,19 @@ async function pickTaskForPoll(priorityBatchId) {
     .get();
   let list = (res.data || []).filter((t) => (t.jimengTaskId || '').trim());
   list = await purgeStaleTasks(list);
+  list.sort((a, b) => taskTimestamp({ updateTime: a.lastPollAt || a.updateTime || a.createTime }) -
+    taskTimestamp({ updateTime: b.lastPollAt || b.updateTime || b.createTime }));
   return pickByBatchFirst(list, priorityBatchId);
+}
+
+/** 已 submit 到即梦、仍在生成中的任务数（全账号，与火山并发配额对齐） */
+async function countInFlightTasks() {
+  const res = await db
+    .collection('ai_tasks')
+    .where({ status: 'processing', engine: 'jimeng' })
+    .limit(50)
+    .get();
+  return (res.data || []).filter((t) => (t.jimengTaskId || '').trim()).length;
 }
 
 /** 阶段 A：扣费 → submit 即梦 → 写 jimengTaskId（同次调用不 poll） */
@@ -424,24 +439,70 @@ async function runPollPhase(task, budgetMs) {
 }
 
 /**
- * 单次云函数调用只推进一步：优先 poll 在途任务，否则 submit 下一条 pending。
+ * 在 budget 内尽量填满即梦并发槽位，并轮询在途任务。
+ * 有 pending 且 inFlight < maxConcurrency 时优先 submit，否则 poll。
  */
-async function workerStep(event, deadline) {
-  const remaining = deadline - Date.now();
-  if (remaining < 2000) return { processed: 0 };
-
+async function workerLoop(event, deadline) {
   const priorityBatchId = String(event.priorityBatchId || '').trim();
-  const pollTask = await pickTaskForPoll(priorityBatchId);
-  const pendingTask = await pickTaskForSubmit(priorityBatchId);
+  const maxConcurrency = await getJimengMaxConcurrency();
+  let lastResult = { processed: 0, maxConcurrency };
+  let submittedCount = 0;
+  let completedCount = 0;
 
-  if (pollTask) {
-    const budget = Math.min(POLL_BUDGET_MS, remaining - 1500);
-    return runPollPhase(pollTask, budget);
+  while (Date.now() < deadline - 1500) {
+    const remaining = deadline - Date.now();
+    if (remaining < 2000) break;
+
+    const inFlight = await countInFlightTasks();
+    let didWork = false;
+
+    if (inFlight < maxConcurrency) {
+      const pendingTask = await pickTaskForSubmit(priorityBatchId);
+      if (pendingTask) {
+        const result = await runSubmitPhase(pendingTask);
+        lastResult = { ...result, maxConcurrency, inFlightBefore: inFlight };
+        didWork = true;
+        if (result.submitted) {
+          submittedCount += 1;
+          continue;
+        }
+        if (result.completed) completedCount += 1;
+        if (result.error || result.skipped) {
+          /* 继续尝试 poll 或其它 pending */
+        } else {
+          continue;
+        }
+      }
+    }
+
+    const pollTask = await pickTaskForPoll(priorityBatchId);
+    if (pollTask) {
+      const budget = Math.min(POLL_SLICE_MS, POLL_BUDGET_MS, remaining - 1500);
+      if (budget >= 3000) {
+        const result = await runPollPhase(pollTask, budget);
+        lastResult = { ...result, maxConcurrency, inFlightBefore: inFlight };
+        didWork = true;
+        if (result.completed) {
+          completedCount += 1;
+          continue;
+        }
+        if (result.continuing || result.pollRetry) {
+          continue;
+        }
+      }
+    }
+
+    if (!didWork) break;
   }
-  if (pendingTask) {
-    return runSubmitPhase(pendingTask);
-  }
-  return { processed: 0 };
+
+  const processed = submittedCount + completedCount;
+  return {
+    ...lastResult,
+    processed: processed > 0 ? processed : lastResult.processed || 0,
+    submittedCount,
+    completedCount,
+    maxConcurrency
+  };
 }
 
 async function main(event, context) {
@@ -455,7 +516,7 @@ async function main(event, context) {
   console.log('[jimengPortraitWorker] 触发来源', source, event.priorityBatchId || '');
 
   const deadline = Date.now() + WORKER_BUDGET_MS;
-  const result = await workerStep(event, deadline);
+  const result = await workerLoop(event, deadline);
   const summary = { ...result, source, budgetMs: WORKER_BUDGET_MS };
   console.log('[jimengPortraitWorker] 结束', JSON.stringify(summary));
   return summary;

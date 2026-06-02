@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>批次收藏按钮 v2 · 避开胶囊</title>
+  <style>
+    :root {
+      --shell: #f6f7f9;
+      --text: #1a1a2e;
+      --star-on: #f59e0b;
+      --warn: #ef4444;
+      --ok: #22c55e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #eef1f5;
+      padding: 28px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    .sub { color: #6b7280; font-size: 14px; margin-bottom: 24px; max-width: 720px; }
+
+    .layout { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+
+    .col-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .col-label.bad { color: var(--warn); }
+    .col-label.good { color: var(--ok); }
+
+    .phone {
+      width: 375px;
+      border: 10px solid #111;
+      border-radius: 40px;
+      background: var(--shell);
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,.15);
+      position: relative;
+    }
+
+    /* 微信胶囊 */
+    .capsule {
+      position: absolute;
+      top: 52px;
+      right: 10px;
+      width: 87px;
+      height: 32px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(0,0,0,.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 10px;
+      font-size: 14px;
+      color: #111;
+      z-index: 20;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .capsule .dot { letter-spacing: -2px; }
+    .capsule .ring {
+      width: 16px; height: 16px;
+      border: 1.5px solid #111;
+      border-radius: 50%;
+      position: relative;
+    }
+    .capsule .ring::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: #111;
+    }
+
+    .status { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+    .nav {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      position: relative;
+    }
+    .nav-back::before {
+      content: "";
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-left: 2px solid #111;
+      border-bottom: 2px solid #111;
+      transform: rotate(45deg);
+      margin-left: 6px;
+    }
+    .nav-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; }
+
+    .nav-star-bad {
+      position: absolute;
+      right: 8px;
+      font-size: 22px;
+      color: var(--star-on);
+      z-index: 5;
+    }
+    .overlap {
+      position: absolute;
+      top: 78px;
+      right: 20px;
+      background: var(--warn);
+      color: #fff;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      z-index: 25;
+    }
+
+    .hero {
+      margin: 8px 16px 16px;
+      height: 380px;
+      background: linear-gradient(180deg, #e2e5ea, #d0d5dd);
+      border-radius: 12px;
+      position: relative;
+    }
+    .hero-chrome {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: calc(100% - 24px);
+    }
+    .pill {
+      padding: 6px 12px;
+      border-radius: 18px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    .pill.dark { background: rgba(0,0,0,.52); color: #fff; }
+    .pill.light { background: rgba(255,255,255,.94); color: var(--text); }
+    .pill.fav-on {
+      background: rgba(255,251,235,.96);
+      color: #b45309;
+      box-shadow: 0 2px 8px rgba(245,158,11,.2);
+    }
+    .pill.fav-on .s { color: var(--star-on); }
+
+    .callout-good {
+      position: absolute;
+      top: 56px;
+      right: 16px;
+      background: #22c55e;
+      color: #fff;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      z-index: 6;
+    }
+
+    .footer-note {
+      padding: 0 16px 20px;
+      font-size: 11px;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    .spec {
+      flex: 1;
+      min-width: 320px;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .spec h2 { font-size: 16px; margin: 18px 0 10px; }
+    .spec h2:first-child { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f9fafb; }
+    .reject { background: #fef2f2; color: #991b1b; }
+    .pick { background: #f0fdf4; color: #166534; font-weight: 600; }
+    .path { font-size: 12px; color: #6b7280; word-break: break-all; background: #f9fafb; padding: 10px; border-radius: 8px; margin-top: 8px; }
+    ul { font-size: 13px; padding-left: 18px; color: #374151; }
+    li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>批次收藏按钮 v2 · 避开微信胶囊</h1>
+  <p class="sub">
+    问题：导航栏右上角与系统胶囊（··· ｜ ○）重叠，收藏不可点。<br />
+    推荐：下移到<strong>大图 hero-chrome</strong>，与「2/3」「全部下载」同一行（已在代码中调整）。
+  </p>
+
+  <div class="layout">
+    <div>
+      <div class="col-label bad">❌ 旧方案 · 导航栏右侧（被遮挡）</div>
+      <div class="phone" style="height:520px;">
+        <div class="capsule"><span class="dot">···</span><span class="ring"></span></div>
+        <div class="overlap">与胶囊重叠</div>
+        <div class="status">9:41</div>
+        <div class="nav">
+          <span class="nav-back"></span>
+          <span class="nav-title">韩系清透</span>
+          <span class="nav-star-bad">★</span>
+        </div>
+        <div class="hero">
+          <div class="hero-chrome">
+            <span class="pill dark">2/3</span>
+            <span class="pill light">全部下载</span>
+          </div>
+        </div>
+        <div class="footer-note">收藏星在胶囊下方但仍在顶栏热区，易误触关闭</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-label good">✅ 新方案 · hero-chrome（推荐 · 已实现）</div>
+      <div class="phone" style="height:560px;">
+        <div class="capsule"><span class="dot">···</span><span class="ring"></span></div>
+        <div class="status">9:41</div>
+        <div class="nav">
+          <span class="nav-back"></span>
+          <span class="nav-title">韩系清透</span>
+        </div>
+        <div class="hero">
+          <div class="callout-good">安全区域</div>
+          <div class="hero-chrome">
+            <span class="pill dark">2/3</span>
+            <span class="pill light fav-off"><span class="s">☆</span> 收藏</span>
+            <span class="pill light">全部下载</span>
+          </div>
+        </div>
+        <div class="hero" style="margin-top:0;height:200px;">
+          <div class="hero-chrome">
+            <span class="pill dark">2/3</span>
+            <span class="pill fav-on fav-on"><span class="s">★</span> 已收藏</span>
+            <span class="pill light">全部下载</span>
+          </div>
+          <div style="position:absolute;bottom:8px;left:12px;font-size:10px;color:#6b7280;">已收藏态示意</div>
+        </div>
+        <div class="footer-note">位于写真图内右上角，随图定位，远离胶囊</div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>方案对比</h2>
+      <table>
+        <tr><th>方案</th><th>结论</th><th>原因</th></tr>
+        <tr class="reject">
+          <td>A. 导航栏右侧 ★</td>
+          <td>弃用</td>
+          <td>与胶囊重叠；自定义顶栏难以可靠避让</td>
+        </tr>
+        <tr class="pick">
+          <td><strong>B. hero-chrome pill</strong></td>
+          <td><strong>采用</strong></td>
+          <td>已在图片安全区；与下载同级操作；现有 layout 算法可定位</td>
+        </tr>
+        <tr>
+          <td>C. 底部 footer 第三按钮</td>
+          <td>备选</td>
+          <td>不冲突但距图片远，不如 B 直观</td>
+        </tr>
+        <tr>
+          <td>D. 标题左侧 ★</td>
+          <td>不采用</td>
+          <td>与返回键抢空间，易误触</td>
+        </tr>
+      </table>
+
+      <h2>新按钮规格（pill-fav）</h2>
+      <table>
+        <tr><th>项</th><th>值</th></tr>
+        <tr><td>位置</td><td>hero-chrome 内，顺序：<code>张数 → 收藏 → 全部下载</code></td></tr>
+        <tr><td>未收藏</td><td>白底 pill · <code>☆ 收藏</code></td></tr>
+        <tr><td>已收藏</td><td>浅金底 · <code>★ 已收藏</code> · 字色 #b45309</td></tr>
+        <tr><td>定位</td><td>沿用 <code>computeHeroChromeLayout</code>，贴在写真图右上角</td></tr>
+        <tr><td>辅助入口</td><td>云相册卡片 ··· → 收藏批次（不变）</td></tr>
+      </table>
+
+      <h2>为何不用「胶囊避让算法」?</h2>
+      <ul>
+        <li>需 <code>getMenuButtonBoundingClientRect</code> + 各机型适配</li>
+        <li>收藏是「看图时」的操作，放在图上比顶栏更自然</li>
+        <li>hero-chrome 已有「全部下载」，批次收藏语义一致</li>
+      </ul>
+
+      <h2>设计稿路径</h2>
+      <div class="path">/Users/kode4meljf/.qclaw/workspace/AI-Portrait/admin-web/design/batch-favorite-button-v2-design.html</div>
+    </div>
+  </div>
+</body>
+</html>

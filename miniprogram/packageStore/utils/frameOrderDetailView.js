@@ -2,7 +2,6 @@ const { getCustomerDisplayName } = require('../../utils/customerDisplay')
 
 const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png'
 const STATUS_FLOW = ['待处理', '制作中', '已发货', '已完成']
-const LOGISTICS_COMPANY = '顺丰速运'
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -21,29 +20,35 @@ function maskPhone(phone) {
   return p
 }
 
-function buildLogisticsTraces(status, shippingNo) {
-  if (!shippingNo) return []
-  if (status === '已完成') {
-    return [{ time: '05-17 11:32', msg: '已签收，感谢使用顺丰速运', active: true }]
-  }
-  if (status === '已发货') {
-    return [
-      { time: '05-16 18:20', msg: '【杭州市】快件已到达 西湖区营业部，正在派送中', active: true },
-      { time: '05-16 09:15', msg: '【杭州市】快件已从 萧山转运中心 发出', active: false },
-      { time: '05-15 20:40', msg: '商家已发货，等待揽收', active: false }
-    ]
-  }
-  return []
+function defaultCompanyName(order, logistics) {
+  return (logistics?.companyName || order.shippingCompanyName || '').trim() || '快递公司'
+}
+
+function mapApiTraces(traces) {
+  return (Array.isArray(traces) ? traces : []).map((item, index) => ({
+    time: item.time || '',
+    msg: item.msg || '',
+    active: index === 0,
+    hint: false
+  }))
+}
+
+function shouldQueryLogistics(order) {
+  const status = order.status || '待处理'
+  const shippingNo = (order.shippingNo || '').trim()
+  return !!shippingNo && (status === '已发货' || status === '已完成')
 }
 
 /**
  * @param {object} order
- * @param {{ isStoreStaff?: boolean, storeName?: string, audience?: 'store'|'customer' }} options
+ * @param {{ isStoreStaff?: boolean, storeName?: string, audience?: 'store'|'customer', logistics?: object, logisticsLoading?: boolean }} options
  */
 function buildFrameOrderView(order, options = {}) {
   const isStoreStaff = !!options.isStoreStaff
   const audience = options.audience || (isStoreStaff ? 'store' : 'customer')
   const storeName = options.storeName || '当前门店'
+  const logisticsLoading = !!options.logisticsLoading
+  const logistics = options.logistics || null
 
   const status = order.status || '待处理'
   const stepIndex = Math.max(0, STATUS_FLOW.indexOf(status))
@@ -51,8 +56,42 @@ function buildFrameOrderView(order, options = {}) {
   const photoUrl = order.photoUrl || legacyPhoto || ''
   const customer = order.customerInfo || null
   const shippingNo = (order.shippingNo || '').trim()
-  const traces = buildLogisticsTraces(status, shippingNo)
-  const latestTrace = traces[0]
+  const companyName = defaultCompanyName(order, logistics)
+  const needLogisticsQuery = shouldQueryLogistics(order)
+
+  let traces = []
+  let logisticsMode = 'empty'
+  let logisticsEmptyIcon = '📦'
+  let logisticsEmptyTitle = ''
+  let logisticsEmptySub = ''
+  let showCopyShipping = false
+  let showLogisticsStrip = false
+  let stripTrace = null
+
+  if (needLogisticsQuery) {
+    showCopyShipping = true
+    if (logisticsLoading) {
+      logisticsMode = 'loading'
+      logisticsEmptyTitle = '正在查询物流…'
+      logisticsEmptySub = '请稍候'
+    } else if (logistics && !logistics.empty && logistics.traces?.length) {
+      traces = mapApiTraces(logistics.traces)
+      logisticsMode = status === '已完成' ? 'done' : 'timeline'
+      showLogisticsStrip = status === '已发货'
+      stripTrace = traces[0] || null
+    } else if (logistics && logistics.empty) {
+      logisticsMode = 'empty'
+      logisticsEmptyIcon = '📭'
+      logisticsEmptyTitle = '暂无物流信息'
+      logisticsEmptySub = logistics.message || '暂未查询到物流轨迹，请下拉刷新'
+    } else {
+      logisticsMode = 'loading'
+      logisticsEmptyTitle = '正在查询物流…'
+      logisticsEmptySub = '请稍候'
+    }
+  }
+
+  const latestTrace = stripTrace || traces[0]
 
   const steps = STATUS_FLOW.map((label, i) => ({
     label,
@@ -67,12 +106,6 @@ function buildFrameOrderView(order, options = {}) {
   let heroTitle = ''
   let heroSub = ''
   let logisticsBeforePreview = false
-  let showLogisticsStrip = false
-  let logisticsMode = 'empty'
-  let logisticsEmptyIcon = '📦'
-  let logisticsEmptyTitle = ''
-  let logisticsEmptySub = ''
-  let showCopyShipping = false
 
   switch (status) {
     case '待处理':
@@ -99,33 +132,37 @@ function buildFrameOrderView(order, options = {}) {
       break
     case '已发货':
       heroClass = 'shipped-bg'
-      heroTitle = '包裹运输中'
+      heroTitle = latestTrace?.msg && logisticsMode === 'timeline' ? '包裹运输中' : '已发货'
       heroSub = shippingNo
-        ? `${LOGISTICS_COMPANY} ${shippingNo} · 预计 3 天内送达`
-        : '已发货，物流信息更新中'
+        ? latestTrace?.msg && logisticsMode === 'timeline'
+          ? `${companyName} ${shippingNo}`
+          : `运单号 ${shippingNo}`
+        : '物流单号录入中，请稍后查看'
       logisticsBeforePreview = true
-      showLogisticsStrip = !!shippingNo
-      logisticsMode = shippingNo ? 'timeline' : 'empty'
-      showCopyShipping = !!shippingNo
       if (!shippingNo) {
+        logisticsMode = 'empty'
         logisticsEmptyIcon = '🚚'
         logisticsEmptyTitle = '已发货，待录入运单号'
         logisticsEmptySub = '请稍后再查看或联系门店'
+        showCopyShipping = false
+        showLogisticsStrip = false
       }
       break
     case '已完成':
       heroTitle = '订单已完成'
       heroSub = shippingNo
-        ? `${shippingNo} 已签收`
+        ? logisticsMode === 'done' && latestTrace?.msg
+          ? `${companyName} ${shippingNo} · 已确认签收`
+          : `运单号 ${shippingNo} · 已确认签收`
         : audience === 'customer'
           ? '感谢您的耐心等待'
           : '感谢使用，欢迎带客户再次体验 AI 写真摆台'
-      logisticsMode = shippingNo ? 'done' : 'empty'
-      showCopyShipping = !!shippingNo
       if (!shippingNo) {
+        logisticsMode = 'empty'
         logisticsEmptyIcon = '✓'
         logisticsEmptyTitle = '订单已完成'
         logisticsEmptySub = '本单无物流记录'
+        showCopyShipping = false
       }
       break
     default:
@@ -163,13 +200,14 @@ function buildFrameOrderView(order, options = {}) {
     showLogisticsStrip,
     stripLatest: latestTrace?.msg || '',
     stripMeta: shippingNo
-      ? `${LOGISTICS_COMPANY} ${shippingNo}${latestTrace?.time ? ` · ${latestTrace.time}` : ''}`
+      ? `${companyName} ${shippingNo}${latestTrace?.time ? ` · ${latestTrace.time}` : ''}`
       : '',
     logisticsMode,
+    logisticsLoading,
     logisticsEmptyIcon,
     logisticsEmptyTitle,
     logisticsEmptySub,
-    logisticsCompany: LOGISTICS_COMPANY,
+    logisticsCompany: companyName,
     shippingNo,
     traces,
     showCopyShipping,
@@ -192,5 +230,6 @@ function buildFrameOrderView(order, options = {}) {
 
 module.exports = {
   PLACEHOLDER_THUMB,
-  buildFrameOrderView
+  buildFrameOrderView,
+  shouldQueryLogistics
 }

@@ -46,7 +46,7 @@ Page({
     equityAlbum: 0,
     equityFrame: 0,
     templates: [],
-    storeInfo: null,
+    storeInfo: {},
     loading: false,
     checkinResult: null,
     hasCheckedInOnce: false,
@@ -104,6 +104,7 @@ Page({
     if (!this.data.pickerVisible) {
       setStoreTabBarHidden(this, false);
     }
+    this.loadStoreInfo();
     this.loadTodayVisitCount();
     if (app.globalData.selectedCustomerId !== this.data.selectedCustomer?._id) {
       this.refreshCustomerInfo();

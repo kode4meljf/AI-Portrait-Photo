@@ -39,14 +39,17 @@
 
     <block wx:else>
       <view class="page-body">
-        <view class="image-zone">
-          <view class="hero-stage">
-            <view class="hero-frame" style="height: {{swiperHeight}}px;">
+        <view class="content-scroll">
+          <view class="image-zone">
+            <view class="hero-stage">
+              <view class="hero-frame" style="height: {{swiperHeight}}px;">
               <swiper
                 class="result-swiper"
                 style="height: {{swiperHeight}}px;"
                 current="{{currentIndex}}"
                 bindchange="onSwiperChange"
+                bindtransition="onSwiperTransition"
+                bindanimationfinish="onSwiperAnimationFinish"
                 duration="280"
                 easing-function="easeOutCubic"
                 circular="{{false}}"
@@ -81,8 +84,22 @@
               </swiper>
 
               <view class="frame-overlay">
-                <view wx:if="{{results.length > 0}}" class="hero-chrome">
-                  <text class="pill-count">{{downloadCountText}}</text>
+                <view
+                  wx:if="{{results.length > 0}}"
+                  class="hero-chrome"
+                  style="top: {{heroChromeTop}}px; right: {{heroChromeRight}}px;"
+                >
+                  <text wx:if="{{showSlideProgress}}" class="pill-count">{{slideProgressText}}</text>
+                  <view
+                    wx:if="{{showBatchFavorite}}"
+                    class="pill-fav {{batchFavorite ? 'is-on' : ''}}"
+                    catchtap="onToggleBatchFavorite"
+                    hover-class="pill-fav--active"
+                    hover-stay-time="80"
+                  >
+                    <text class="pill-fav-star">{{batchFavorite ? '★' : '☆'}}</text>
+                    <text>{{batchFavorite ? '已收藏' : '收藏'}}</text>
+                  </view>
                   <view
                     class="pill-dl"
                     catchtap="onDownloadAll"
@@ -112,55 +129,60 @@
                 <view wx:if="{{showSwipeToast}}" class="swipe-toast">在预览区内左右滑动切换生成图</view>
               </view>
             </view>
+          </view>
+          </view>
 
-            <view class="hero-tip-row">
-              <text class="hero-tip">* 默认以当前展示写真制作实物摆台</text>
-              <view
-                wx:if="{{!currentItemFailed}}"
-                class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"
-                hover-class="origin-toggle--press"
-                hover-stay-time="80"
-                bindtap="onToggleOrigin"
-              >{{showOriginFloat ? '隐藏原图' : '显示原图'}}</view>
+          <view class="style-tray">
+            <view class="tray-panel">
+              <view class="tray-header">
+                <text class="tray-title">{{results.length > 1 ? results.length + '种风格' : '当前风格'}}</text>
+                <view
+                  wx:if="{{originalUrl && !currentItemFailed}}"
+                  class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"
+                  hover-class="origin-toggle--press"
+                  hover-stay-time="80"
+                  bindtap="onToggleOrigin"
+                >{{showOriginFloat ? '隐藏原图' : '显示原图'}}</view>
+              </view>
+              <view class="stand-tip-row">
+                <text class="stand-tip">* 默认以当前展示写真制作实物摆台</text>
+              </view>
+              <scroll-view
+                wx:if="{{results.length > 1}}"
+                class="thumb-scroll"
+                scroll-x
+                enhanced
+                show-scrollbar="{{false}}"
+                scroll-into-view="{{thumbScrollIntoView}}"
+                scroll-with-animation
+              >
+                <view class="thumb-row">
+                  <view
+                    wx:for="{{results}}"
+                    wx:key="photoId"
+                    id="thumb-{{index}}"
+                    class="thumb-item {{currentIndex === index ? 'active' : ''}} {{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending' ? 'is-processing' : ''}} {{item.status === 'failed' ? 'is-failed' : ''}}"
+                    bindtap="onThumbTap"
+                    data-index="{{index}}"
+                  >
+                    <view class="thumb-image-wrap">
+                      <image
+                        class="thumb-image"
+                        src="{{item.url || originalUrl}}"
+                        mode="aspectFill"
+                      ></image>
+                      <view
+                        wx:if="{{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending'}}"
+                        class="state-dot ing"
+                      ></view>
+                      <view wx:elif="{{item.status === 'failed'}}" class="state-dot fail"></view>
+                    </view>
+                    <text class="thumb-name">{{item.name}}</text>
+                  </view>
+                </view>
+              </scroll-view>
             </view>
           </view>
-        </view>
-
-        <view wx:if="{{results.length > 1}}" class="style-tray">
-          <view class="list-title">{{results.length}}种风格</view>
-          <scroll-view
-            class="thumb-scroll"
-            scroll-x
-            enhanced
-            show-scrollbar="{{false}}"
-            scroll-into-view="{{thumbScrollIntoView}}"
-            scroll-with-animation
-          >
-            <view class="thumb-row">
-              <view
-                wx:for="{{results}}"
-                wx:key="photoId"
-                id="thumb-{{index}}"
-                class="thumb-item {{currentIndex === index ? 'active' : ''}} {{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending' ? 'is-processing' : ''}} {{item.status === 'failed' ? 'is-failed' : ''}}"
-                bindtap="onThumbTap"
-                data-index="{{index}}"
-              >
-                <view class="thumb-image-wrap">
-                  <image
-                    class="thumb-image"
-                    src="{{item.url || originalUrl}}"
-                    mode="aspectFill"
-                  ></image>
-                  <view
-                    wx:if="{{item.status === 'generating' || item.status === 'retrying' || item.status === 'pending'}}"
-                    class="state-dot ing"
-                  ></view>
-                  <view wx:elif="{{item.status === 'failed'}}" class="state-dot fail"></view>
-                </view>
-                <text class="thumb-name">{{item.name}}</text>
-              </view>
-            </view>
-          </scroll-view>
         </view>
 
         <view class="footer">
@@ -181,54 +203,67 @@
     wx:if="{{previewVisible}}"
     class="preview-layer"
     catchtouchmove="preventMove"
-    bindtouchstart="onPreviewTouchStart"
-    bindtouchend="onPreviewTouchEnd"
   >
-    <swiper
-      class="preview-swiper"
-      current="{{previewIndex}}"
-      bindchange="onPreviewSwiperChange"
-      duration="280"
-      circular="{{false}}"
-      disable-touch="{{previewSwiperLock}}"
-    >
-      <swiper-item wx:for="{{results}}" wx:key="photoId">
-        <view class="preview-slide">
-          <movable-area
-            wx:if="{{item.url && item.status !== 'failed' && item.status !== 'retrying' && item.status !== 'generating'}}"
-            class="preview-movable-area"
-            scale-area
-          >
-            <movable-view
-              class="preview-movable-view"
-              direction="all"
-              scale
-              scale-min="1"
-              scale-max="4"
-              scale-value="{{previewIndex === index ? previewScale : 1}}"
-              bindscale="onPreviewScale"
-              bindtap="onPreviewImageTap"
-              bindlongpress="onDownloadPreview"
-              data-index="{{index}}"
-            >
-              <image class="preview-slide-img" src="{{item.url}}" mode="aspectFit"></image>
-            </movable-view>
-          </movable-area>
+    <view class="preview-image-area">
+      <view
+        class="preview-image-wrapper {{previewAnimClass}}"
+        style="transform: {{previewTransform}};"
+        bindtouchstart="onPreviewTouchStart"
+        bindtouchmove="onPreviewTouchMove"
+        bindtouchend="onPreviewTouchEnd"
+        bindtouchcancel="onPreviewTouchEnd"
+      >
+        <swiper
+          class="preview-swiper"
+          current="{{previewIndex}}"
+          bindchange="onPreviewSwiperChange"
+          duration="280"
+          circular="{{false}}"
+          disable-touch="{{previewTouchCapture}}"
+        >
+          <swiper-item wx:for="{{results}}" wx:key="photoId">
+            <view class="preview-slide">
+              <image
+                wx:if="{{item.url && item.status !== 'failed' && item.status !== 'retrying' && item.status !== 'generating'}}"
+                class="preview-slide-img"
+                src="{{item.url}}"
+                mode="aspectFit"
+                show-menu-by-longpress="{{false}}"
+                bindload="onPreviewPhotoLoad"
+                data-index="{{index}}"
+              ></image>
+            </view>
+          </swiper-item>
+        </swiper>
+        <view
+          class="preview-touch-catcher"
+          wx:if="{{previewTouchCapture}}"
+          catchtouchstart="onPreviewTouchStart"
+          catchtouchmove="onPreviewTouchMove"
+          catchtouchend="onPreviewTouchEnd"
+          catchtouchcancel="onPreviewTouchEnd"
+        ></view>
+        <view
+          wx:if="{{results.length > 1 && !previewProgressHidden}}"
+          class="preview-progress-bar"
+          style="{{previewProgressStyle}}"
+        >
+          <view
+            wx:for="{{results}}"
+            wx:key="photoId"
+            class="preview-progress-segment {{index === previewIndex ? 'done' : 'todo'}}"
+          ></view>
         </view>
-      </swiper-item>
-    </swiper>
-    <cover-view class="preview-chrome">
-      <cover-view
-        class="preview-action-btn preview-action-btn--close"
-        bindtap="onClosePreview"
-      >
-        <cover-view class="preview-action-glyph">×</cover-view>
-      </cover-view>
-      <cover-view
-        class="preview-action-btn preview-action-btn--down"
-        bindtap="onDownloadPreview"
-      >
-        <cover-view class="preview-action-glyph">↓</cover-view>
+      </view>
+    </view>
+    <cover-view class="preview-bottom-bar">
+      <cover-view class="preview-actions {{previewBottomBarVisible ? 'fade-in' : ''}}">
+        <cover-view class="preview-action-item preview-close-btn" catchtap="onClosePreview">
+          <cover-view class="preview-action-icon">×</cover-view>
+        </cover-view>
+        <cover-view class="preview-action-item preview-download-btn" catchtap="onDownloadPreview">
+          <cover-view class="preview-action-icon">↓</cover-view>
+        </cover-view>
       </cover-view>
     </cover-view>
   </view>

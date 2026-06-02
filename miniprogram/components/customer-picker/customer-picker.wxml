@@ -44,7 +44,10 @@
         class="customer-item store-scope-item {{selectedId === '__all_store__' ? 'selected' : ''}}"
         bindtap="onStoreOptionTap"
       >
-        <view class="customer-avatar customer-avatar--initial store-scope-avatar">
+        <view wx:if="{{storeAvatarUrl}}" class="customer-avatar customer-avatar--image">
+          <image class="customer-avatar-img" src="{{storeAvatarUrl}}" mode="aspectFill" />
+        </view>
+        <view wx:else class="customer-avatar customer-avatar--initial store-scope-avatar">
           <text class="avatar-initial-text">店</text>
         </view>
         <view class="customer-info">

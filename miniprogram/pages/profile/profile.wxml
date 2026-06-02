@@ -11,31 +11,37 @@
     refresher-triggered="{{refreshing}}"
   >
 
-    <!-- 门店信息头部 -->
+    <!-- 门店信息头部 · 方案 C 横版大牌面 -->
     <view class="store-header">
-      <view class="store-header-actions">
-        <view class="help-entry gold" bindtap="onOpenHelp">
-          <text class="help-entry-mark">?</text>
-          <text>帮助</text>
-        </view>
-      </view>
-      <view class="store-top">
-        <view wx:if="{{storeInfo.avatarUrl}}" class="store-avatar" bindtap="previewStoreAvatar">
-          <image class="store-avatar-img" src="{{storeInfo.avatarUrl}}" mode="aspectFill"></image>
-        </view>
-        <view wx:else class="store-avatar store-avatar-emoji">🏪</view>
-        <view class="store-info">
-          <view class="store-name">{{storeInfo.name || 'AI写真馆'}}</view>
-          <view class="store-contact">
-            <text>{{storeInfo.contactName || '管理员'}}</text>
-            <text class="dot"></text>
-            <text>{{storeInfo.contactPhone || '未设置'}}</text>
+      <text class="store-header-watermark">STORE</text>
+      <view class="store-header-inner">
+        <view class="store-head-row" wx:if="{{isOwner}}">
+          <view class="help-entry gold" bindtap="onEditStore" hover-class="none">
+            <text class="help-entry-mark">✎</text>
+            <text>编辑资料</text>
           </view>
         </view>
-      </view>
-      <view class="store-address">
-        <text class="addr-icon">📍</text>
-        <text>{{storeInfo.address || '暂无地址'}}</text>
+        <view class="store-main-row">
+          <view wx:if="{{storeInfo.avatarUrl}}" class="store-avatar store-avatar--round" bindtap="previewStoreAvatar">
+            <image class="store-avatar-img" src="{{storeInfo.avatarUrl}}" mode="aspectFill"></image>
+          </view>
+          <view wx:else class="store-avatar store-avatar--round store-avatar-emoji">🏪</view>
+          <view class="store-info">
+            <view class="store-name store-name--hero">{{storeInfo.name || 'AI写真馆'}}</view>
+            <view class="store-contact">
+              <text>{{storeInfo.contactName || '管理员'}}</text>
+              <text class="dot"></text>
+              <text>{{storeInfo.contactPhone || '未设置'}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="store-footer-block">
+          <view class="store-divider"></view>
+          <view class="store-address store-address--plain">
+            <text class="addr-icon">📍</text>
+            <text class="addr-text">{{storeInfo.address || '暂无地址'}}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -87,17 +93,6 @@
         <text class="ws-hint">常用管理</text>
       </view>
       <view class="ws-grid">
-        <view
-          wx:if="{{isOwner}}"
-          class="ws-item"
-          hover-class="ws-item-active"
-          bindtap="onEditStore"
-        >
-          <view class="ws-icon blue">
-            <image class="ws-icon-img" src="/assets/icons/ws-store.svg" mode="aspectFit"></image>
-          </view>
-          <text class="ws-label">门店资料</text>
-        </view>
         <view class="ws-item" hover-class="ws-item-active" bindtap="onManageMembers">
           <view class="ws-icon orange">
             <image class="ws-icon-img" src="/assets/icons/ws-staff.svg" mode="aspectFit"></image>
@@ -225,6 +220,11 @@
         </view>
         <view class="tip-right">查看名单</view>
       </view>
+    </view>
+
+    <view class="footer-help" bindtap="onOpenHelp" hover-class="footer-help--active" hover-stay-time="80">
+      <text class="footer-help-text">帮助与反馈</text>
+      <text class="footer-help-arrow">›</text>
     </view>
 
     <view style="height: 40rpx;"></view>

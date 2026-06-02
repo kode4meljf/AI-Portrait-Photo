@@ -30,13 +30,6 @@
   background: rgba(232, 184, 109, 0.12);
 }
 
-.store-header-actions {
-  position: absolute;
-  top: 72rpx;
-  right: 32rpx;
-  z-index: 2;
-}
-
-.store-top {
-  padding-right: 140rpx;
+.help-entry.gold:active {
+  background: rgba(232, 184, 109, 0.2);
 }

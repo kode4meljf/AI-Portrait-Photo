@@ -2,7 +2,13 @@
 <view class="gallery-container">
   <view class="gallery-top">
     <view class="filter-pill" hover-class="filter-pill-active" bindtap="onFilterRowTap">
-      <view class="pill-av {{singleCustomerMode ? '' : 'store'}}">{{filterCustomerInitial}}</view>
+      <view wx:if="{{filterAvatarUrl}}" class="pill-av pill-av--image">
+        <image class="pill-av-img" src="{{filterAvatarUrl}}" mode="aspectFill" />
+      </view>
+      <view
+        wx:else
+        class="pill-av {{singleCustomerMode ? '' : 'store'}}"
+      >{{filterCustomerInitial}}</view>
       <text class="pill-name">{{singleCustomerMode ? filterCustomerName : '全店客户'}}</text>
       <view class="btn-action">更换</view>
     </view>
@@ -40,7 +46,7 @@
           </view>
           <view class="batch-list">
             <block wx:for="{{item.batches}}" wx:for-item="batch" wx:key="_id">
-              <template is="batchCard" data="{{batch: batch, singleCustomerMode: singleCustomerMode}}" />
+              <template is="batchCard" data="{{batch: batch}}" />
             </block>
           </view>
         </block>
@@ -61,14 +67,14 @@
         bindscrolltolower="onScrollLower"
         lower-threshold="100"
       >
-        <view wx:if="{{favGroups.length === 0 && !favLoading}}" class="empty-tip">暂无收藏照片</view>
+        <view wx:if="{{favGroups.length === 0 && !favLoading}}" class="empty-tip">暂无收藏批次</view>
         <block wx:for="{{favGroups}}" wx:key="month">
           <view class="month-group">
             <view class="month-title">{{item.month}}</view>
           </view>
           <view class="batch-list">
             <block wx:for="{{item.batches}}" wx:for-item="batch" wx:key="_id">
-              <template is="batchCard" data="{{batch: batch, singleCustomerMode: singleCustomerMode}}" />
+              <template is="batchCard" data="{{batch: batch}}" />
             </block>
           </view>
         </block>
@@ -83,6 +89,7 @@
     selectedId="{{pickerSelectedId}}"
     includeStoreOption="{{true}}"
     storeOptionLabel="全店客户"
+    storeAvatarUrl="{{storeAvatarUrl}}"
     applyGlobalSelection="{{false}}"
     bind:select="onPickerSelect"
     bind:close="onPickerClose"
@@ -91,16 +98,22 @@
 
 <template name="batchCard">
   <view class="batch-card" bindtap="onBatchTap" data-batch="{{batch}}">
-    <view class="card-top {{singleCustomerMode ? 'compact' : ''}}">
+    <view class="card-top">
       <view
-        wx:if="{{!singleCustomerMode}}"
+        wx:if="{{batch.customerAvatarUrl}}"
+        class="card-avatar card-avatar--image"
+      >
+        <image class="card-avatar-img" src="{{batch.customerAvatarUrl}}" mode="aspectFill" />
+      </view>
+      <view
+        wx:else
         class="card-avatar"
         style="background: {{batch.avatarColor}}"
       >{{batch.customerInitial}}</view>
       <view class="card-meta">
         <view class="card-row1">
-          <text wx:if="{{!singleCustomerMode}}" class="card-customer">{{batch.customerName}}</text>
-          <text class="card-time {{singleCustomerMode ? 'prominent' : ''}}">{{batch.timeLabel}}</text>
+          <text class="card-customer">{{batch.customerName}}</text>
+          <text class="card-time">{{batch.timeLabel}}</text>
         </view>
         <view class="card-row2">{{batch.summaryText}}</view>
       </view>

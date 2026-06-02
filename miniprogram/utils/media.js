@@ -122,6 +122,7 @@ async function _createBatch() {
       storeId: storeId,
       customerId: app.globalData.selectedCustomerId || null,
       status: 'pending',
+      isFavorite: false,
       photoIds: [],
       createTime: db.serverDate()
     }

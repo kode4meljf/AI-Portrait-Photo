@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>云相册收藏 · 生成结果页设计稿</title>
+  <style>
+    :root {
+      --accent: #ff69b4;
+      --gold: #c9a227;
+      --page-bg: #f0f2f5;
+      --shell-bg: #f6f7f9;
+      --text: #1a1a2e;
+      --text-muted: #6b7280;
+      --pill-dark: rgba(0,0,0,.52);
+      --pill-light: rgba(255,255,255,.94);
+      --star-on: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
+    .layout { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+    .phone-wrap { flex-shrink: 0; }
+    .phone {
+      width: 375px;
+      height: 812px;
+      border-radius: 40px;
+      border: 10px solid #111;
+      background: var(--shell-bg);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    }
+    .status-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .nav {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      position: relative;
+    }
+    .nav-back {
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-back::before {
+      content: "";
+      width: 10px; height: 10px;
+      border-left: 2px solid #111;
+      border-bottom: 2px solid #111;
+      transform: rotate(45deg);
+      margin-left: 4px;
+    }
+    .nav-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .hero {
+      margin: 8px 16px 0;
+      height: 420px;
+      background: linear-gradient(180deg, #e8eaef 0%, #dfe3ea 100%);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      opacity: .85;
+    }
+    .hero-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+    /* ── 主入口：hero 右上角 chrome 区 ── */
+    .hero-chrome {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 2;
+    }
+    .pill {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pill-count { background: var(--pill-dark); color: #fff; backdrop-filter: blur(8px); }
+    .pill-fav {
+      background: var(--pill-light);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 2px solid transparent;
+    }
+    .pill-fav.on {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #b45309;
+    }
+    .pill-fav .star { font-size: 14px; line-height: 1; }
+    .pill-dl {
+      background: var(--pill-light);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .callout {
+      position: absolute;
+      top: 52px;
+      right: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      z-index: 3;
+    }
+    .callout::before {
+      content: "";
+      position: absolute;
+      top: -6px;
+      right: 48px;
+      border: 6px solid transparent;
+      border-bottom-color: var(--accent);
+    }
+    .origin-float {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 72px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+    .origin-float img { width: 100%; height: 72px; object-fit: cover; display: block; }
+    .origin-label {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      font-size: 10px; color: #fff; text-align: center;
+      padding: 12px 4px 4px;
+      background: linear-gradient(transparent, rgba(0,0,0,.55));
+    }
+    .hero-tip {
+      margin: 8px 16px 0;
+      font-size: 11px;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+    .tray {
+      margin: 12px 16px 0;
+    }
+    .tray-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .thumbs { display: flex; gap: 8px; overflow-x: auto; }
+    .thumb {
+      flex-shrink: 0;
+      width: 56px;
+      text-align: center;
+    }
+    .thumb-img {
+      width: 56px; height: 74px;
+      border-radius: 8px;
+      background: #ddd;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    .thumb-img.active { border-color: var(--accent); }
+    .thumb-star {
+      position: absolute;
+      top: 4px; right: 4px;
+      font-size: 10px;
+      color: var(--star-on);
+      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+    }
+    .thumb-name { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+    .footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 12px 16px calc(12px + 20px);
+      background: var(--shell-bg);
+    }
+    .actions { display: flex; gap: 12px; }
+    .btn {
+      flex: 1;
+      height: 44px;
+      border-radius: 22px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: default;
+    }
+    .btn-outline { background: #fff; color: var(--text); border: 1px solid #e5e7eb; }
+    .btn-primary { background: var(--text); color: #fff; }
+
+    /* 全屏预览态 */
+    .preview-phone {
+      width: 375px;
+      height: 812px;
+      border-radius: 40px;
+      border: 10px solid #111;
+      background: #000;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    }
+    .preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: .9;
+    }
+    .preview-bar {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 84px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px 20px;
+    }
+    .preview-btn {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.15);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .preview-btn.fav.on { background: rgba(245,158,11,.25); color: #fbbf24; }
+    .preview-callout {
+      position: absolute;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .spec {
+      flex: 1;
+      min-width: 320px;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .spec h2 { font-size: 16px; margin: 20px 0 10px; }
+    .spec h2:first-child { margin-top: 0; }
+    .spec ul { padding-left: 20px; font-size: 14px; color: #374151; }
+    .spec li { margin-bottom: 8px; }
+    .spec code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tag-p0 { background: #fef2f2; color: #dc2626; }
+    .tag-p1 { background: #fff7ed; color: #ea580c; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    th { background: #f9fafb; font-weight: 600; }
+    .path {
+      font-size: 12px;
+      color: #6b7280;
+      word-break: break-all;
+      background: #f9fafb;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>云相册「收藏」· 生成结果页入口设计</h1>
+  <p class="subtitle">
+    对应组件 <code>portrait-result-viewer</code>（门店拍摄生成 &amp; 云相册批次查看共用）<br />
+    设计稿路径见文末
+  </p>
+
+  <div class="layout">
+    <div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:8px;color:#374151;">① 结果页 · 主态（推荐 P0）</p>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="status-bar">9:41</div>
+          <div class="nav">
+            <div class="nav-back"></div>
+            <div class="nav-title">生成结果</div>
+          </div>
+          <div class="hero">
+            <div class="hero-placeholder">当前风格写真 · 3:4</div>
+            <div class="callout">P0 · 主收藏入口</div>
+            <div class="hero-chrome">
+              <span class="pill pill-count">2/3</span>
+              <span class="pill pill-fav on"><span class="star">★</span> 已收藏</span>
+              <span class="pill pill-dl">全部下载</span>
+            </div>
+            <div class="origin-float">
+              <div style="width:100%;height:72px;background:#ccc;"></div>
+              <div class="origin-label">原图</div>
+            </div>
+          </div>
+          <div class="hero-tip">
+            <span>* 默认以当前展示写真制作实物摆台</span>
+            <span style="color:#667eea;">显示原图</span>
+          </div>
+          <div class="tray">
+            <div class="tray-title">3种风格</div>
+            <div class="thumbs">
+              <div class="thumb">
+                <div class="thumb-img"><span class="thumb-star">★</span></div>
+                <div class="thumb-name">法式复古</div>
+              </div>
+              <div class="thumb">
+                <div class="thumb-img active"></div>
+                <div class="thumb-name">韩系清透</div>
+              </div>
+              <div class="thumb">
+                <div class="thumb-img"></div>
+                <div class="thumb-name">国风工笔</div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <div class="actions">
+              <button class="btn btn-outline">制作影集</button>
+              <button class="btn btn-primary">制作摆台</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:8px;color:#374151;">② 全屏预览 · 辅助入口（P1）</p>
+      <div class="phone-wrap">
+        <div class="preview-phone">
+          <div class="hero-placeholder" style="height:100%;color:#666;">全屏预览当前张</div>
+          <div class="preview-callout">P1 · 预览态也可收藏</div>
+          <div class="preview-bar">
+            <div class="preview-btn">×</div>
+            <div class="preview-btn fav on">★</div>
+            <div class="preview-btn">↓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>一、收藏按钮位置（以全店卡片逻辑为准）</h2>
+      <table>
+        <thead>
+          <tr><th>优先级</th><th>位置</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-p0">P0</span></td>
+            <td>大图右上角 <code>hero-chrome</code></td>
+            <td>
+              与「1/3」「全部下载」同一行，顺序：<strong>张数 → 收藏 → 下载</strong><br />
+              未收藏：<code>☆ 收藏</code> 白底 pill<br />
+              已收藏：<code>★ 已收藏</code> 浅金底 + 描边
+            </td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-p1">P1</span></td>
+            <td>全屏预览底栏</td>
+            <td>关闭 × 与下载 ↓ 之间增加 ★，行为与主入口同步</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-p1">P1</span></td>
+            <td>底部风格缩略图角标</td>
+            <td>仅展示态：已收藏的风格 thumb 右上角显示 ★（不可点击，避免误触）</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>二、交互规则</h2>
+      <ul>
+        <li>收藏粒度：<strong>单张写真</strong>（<code>photos.isFavorite</code>），随 swiper 当前张切换状态</li>
+        <li>仅 <code>generateStatus === completed</code> 且有成片时显示收藏按钮；生成中 / 失败隐藏</li>
+        <li>点击切换收藏 → 写库 <code>photos.doc(photoId).update({ isFavorite })</code> → toast「已收藏 / 已取消收藏」</li>
+        <li>云相册「按收藏」Tab 已按 <code>isFavorite: true</code> 筛选批次，收藏后该批次出现在此 Tab</li>
+        <li>从云相册进入批次查看（<code>portrait-viewer mode=batch</code>）时，同一组件需回显收藏态</li>
+      </ul>
+
+      <h2>三、谁可以用收藏？</h2>
+      <table>
+        <thead>
+          <tr><th>角色</th><th>1.0 建议</th><th>理由</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>门店成员</strong></td>
+            <td>✅ 有</td>
+            <td>
+              拍摄后在结果页挑片标记；云相册「按收藏」给店员快速找精选批次。<br />
+              数据写在门店 <code>photos</code>，与现有 Tab 一致。
+            </td>
+          </tr>
+          <tr>
+            <td><strong>注册客户</strong></td>
+            <td>❌ 1.0 不做</td>
+            <td>
+              客户分包相册（<code>packageCustomer/pages/gallery</code>）尚无「按收藏」Tab，也无 <code>isFavorite</code> 写入入口。<br />
+              若开放需单独定义：是「客户私有收藏」还是「门店可见标记」，权限与 UI 不同。
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><strong>结论（1.0）：收藏 = 门店内部选片工具</strong>，仅门店端结果页 / 批次查看页展示收藏按钮。</li>
+        <li>客户若需「我的喜欢」，建议 2.0 用独立字段如 <code>customerFavorite</code> 或客户维度收藏表，避免与门店选片混淆。</li>
+      </ul>
+
+      <h2>四、实现落点（开发对照）</h2>
+      <ul>
+        <li>UI 组件：<code>miniprogram/components/portrait-result-viewer/</code></li>
+        <li>门店生成页：<code>miniprogram/packageStore/pages/cloud/portrait-viewer/</code>（live 模式）</li>
+        <li>云相册批次查看：同上（batch 模式）</li>
+        <li>云相册收藏 Tab：<code>miniprogram/pages/gallery/gallery.js</code>（已实现筛选，缺写入入口）</li>
+        <li>数据字段：<code>photos.isFavorite</code>（创建时默认 false，见 shootGenerate / media.js）</li>
+      </ul>
+
+      <h2>五、设计稿文件路径</h2>
+      <div class="path">/Users/kode4meljf/.qclaw/workspace/AI-Portrait/admin-web/design/gallery-favorite-design.html</div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:8px;">浏览器直接打开即可预览；与 recharge-orders-design.html 同目录。</p>
+    </div>
+  </div>
+</body>
+</html>

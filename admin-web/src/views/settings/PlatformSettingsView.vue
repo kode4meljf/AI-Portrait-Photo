@@ -2,7 +2,7 @@
   <div class="page-card" v-loading="loading">
     <h2 class="page-heading">平台配置</h2>
     <p class="page-desc">
-      门店小程序订单详情中「联系平台」将展示此处配置的电话；即梦 AI 密钥在此统一配置，云函数会自动读取并缓存。
+      门店小程序订单详情中「联系平台」将展示此处配置的电话；即梦 AI 密钥与生成并发在此统一配置，Worker 云函数会自动读取并缓存。
     </p>
 
     <el-form
@@ -51,6 +51,32 @@
         </div>
       </el-form-item>
 
+      <h3 class="section-title">即梦生成调度</h3>
+      <el-form-item label="最大并发">
+        <el-input-number
+          v-model="form.jimengMaxConcurrency"
+          :min="1"
+          :max="10"
+          :step="1"
+          :precision="0"
+          controls-position="right"
+        />
+        <div class="form-tip">
+          当前保存值：<strong>{{ form.jimengMaxConcurrency }}</strong>
+          <template v-if="form.jimengMaxConcurrencyOverriddenByEnv">
+            · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
+            （云函数环境变量 <code>JIMENG_MAX_CONCURRENCY</code> 优先于本配置）
+          </template>
+          <template v-else>
+            · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
+          </template>
+        </div>
+        <div class="form-tip">
+          与火山引擎账号的即梦「提交任务」并发配额一致：体验版填 1，付费版填 2。
+          修改后约 5 分钟内生效（或等 Worker 实例回收）。
+        </div>
+      </el-form-item>
+
       <el-form-item v-if="form.updateTime" label="最近更新">
         <span class="muted">{{ formatTime(form.updateTime) }}</span>
       </el-form-item>
@@ -81,15 +107,34 @@ function formatTime(t) {
   return d.toLocaleString('zh-CN')
 }
 
+function clampJimengMaxConcurrency(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 1
+  return Math.min(10, Math.max(1, Math.floor(n)))
+}
+
+function applyPlatformForm(data) {
+  const saved = clampJimengMaxConcurrency(data?.jimengMaxConcurrency)
+  const effective = clampJimengMaxConcurrency(
+    data?.jimengMaxConcurrencyEffective != null
+      ? data.jimengMaxConcurrencyEffective
+      : saved
+  )
+  return {
+    ...data,
+    jimengMaxConcurrency: saved,
+    jimengMaxConcurrencyEffective: effective,
+    jimengMaxConcurrencyOverriddenByEnv: !!data?.jimengMaxConcurrencyOverriddenByEnv,
+    volcAccessKey: '',
+    volcSecretKey: ''
+  }
+}
+
 async function load() {
   loading.value = true
   try {
     const data = await api.getPlatformSettings()
-    form.value = {
-      ...data,
-      volcAccessKey: '',
-      volcSecretKey: ''
-    }
+    form.value = applyPlatformForm(data)
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -104,7 +149,10 @@ async function save() {
     return
   }
 
-  const payload = { supportPhone }
+  const payload = {
+    supportPhone,
+    jimengMaxConcurrency: form.value?.jimengMaxConcurrency ?? 1
+  }
   const volcAccessKey = (form.value?.volcAccessKey || '').trim()
   const volcSecretKey = (form.value?.volcSecretKey || '').trim()
   if (volcAccessKey) payload.volcAccessKey = volcAccessKey
@@ -113,11 +161,7 @@ async function save() {
   saving.value = true
   try {
     const data = await api.updatePlatformSettings(payload)
-    form.value = {
-      ...data,
-      volcAccessKey: '',
-      volcSecretKey: ''
-    }
+    form.value = applyPlatformForm(data)
     ElMessage.success('保存成功')
   } catch (e) {
     ElMessage.error(e.message)
@@ -159,6 +203,11 @@ onMounted(load)
   font-size: 12px;
   color: #909399;
   line-height: 1.5;
+}
+
+.form-tip code {
+  font-size: 11px;
+  color: #606266;
 }
 
 .muted {

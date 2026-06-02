@@ -45,9 +45,9 @@ Page({
     let styleId = options.styleId || '';
     let styleName = decodeURIComponent(options.styleName || '');
 
-    if (options.from === 'generate' && app.globalData.pendingFrameOrder) {
-      const pending = app.globalData.pendingFrameOrder;
-      photoUrl = pending.photoFileId || '';
+    const pending = app.globalData.pendingFrameOrder;
+    if (pending && pending.photoFileId) {
+      photoUrl = pending.photoFileId;
       styleId = pending.styleId || styleId;
       styleName = pending.styleName || styleName;
     } else {

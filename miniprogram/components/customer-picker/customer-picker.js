@@ -35,6 +35,10 @@ Component({
       type: String,
       value: '全店客户'
     },
+    storeAvatarUrl: {
+      type: String,
+      value: ''
+    },
     /** false 时仅触发 select 事件，不写首页拍摄会话 */
     applyGlobalSelection: {
       type: Boolean,

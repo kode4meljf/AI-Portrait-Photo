@@ -21,7 +21,7 @@ async function loadStyle(styleId) {
   return {
     styleId,
     prompt,
-    resolution: style.resolution || '1024:1024'
+    resolution: style.resolution || '1536:1152'
   };
 }
 

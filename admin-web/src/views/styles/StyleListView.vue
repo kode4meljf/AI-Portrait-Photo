@@ -1,7 +1,7 @@
 <template>
   <div class="page-card">
     <el-alert
-      title="编号 S01 起自动分配；样图为提示词生成效果参考，比例 3:4，上传至云存储"
+      title="编号 S01 起自动分配；样图为效果参考；成片分辨率默认 1536:1152（4:3 横图）"
       type="info"
       show-icon
       :closable="false"
@@ -35,7 +35,8 @@
       </el-table-column>
       <el-table-column prop="id" label="编号" width="80" />
       <el-table-column prop="name" label="名称" width="120" />
-      <el-table-column prop="prompt" label="提示词" min-width="220" show-overflow-tooltip />
+      <el-table-column prop="resolution" label="分辨率" width="112" show-overflow-tooltip />
+      <el-table-column prop="prompt" label="提示词" min-width="200" show-overflow-tooltip />
       <el-table-column prop="sort" label="排序" width="72" />
       <el-table-column label="启用" width="80">
         <template #default="{ row }">
@@ -87,6 +88,36 @@
             placeholder="传给第三方 AI 的英文或中文提示词"
           />
         </el-form-item>
+        <el-form-item label="分辨率" required class="form-item-resolution">
+          <div class="resolution-editor">
+            <div class="resolution-inputs">
+              <div class="resolution-field">
+                <label class="resolution-label">宽</label>
+                <el-input-number
+                  v-model="editForm.resolutionWidth"
+                  :min="RESOLUTION_SIDE_MIN"
+                  :max="RESOLUTION_SIDE_MAX"
+                  :precision="0"
+                  :controls="false"
+                  class="resolution-num"
+                />
+              </div>
+              <span class="resolution-times" aria-hidden="true">×</span>
+              <div class="resolution-field">
+                <label class="resolution-label">高</label>
+                <el-input-number
+                  v-model="editForm.resolutionHeight"
+                  :min="RESOLUTION_SIDE_MIN"
+                  :max="RESOLUTION_SIDE_MAX"
+                  :precision="0"
+                  :controls="false"
+                  class="resolution-num"
+                />
+              </div>
+            </div>
+            <p class="field-hint">{{ resolutionHint }}</p>
+          </div>
+        </el-form-item>
         <el-form-item label="风格样图" required>
           <StyleSampleUpload
             v-model="editForm.sampleFileId"
@@ -115,6 +146,17 @@ import { api } from '@/api/admin'
 import { previewNextStyleId } from '@/utils/styleId'
 import StyleSampleUpload from '@/components/StyleSampleUpload.vue'
 import ClickImagePreview from '@/components/ClickImagePreview.vue'
+import {
+  DEFAULT_RESOLUTION_HEIGHT,
+  DEFAULT_RESOLUTION_WIDTH,
+  RESOLUTION_SIDE_MAX,
+  RESOLUTION_SIDE_MIN,
+  STYLE_RESOLUTION_HINT,
+  buildStyleResolution,
+  parseStyleResolution
+} from '@/utils/styleResolution'
+
+const resolutionHint = STYLE_RESOLUTION_HINT
 
 const list = ref([])
 const loading = ref(false)
@@ -163,6 +205,8 @@ function openCreate() {
   editForm.value = {
     name: '',
     prompt: '',
+    resolutionWidth: DEFAULT_RESOLUTION_WIDTH,
+    resolutionHeight: DEFAULT_RESOLUTION_HEIGHT,
     sampleFileId: '',
     sampleUrl: '',
     sort: (list.value.length + 1) * 10,
@@ -173,11 +217,14 @@ function openCreate() {
 
 function openEdit(row) {
   isCreate.value = false
+  const { width, height } = parseStyleResolution(row.resolution)
   editForm.value = {
     _id: row._id,
     id: row.id,
     name: row.name,
     prompt: row.prompt || '',
+    resolutionWidth: width,
+    resolutionHeight: height,
     sampleFileId: row.sampleFileId || '',
     sampleUrl: row.sampleUrl || '',
     sort: row.sort != null ? row.sort : 0,
@@ -191,12 +238,23 @@ async function saveStyle() {
     ElMessage.warning('请上传风格样图')
     return
   }
+  let resolution
+  try {
+    resolution = buildStyleResolution(
+      editForm.value.resolutionWidth,
+      editForm.value.resolutionHeight
+    )
+  } catch (e) {
+    ElMessage.warning(e.message || '分辨率不正确')
+    return
+  }
   saving.value = true
   try {
     if (isCreate.value) {
       await api.createStyle({
         name: editForm.value.name,
         prompt: editForm.value.prompt,
+        resolution,
         sampleFileId: editForm.value.sampleFileId,
         sort: editForm.value.sort,
         enabled: editForm.value.enabled
@@ -207,6 +265,7 @@ async function saveStyle() {
         _id: editForm.value._id,
         name: editForm.value.name,
         prompt: editForm.value.prompt,
+        resolution,
         sampleFileId: editForm.value.sampleFileId,
         sort: editForm.value.sort,
         enabled: editForm.value.enabled
@@ -265,5 +324,61 @@ onMounted(loadList)
   margin: 6px 0 0;
   font-size: 12px;
   color: #909399;
+}
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.45;
+}
+.form-item-resolution.el-form-item {
+  align-items: flex-start;
+}
+
+.form-item-resolution :deep(.el-form-item__label) {
+  padding-top: 22px;
+  line-height: 32px;
+}
+
+.resolution-editor {
+  width: 100%;
+}
+
+.resolution-inputs {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.resolution-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.resolution-label {
+  font-size: 12px;
+  color: #606266;
+  line-height: 1;
+  font-weight: 500;
+  cursor: default;
+}
+
+.resolution-num {
+  width: 108px;
+}
+
+.resolution-num :deep(.el-input__wrapper) {
+  width: 100%;
+}
+
+.resolution-times {
+  flex-shrink: 0;
+  color: #909399;
+  font-size: 14px;
+  line-height: 32px;
+  user-select: none;
 }
 </style>

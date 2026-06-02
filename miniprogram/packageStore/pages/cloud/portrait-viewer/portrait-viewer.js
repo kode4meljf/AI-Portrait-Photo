@@ -19,6 +19,7 @@ const {
   promptInsufficientBalance,
   toastPortraitError
 } = require('../../../../utils/portraitBilling.js');
+const { setBatchFavorite, loadBatchFavorite } = require('../../../../utils/batchFavorite.js');
 
 const db = wx.cloud.database();
 
@@ -41,7 +42,8 @@ Page({
     retryStyleName: '',
     retryBalance: 0,
     retryLoading: false,
-    portraitCost: PORTRAIT_POINTS_SINGLE
+    portraitCost: PORTRAIT_POINTS_SINGLE,
+    batchFavorite: false
   },
 
   onLoad(options) {
@@ -52,6 +54,7 @@ Page({
 
     if (mode === 'batch') {
       this.setData({ batchId: options.batchId || '', navTitle: '云相册' });
+      this.loadBatchFavoriteState();
       this.loadPhotos();
       return;
     }
@@ -125,6 +128,17 @@ Page({
       throw new Error('未获取到风格模板');
     }
     return pickStyles(pool, n);
+  },
+
+  async loadBatchFavoriteState() {
+    const batchId = this.data.batchId || this._liveBatchId;
+    if (!batchId) return;
+    try {
+      const isFavorite = await loadBatchFavorite(batchId);
+      this.setData({ batchFavorite: isFavorite, batchId });
+    } catch (e) {
+      console.warn('[portrait-viewer] loadBatchFavoriteState', e);
+    }
   },
 
   async loadPhotos() {
@@ -236,6 +250,20 @@ Page({
     }
   },
 
+  async onBatchFavorite(e) {
+    const batchId = this.data.batchId || this._liveBatchId;
+    if (!batchId) return;
+    const next = !!(e.detail && e.detail.favorite);
+    try {
+      await setBatchFavorite(batchId, next);
+      this.setData({ batchFavorite: next });
+      wx.showToast({ title: next ? '已收藏' : '已取消收藏', icon: 'success' });
+    } catch (err) {
+      console.warn('[portrait-viewer] onBatchFavorite', err);
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
+  },
+
   async runGeneration() {
     try {
       const styles = this._styles || [];
@@ -292,6 +320,8 @@ Page({
     return runShootPortraitGeneration(originalUrl, styles, {
       onBatchCreated: (batchId) => {
         this._liveBatchId = batchId || '';
+        this.setData({ batchId: batchId || '' });
+        this.loadBatchFavoriteState();
       },
       onProgress: ({ completed, total }) => {
         if (total <= 0) return;
@@ -402,7 +432,7 @@ Page({
     };
 
     wx.navigateTo({
-      url: `/packageStore/pages/cloud/frame-selector/frame-selector?from=${this._mode === 'batch' ? 'browse' : 'generate'}`
+      url: '/packageStore/pages/cloud/frame-selector/frame-selector'
     });
   }
 });

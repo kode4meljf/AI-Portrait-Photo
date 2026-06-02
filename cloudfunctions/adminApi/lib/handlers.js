@@ -10,6 +10,7 @@ const {
 } = require('./cloudUpload')
 const { formatCustomerForAdmin } = require('./customerFormat')
 const { seedStyles: seedDefaultStyles } = require('./seedStyles')
+const { normalizeStyleResolution } = require('./styleResolution')
 const {
   sendStoreAssetAdjustCode,
   applyStoreAssetAdjustWithCode,
@@ -192,10 +193,25 @@ async function updateOrderStatus(payload) {
   if (!ORDER_STATUSES.includes(status)) {
     throw new Error(`无效状态，可选：${ORDER_STATUSES.join('、')}`)
   }
-  const extra = {}
+  const cur = await db.collection('frame_orders').doc(orderId).get()
+  const order = cur.data
+  if (!order) throw new Error('订单不存在')
+  const extra = { updateTime: db.serverDate() }
   if (payload.shippingNo !== undefined) extra.shippingNo = payload.shippingNo
+  if (payload.shippingCom !== undefined) extra.shippingCom = payload.shippingCom
+  if (payload.shippingCompanyName !== undefined) extra.shippingCompanyName = payload.shippingCompanyName
+  if (status === '已发货' && !order.shippedAt) extra.shippedAt = db.serverDate()
+  if (status === '已完成' && !order.completedAt) extra.completedAt = db.serverDate()
+  const shippingChanged =
+    (payload.shippingNo !== undefined &&
+      String(payload.shippingNo || '').trim() !== String(order.shippingNo || '').trim()) ||
+    (payload.shippingCom !== undefined &&
+      String(payload.shippingCom || '').trim() !== String(order.shippingCom || '').trim())
+  if (shippingChanged) {
+    extra.logisticsCache = _.remove()
+  }
   await db.collection('frame_orders').doc(orderId).update({
-    data: { status, ...extra, updateTime: db.serverDate() }
+    data: { status, ...extra }
   })
   const res = await db.collection('frame_orders').doc(orderId).get()
   return res.data
@@ -480,11 +496,13 @@ async function createStyle(payload) {
   }
 
   const now = new Date()
+  const resolution = normalizeStyleResolution(payload.resolution)
   const data = {
     id,
     name,
     prompt,
     sampleFileId,
+    resolution,
     sort: Number(payload.sort) || 0,
     enabled,
     createTime: now,
@@ -511,7 +529,7 @@ async function updateStyle(payload) {
     }
   }
 
-  const allowed = ['name', 'prompt', 'sampleFileId', 'sort', 'enabled']
+  const allowed = ['name', 'prompt', 'sampleFileId', 'resolution', 'sort', 'enabled']
   const data = { updateTime: new Date() }
   if (payload.name !== undefined) {
     const name = (payload.name || '').trim()
@@ -539,6 +557,10 @@ async function updateStyle(payload) {
       const sampleFileId = (payload.sampleFileId || '').trim()
       if (!sampleFileId) throw new Error('请上传风格样图')
       data.sampleFileId = sampleFileId
+      return
+    }
+    if (key === 'resolution') {
+      data.resolution = normalizeStyleResolution(payload.resolution)
     }
   })
 
@@ -792,6 +814,18 @@ function maskAccessKey(key) {
   return `${k.slice(0, 4)}****${k.slice(-4)}`
 }
 
+function clampJimengMaxConcurrency(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 1
+  return Math.min(10, Math.max(1, Math.floor(n)))
+}
+
+function readEnvJimengMaxConcurrency() {
+  const raw = process.env.JIMENG_MAX_CONCURRENCY
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null
+  return clampJimengMaxConcurrency(raw)
+}
+
 async function readPlatformSettingsDoc() {
   try {
     const res = await db.collection(PLATFORM_SETTINGS_COL).doc(PLATFORM_SETTINGS_ID).get()
@@ -803,12 +837,17 @@ async function readPlatformSettingsDoc() {
 
 async function getPlatformSettings() {
   const raw = await readPlatformSettingsDoc()
+  const saved = clampJimengMaxConcurrency(raw.jimengMaxConcurrency ?? 1)
+  const envVal = readEnvJimengMaxConcurrency()
   return {
     _id: PLATFORM_SETTINGS_ID,
     supportPhone: raw.supportPhone || '',
     volcAccessKeyMasked: maskAccessKey(raw.volcAccessKey),
     volcSecretKeyConfigured: !!String(raw.volcSecretKey || '').trim(),
     volcKeysUpdateTime: raw.volcKeysUpdateTime || null,
+    jimengMaxConcurrency: saved,
+    jimengMaxConcurrencyEffective: envVal != null ? envVal : saved,
+    jimengMaxConcurrencyOverriddenByEnv: envVal != null,
     updateTime: raw.updateTime || null
   }
 }
@@ -822,11 +861,18 @@ async function updatePlatformSettings(payload) {
   const existing = await readPlatformSettingsDoc()
   const data = {
     supportPhone: supportPhone || existing.supportPhone || '',
+    jimengMaxConcurrency: clampJimengMaxConcurrency(
+      existing.jimengMaxConcurrency != null ? existing.jimengMaxConcurrency : 1
+    ),
     updateTime: new Date()
   }
   if (existing.volcAccessKey) data.volcAccessKey = existing.volcAccessKey
   if (existing.volcSecretKey) data.volcSecretKey = existing.volcSecretKey
   if (existing.volcKeysUpdateTime) data.volcKeysUpdateTime = existing.volcKeysUpdateTime
+
+  if (payload.jimengMaxConcurrency != null && payload.jimengMaxConcurrency !== '') {
+    data.jimengMaxConcurrency = clampJimengMaxConcurrency(payload.jimengMaxConcurrency)
+  }
 
   const volcAccessKey = (payload.volcAccessKey || '').trim()
   if (volcAccessKey) {

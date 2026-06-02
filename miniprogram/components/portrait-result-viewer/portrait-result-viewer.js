@@ -1,6 +1,34 @@
 const SWIPE_HINT_KEY = 'ai_portrait_swipe_hint_shown';
 const { downloadCountText } = require('../../utils/portraitViewer/normalizeItems.js');
 const { downloadAllItems, saveOneToAlbum } = require('../../utils/portraitViewer/downloadPhotos.js');
+const { createPreviewGestureMethods } = require('../../utils/portraitViewer/previewGesture.js');
+const previewGestureMethods = createPreviewGestureMethods();
+
+function rpxToPx(rpx) {
+  const sys = wx.getSystemInfoSync();
+  return Math.round((rpx / 750) * sys.windowWidth);
+}
+
+function fitAspectRect(containerW, containerH, imageRatio) {
+  let dw;
+  let dh;
+  let dx;
+  let dy;
+  if (containerW / containerH > imageRatio) {
+    dh = containerH;
+    dw = containerH * imageRatio;
+    dx = (containerW - dw) / 2;
+    dy = 0;
+  } else {
+    dw = containerW;
+    dh = containerW / imageRatio;
+    dx = 0;
+    dy = (containerH - dh) / 2;
+  }
+  return { dw, dh, dx, dy };
+}
+
+const SLIDE_PROGRESS_HIDE_MS = 1500;
 
 Component({
   properties: {
@@ -35,6 +63,14 @@ Component({
     showLoadingGalleryLink: {
       type: Boolean,
       value: false
+    },
+    showBatchFavorite: {
+      type: Boolean,
+      value: false
+    },
+    batchFavorite: {
+      type: Boolean,
+      value: false
     }
   },
 
@@ -44,11 +80,20 @@ Component({
     showSwipeToast: false,
     currentItemFailed: false,
     downloadCountText: '',
+    showSlideProgress: false,
+    slideProgressText: '',
     thumbScrollIntoView: '',
     previewVisible: false,
     previewIndex: 0,
-    previewScale: 1,
-    previewSwiperLock: false
+    previewTransform: 'translate(0px, 0px) scale(1, 1)',
+    previewTouchCapture: false,
+    previewAnimClass: '',
+    previewAnimating: false,
+    previewProgressStyle: '',
+    previewProgressHidden: false,
+    previewBottomBarVisible: false,
+    heroChromeTop: 10,
+    heroChromeRight: 10
   },
 
   observers: {
@@ -59,6 +104,9 @@ Component({
         downloadCountText: downloadCountText(results),
         thumbScrollIntoView: results && results.length > 1 ? `thumb-${currentIndex}` : ''
       });
+      wx.nextTick(() => {
+        this.updateSwiperHeight();
+      });
     },
     phase(val) {
       if (val === 'success') {
@@ -68,21 +116,69 @@ Component({
   },
 
   lifetimes: {
+    attached() {
+      this._initPreviewMetrics();
+    },
     detached() {
       if (this._toastTimer) clearTimeout(this._toastTimer);
-      this._lastPreviewTapAt = 0;
+      this.clearSlideProgressTimer();
+      this._clearPreviewSingleTapTimer();
     }
   },
 
   methods: {
-    updateSwiperHeight() {
+    ...previewGestureMethods,
+    updateSwiperHeight(forIndex) {
+      const index = forIndex != null ? forIndex : this.properties.currentIndex;
+      const overlapPx = rpxToPx(48);
+      const q = wx.createSelectorQuery().in(this);
+      q.select('.content-scroll').boundingClientRect();
+      q.select('.style-tray').boundingClientRect();
+      q.exec((res) => {
+        const scrollRect = res[0];
+        const trayRect = res[1];
+        if (!scrollRect || scrollRect.height <= 80) return;
+
+        const trayH = trayRect?.height || rpxToPx(280);
+        const maxH = scrollRect.height - trayH + overlapPx;
+        const ratio = (this.properties.results || [])[index]?.aspectRatio;
+        const cw = scrollRect.width;
+        let frameH = maxH;
+        if (ratio && cw > 0) {
+          frameH = Math.min(maxH, cw / ratio);
+        }
+
+        const next = Math.max(80, Math.floor(frameH));
+        if (next === this.data.swiperHeight) {
+          this.computeHeroChromeLayout(index);
+          return;
+        }
+        this.setData({ swiperHeight: next }, () => {
+          wx.nextTick(() => this.computeHeroChromeLayout(index));
+        });
+      });
+    },
+
+    computeHeroChromeLayout(forIndex) {
+      const index = forIndex != null ? forIndex : this.properties.currentIndex;
+      const item = (this.properties.results || [])[index];
+      const ratio = item?.aspectRatio;
+      const pad = rpxToPx(20);
+
       wx.createSelectorQuery()
         .in(this)
-        .select('.hero-stage')
+        .select('.hero-frame')
         .boundingClientRect((rect) => {
-          if (rect && rect.height > 80) {
-            this.setData({ swiperHeight: Math.floor(rect.height) });
+          if (!rect || rect.width <= 0 || rect.height <= 0) return;
+          if (!ratio) {
+            this.setData({ heroChromeTop: pad, heroChromeRight: pad });
+            return;
           }
+          const { dx, dy } = fitAspectRect(rect.width, rect.height, ratio);
+          this.setData({
+            heroChromeTop: Math.round(dy + pad),
+            heroChromeRight: Math.round(dx + pad)
+          });
         })
         .exec();
     },
@@ -127,14 +223,62 @@ Component({
         .filter(Boolean);
     },
 
+    revealSlideProgress(forIndex) {
+      const results = this.properties.results || [];
+      if (results.length <= 1) return;
+      const index = forIndex != null ? forIndex : this.properties.currentIndex;
+      const safeIndex = Math.max(0, Math.min(index, results.length - 1));
+      this.clearSlideProgressTimer();
+      this.setData({
+        showSlideProgress: true,
+        slideProgressText: `${safeIndex + 1}/${results.length}`
+      });
+    },
+
+    scheduleHideSlideProgress() {
+      this.clearSlideProgressTimer();
+      this._slideProgressTimer = setTimeout(() => {
+        this._slideProgressTimer = null;
+        this.hideSlideProgress();
+      }, SLIDE_PROGRESS_HIDE_MS);
+    },
+
+    clearSlideProgressTimer() {
+      if (this._slideProgressTimer) {
+        clearTimeout(this._slideProgressTimer);
+        this._slideProgressTimer = null;
+      }
+    },
+
+    hideSlideProgress() {
+      this.clearSlideProgressTimer();
+      if (!this.data.showSlideProgress) return;
+      this.setData({ showSlideProgress: false });
+    },
+
+    onSwiperTransition() {
+      this.revealSlideProgress();
+    },
+
+    onSwiperAnimationFinish() {
+      this.scheduleHideSlideProgress();
+    },
+
     onSwiperChange(e) {
       const index = Number(e.detail.current || 0);
+      this.revealSlideProgress(index);
       this.notifyIndexChange(index);
+      wx.nextTick(() => {
+        this.updateSwiperHeight(index);
+      });
     },
 
     onThumbTap(e) {
       const index = Number(e.currentTarget.dataset.index || 0);
+      if (index === this.properties.currentIndex) return;
+      this.revealSlideProgress(index);
       this.notifyIndexChange(index);
+      this.scheduleHideSlideProgress();
     },
 
     onResultImageLoad(e) {
@@ -153,6 +297,9 @@ Component({
       if (Object.keys(updates).length) {
         this.triggerEvent('patchresults', { updates });
       }
+      wx.nextTick(() => {
+        this.updateSwiperHeight();
+      });
     },
 
     onToggleOrigin() {
@@ -168,77 +315,81 @@ Component({
       wx.previewImage({ urls: [url], current: url });
     },
 
-    resetPreviewGestures() {
-      this._lastPreviewTapAt = 0;
-      this.setData({
-        previewScale: 1,
-        previewSwiperLock: false
-      });
-    },
-
     onPreviewImage(e) {
       const index = Number(e.currentTarget.dataset.index ?? this.properties.currentIndex);
       const item = (this.properties.results || [])[index];
       if (!this.isPreviewableItem(item)) return;
 
-      this.resetPreviewGestures();
+      this._initPreviewMetrics();
+      this._clearPreviewSingleTapTimer();
+      this._lastPreviewTapAt = 0;
+      this._resetPreviewTransformState();
       this.setData({
         previewVisible: true,
-        previewIndex: index
+        previewIndex: index,
+        previewTransform: 'translate(0px, 0px) scale(1, 1)',
+        previewTouchCapture: false,
+        previewAnimating: false,
+        previewAnimClass: '',
+        previewProgressStyle: '',
+        previewProgressHidden: false,
+        previewBottomBarVisible: true
+      }, () => {
+        wx.nextTick(() => this.updatePreviewProgressPos(index));
       });
+    },
+
+    onPreviewPhotoLoad(e) {
+      const index = Number(e.currentTarget.dataset.index);
+      const { width, height } = e.detail || {};
+      if (width && height && !Number.isNaN(index)) {
+        if (!this._previewPhotoDims) this._previewPhotoDims = {};
+        this._previewPhotoDims[index] = { w: width, h: height };
+        const aspectRatio = width / height;
+        const updates = {};
+        if (this.properties.results[index]?.aspectRatio !== aspectRatio) {
+          updates[`results[${index}].aspectRatio`] = aspectRatio;
+        }
+        if (Object.keys(updates).length) {
+          this.triggerEvent('patchresults', { updates });
+        }
+      }
+      if (this.data.previewVisible && index === this.data.previewIndex) {
+        wx.nextTick(() => this.updatePreviewProgressPos(index));
+      }
     },
 
     onPreviewSwiperChange(e) {
-      this.resetPreviewGestures();
-      this.setData({ previewIndex: Number(e.detail.current || 0) });
-    },
-
-    onPreviewScale(e) {
-      const index = Number(e.currentTarget.dataset.index);
-      if (index !== this.data.previewIndex) return;
-      const scale = Number(e.detail.scale) || 1;
+      const nextIndex = Number(e.detail.current || 0);
+      this._clearPreviewSingleTapTimer();
+      this._hasMoved = true;
+      this._gestureState = null;
+      this._resetPreviewTransformState();
       this.setData({
-        previewScale: scale,
-        previewSwiperLock: scale > 1.02
+        previewIndex: nextIndex,
+        previewTouchCapture: false,
+        previewAnimating: false,
+        previewAnimClass: '',
+        previewProgressHidden: false,
+        previewTransform: 'translate(0px, 0px) scale(1, 1)'
+      }, () => {
+        wx.nextTick(() => this.updatePreviewProgressPos(nextIndex));
       });
     },
 
-    onPreviewImageTap(e) {
-      const index = Number(e.currentTarget.dataset.index);
-      if (index !== this.data.previewIndex) return;
-      const now = Date.now();
-      if (now - (this._lastPreviewTapAt || 0) < 280) {
-        const nextScale = this.data.previewScale > 1.05 ? 1 : 2.5;
-        this.setData({
-          previewScale: nextScale,
-          previewSwiperLock: nextScale > 1.02
-        });
-        this._lastPreviewTapAt = 0;
-        return;
-      }
-      this._lastPreviewTapAt = now;
-    },
-
-    onPreviewTouchStart(e) {
-      if (this.data.previewScale > 1.02) return;
-      const touch = e.touches && e.touches[0];
-      this._previewTouchStartY = touch ? touch.clientY : 0;
-    },
-
-    onPreviewTouchEnd(e) {
-      if (this.data.previewScale > 1.02) return;
-      const touch = e.changedTouches && e.changedTouches[0];
-      if (!touch || this._previewTouchStartY == null) return;
-      const dy = touch.clientY - this._previewTouchStartY;
-      this._previewTouchStartY = null;
-      if (dy > 90) {
-        this.onClosePreview();
-      }
-    },
-
     onClosePreview() {
-      this.resetPreviewGestures();
-      this.setData({ previewVisible: false });
+      this._clearPreviewSingleTapTimer();
+      this._resetPreviewTransformState();
+      this.setData({
+        previewVisible: false,
+        previewTouchCapture: false,
+        previewAnimating: false,
+        previewAnimClass: '',
+        previewTransform: 'translate(0px, 0px) scale(1, 1)',
+        previewProgressStyle: '',
+        previewProgressHidden: false,
+        previewBottomBarVisible: false
+      });
     },
 
     stopActionBubble() {},
@@ -274,6 +425,10 @@ Component({
 
     onOpenGallery() {
       this.triggerEvent('opengallery');
+    },
+
+    onToggleBatchFavorite() {
+      this.triggerEvent('batchfavorite', { favorite: !this.properties.batchFavorite });
     },
 
     onRetryTap(e) {

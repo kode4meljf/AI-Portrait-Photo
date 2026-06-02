@@ -5,7 +5,10 @@
     <view class="scroll-inner">
       <view class="home-header">
         <view class="header-row">
-          <view class="store-avatar">🏪</view>
+          <view wx:if="{{storeInfo.avatarUrl}}" class="store-avatar store-avatar--image">
+            <image class="store-avatar-img" src="{{storeInfo.avatarUrl}}" mode="aspectFill" />
+          </view>
+          <view wx:else class="store-avatar store-avatar--emoji">🏪</view>
           <view>
             <view class="store-name">{{storeInfo.name || '光影时代写真馆'}}</view>
             <view class="store-sub">欢迎使用 AI 写真服务</view>

@@ -50,16 +50,16 @@
         <view class="carrier">
           <view class="carrier-icon">{{view.logisticsMode === 'done' ? '✓' : '🚚'}}</view>
           <view class="carrier-text">
-            <view class="carrier-name">{{view.logisticsMode === 'done' ? '已签收' : view.logisticsCompany}}</view>
+            <view class="carrier-name">{{view.logisticsMode === 'done' ? '订单完成' : view.logisticsCompany}}</view>
             <view class="tracking">
-              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length}}">{{view.shippingNo}} · {{view.traces[0].time}} 签收</text>
-              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} 已签收</text>
+              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length && view.traces[0].time}}">{{view.shippingNo}} · {{view.traces[0].time}} 确认签收</text>
+              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} · 已确认签收</text>
               <text wx:else>运单号 {{view.shippingNo}}</text>
             </view>
           </view>
         </view>
         <view class="timeline">
-          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.active ? 'active' : 'done'}}">
+          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.hint ? 'hint' : ''}} {{item.active ? 'active' : 'done'}}">
             <view class="tl-dot"></view>
             <view class="tl-text">
               <view class="time">{{item.time}}</view>
@@ -127,16 +127,16 @@
         <view class="carrier">
           <view class="carrier-icon">{{view.logisticsMode === 'done' ? '✓' : '🚚'}}</view>
           <view class="carrier-text">
-            <view class="carrier-name">{{view.logisticsMode === 'done' ? '已签收' : view.logisticsCompany}}</view>
+            <view class="carrier-name">{{view.logisticsMode === 'done' ? '订单完成' : view.logisticsCompany}}</view>
             <view class="tracking">
-              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length}}">{{view.shippingNo}} · {{view.traces[0].time}} 签收</text>
-              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} 已签收</text>
+              <text wx:if="{{view.logisticsMode === 'done' && view.traces.length && view.traces[0].time}}">{{view.shippingNo}} · {{view.traces[0].time}} 确认签收</text>
+              <text wx:elif="{{view.logisticsMode === 'done'}}">{{view.shippingNo}} · 已确认签收</text>
               <text wx:else>运单号 {{view.shippingNo}}</text>
             </view>
           </view>
         </view>
         <view class="timeline">
-          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.active ? 'active' : 'done'}}">
+          <view wx:for="{{view.traces}}" wx:key="msg" class="tl-item {{item.hint ? 'hint' : ''}} {{item.active ? 'active' : 'done'}}">
             <view class="tl-dot"></view>
             <view class="tl-text">
               <view class="time">{{item.time}}</view>

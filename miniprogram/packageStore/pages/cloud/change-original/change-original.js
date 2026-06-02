@@ -1,4 +1,4 @@
-const { PHOTO_SAMPLE_LIST } = require('../../../../config/photoSamples.js');
+const { PHOTO_SAMPLE_LIST } = require('../../../config/photoSamples.js');
 
 Page({
   data: {

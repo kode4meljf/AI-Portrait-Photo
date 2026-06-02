@@ -134,6 +134,7 @@ function formatBatchRow(batch, photos, customerMap, urlMap) {
     photoCount: meta.photoCount,
     generatedCount: meta.generatedCount,
     progressPercent: meta.progressPercent,
+    isFavorite: !!batch.isFavorite,
     coverFileId,
     coverUrl: urlMap[coverFileId] || '',
     styleSummary: styles.length ? styles.slice(0, 3).join(' · ') : '—'

@@ -6,6 +6,8 @@ const { isValidStoreId } = require('../../utils/storeSession');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { kickPortraitWorker } = require('../../utils/jimengPortraitAi');
+const { getProfileCollection } = require('../../utils/account');
+const { setBatchFavorite } = require('../../utils/batchFavorite');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
 const AUTO_REFRESH_INTERVAL_MS = 8000;
@@ -63,19 +65,19 @@ function deriveBatchStatus(photos) {
   return { status, generatedCount, photoCount, progressPercent };
 }
 
-function buildTimeLabel(createTime, singleCustomerMode) {
+function buildTimeLabel(createTime) {
   const d = new Date(createTime);
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayStart = todayStart - 86400000;
   const t = d.getTime();
   const hm = formatDate(d, 'HH:mm');
-  if (t >= todayStart) return singleCustomerMode ? hm : `今天 ${hm}`;
+  if (t >= todayStart) return `今天 ${hm}`;
   if (t >= yesterdayStart) return `昨天 ${hm}`;
   return formatDate(d, 'MM-dd HH:mm');
 }
 
-function buildSummaryText(photos, generatedCount, photoCount, favCount) {
+function buildSummaryText(photos, generatedCount, photoCount, batchIsFavorite) {
   const styles = [...new Set(photos.map((p) => (p.styleName || '').trim()).filter(Boolean))];
   let stylePart = '';
   if (styles.length === 1) stylePart = styles[0];
@@ -84,7 +86,7 @@ function buildSummaryText(photos, generatedCount, photoCount, favCount) {
   if (stylePart) parts.push(stylePart);
   parts.push(`共 ${photoCount} 张`);
   if (generatedCount < photoCount) parts.push(`已出 ${generatedCount} 张`);
-  if (favCount > 0) parts.push(`收藏 ${favCount}`);
+  if (batchIsFavorite) parts.push('已收藏');
   return parts.join(' · ');
 }
 
@@ -106,6 +108,8 @@ Page({
     singleCustomerMode: false,
     filterCustomerName: '',
     filterCustomerInitial: '',
+    filterAvatarUrl: '',
+    storeAvatarUrl: '',
     pickerVisible: false,
     pickerSelectedId: GALLERY_STORE_SCOPE_ID
   },
@@ -116,10 +120,11 @@ Page({
   },
 
   onShow() {
-    redirectCustomerIfNeeded().then((redirected) => {
+    redirectCustomerIfNeeded().then(async (redirected) => {
       if (redirected) return;
       syncStoreTabBar(this);
       this._autoRefreshStartedAt = null;
+      await this.loadStoreInfo();
       this.syncFilterContext();
       const toast = app.globalData.pendingGalleryToast;
       if (toast) {
@@ -147,22 +152,40 @@ Page({
     const selected = app.globalData.galleryFilterCustomer || null;
     let filterCustomerName = '全店客户';
     let filterCustomerInitial = '店';
+    let filterAvatarUrl = '';
     let pickerSelectedId = GALLERY_STORE_SCOPE_ID;
     if (singleCustomerMode && selected) {
       filterCustomerName = getCustomerDisplayName(selected);
       filterCustomerInitial = filterCustomerName.charAt(0) || '客';
+      filterAvatarUrl = selected.avatarUrl ? String(selected.avatarUrl).trim() : '';
       pickerSelectedId = customerId;
     } else if (singleCustomerMode) {
       filterCustomerName = '当前客户';
       filterCustomerInitial = '客';
       pickerSelectedId = customerId;
+    } else {
+      filterAvatarUrl = this.data.storeAvatarUrl || '';
     }
     this.setData({
       singleCustomerMode,
       filterCustomerName,
       filterCustomerInitial,
+      filterAvatarUrl,
       pickerSelectedId
     });
+  },
+
+  async loadStoreInfo() {
+    const storeId = app.globalData.storeId;
+    if (!isValidStoreId(storeId)) return;
+    try {
+      const db = wx.cloud.database();
+      const res = await db.collection(getProfileCollection()).doc(storeId).get();
+      const avatarUrl = res.data && res.data.avatarUrl ? String(res.data.avatarUrl).trim() : '';
+      this.setData({ storeAvatarUrl: avatarUrl });
+    } catch (e) {
+      console.warn('[gallery] 加载门店信息失败', e);
+    }
   },
 
   async loadFilterCustomerFromDb(customerId) {
@@ -173,7 +196,8 @@ Page({
       app.globalData.galleryFilterCustomer = res.data;
       this.setData({
         filterCustomerName: name,
-        filterCustomerInitial: name.charAt(0) || '客'
+        filterCustomerInitial: name.charAt(0) || '客',
+        filterAvatarUrl: res.data.avatarUrl ? String(res.data.avatarUrl).trim() : ''
       });
     } catch (e) {
       console.warn('加载筛选客户失败', e);
@@ -213,23 +237,7 @@ Page({
       }
 
       if (currentTab === 'fav') {
-        const favWhere = { storeId, isFavorite: true };
-        if (customerId) {
-          favWhere.customerId = customerId;
-        }
-        const photosRes = await db.collection('photos').where(favWhere).field({ batchId: true }).get();
-        const favBatchIds = [...new Set(photosRes.data.map((p) => p.batchId).filter(Boolean))];
-        if (favBatchIds.length === 0) {
-          this.setData({
-            [groupsKey]: [],
-            [loadingKey]: false,
-            [hasMoreKey]: false,
-            [`${currentTab}Refreshing`]: false
-          });
-          this._updateAutoRefresh();
-          return;
-        }
-        query = query.where({ _id: _.in(favBatchIds) });
+        query = query.where({ isFavorite: true });
       }
 
       const currentPage = isLoadMore ? this.data[pageKey] + 1 : 1;
@@ -290,6 +298,7 @@ Page({
     const customer = linked.customer;
     const customerName = getCustomerDisplayName(customer);
     const customerInitial = customerName.charAt(0) || '客';
+    const customerAvatarUrl = (customer && customer.avatarUrl) ? String(customer.avatarUrl).trim() : '';
     const hasValidCustomer = customerName !== '匿名用户';
     app.globalData.galleryBatchLinked = null;
     return batches.map((batch) => {
@@ -299,6 +308,7 @@ Page({
         customerId: customer._id,
         customerName,
         customerInitial,
+        customerAvatarUrl,
         hasValidCustomer,
         customerLinkLabel: hasValidCustomer ? '更换客户' : '关联客户',
         avatarColor: pickAvatarColor(customer._id)
@@ -309,7 +319,6 @@ Page({
   async formatBatches(batches) {
     if (!batches.length) return [];
     const db = wx.cloud.database();
-    const singleCustomerMode = this.data.singleCustomerMode;
     const batchIds = batches.map((b) => b._id);
 
     const photosRes = await db
@@ -341,12 +350,13 @@ Page({
         .filter(Boolean)
         .slice(0, 4);
       const extraCount = Math.max(0, sorted.length - 4);
-      const favCount = sorted.filter((p) => p.isFavorite).length;
+      const batchIsFavorite = !!batch.isFavorite;
 
       const { status, generatedCount, photoCount, progressPercent } = deriveBatchStatus(sorted);
       const customer = customerMap[batch.customerId];
       const customerName = getCustomerDisplayName(customer);
       const customerInitial = customerName.charAt(0) || '客';
+      const customerAvatarUrl = (customer && customer.avatarUrl) ? String(customer.avatarUrl).trim() : '';
       const hasValidCustomer = customerName !== '匿名用户';
       const customerLinkLabel = hasValidCustomer ? '更换客户' : '关联客户';
 
@@ -359,15 +369,15 @@ Page({
         coverUrl,
         thumbUrls,
         extraCount,
-        favCount,
+        isFavorite: batchIsFavorite,
         customerName,
         customerInitial,
+        customerAvatarUrl,
         hasValidCustomer,
         customerLinkLabel,
         avatarColor: pickAvatarColor(batch.customerId || batch._id),
-        timeLabel: buildTimeLabel(batch.createTime, singleCustomerMode),
-        summaryText: buildSummaryText(sorted, generatedCount, photoCount, favCount),
-        showCustomer: !singleCustomerMode
+        timeLabel: buildTimeLabel(batch.createTime),
+        summaryText: buildSummaryText(sorted, generatedCount, photoCount, batchIsFavorite)
       };
     });
   },
@@ -533,17 +543,33 @@ Page({
   onBatchMenu(e) {
     const batch = e.currentTarget.dataset.batch;
     if (!batch || !batch._id) return;
+    const favLabel = batch.isFavorite ? '取消收藏' : '收藏批次';
     const linkLabel = batch.customerLinkLabel || (batch.hasValidCustomer ? '更换客户' : '关联客户');
     wx.showActionSheet({
-      itemList: ['全部下载', linkLabel],
+      itemList: [favLabel, '全部下载', linkLabel],
       success: (res) => {
         if (res.tapIndex === 0) {
-          this.onDownloadBatch({ currentTarget: { dataset: { batch } } });
+          this.toggleBatchFavorite(batch);
         } else if (res.tapIndex === 1) {
+          this.onDownloadBatch({ currentTarget: { dataset: { batch } } });
+        } else if (res.tapIndex === 2) {
           this.openBatchCustomerPicker(batch._id);
         }
       }
     });
+  },
+
+  async toggleBatchFavorite(batch) {
+    if (!batch || !batch._id) return;
+    const next = !batch.isFavorite;
+    try {
+      await setBatchFavorite(batch._id, next);
+      wx.showToast({ title: next ? '已收藏' : '已取消收藏', icon: 'success' });
+      this.refreshData();
+    } catch (err) {
+      console.warn('[gallery] toggleBatchFavorite', err);
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
   },
 
   openBatchCustomerPicker(batchId) {

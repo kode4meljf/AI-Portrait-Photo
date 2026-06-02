@@ -97,6 +97,7 @@ function withStyleSampleUrl(row) {
   const sampleFileId = row.sampleFileId || ''
   return {
     ...row,
+    resolution: row.resolution || '1536:1152',
     sampleFileId,
     sampleUrl: sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : row.sampleUrl || ''
   }
@@ -126,6 +127,7 @@ let mockPlatformSettings = {
   volcAccessKeyMasked: '',
   volcSecretKeyConfigured: false,
   volcKeysUpdateTime: null,
+  jimengMaxConcurrency: 1,
   updateTime: new Date().toISOString()
 }
 
@@ -372,6 +374,7 @@ export async function mockRequest(action, payload = {}, query = {}) {
         id: allocateStyleIdFromList(mockStyles),
         name: (payload.name || '').trim(),
         prompt: payload.prompt || '',
+        resolution: payload.resolution || '1536:1152',
         sampleFileId: payload.sampleFileId || '',
         sort: payload.sort || 0,
         enabled: payload.enabled !== false
@@ -464,14 +467,26 @@ export async function mockRequest(action, payload = {}, query = {}) {
       if (idx >= 0) mockFrames.splice(idx, 1)
       return { deleted: true }
     }
-    case 'platformSettings.get':
-      return { ...mockPlatformSettings }
+    case 'platformSettings.get': {
+      const saved = mockPlatformSettings.jimengMaxConcurrency ?? 1
+      return {
+        ...mockPlatformSettings,
+        jimengMaxConcurrency: saved,
+        jimengMaxConcurrencyEffective: saved,
+        jimengMaxConcurrencyOverriddenByEnv: false
+      }
+    }
     case 'platformSettings.update': {
       const volcAccessKey = (payload.volcAccessKey || '').trim()
       const volcSecretKey = (payload.volcSecretKey || '').trim()
+      const saved = Math.min(
+        10,
+        Math.max(1, Math.floor(Number(payload.jimengMaxConcurrency) || 1))
+      )
       mockPlatformSettings = {
         ...mockPlatformSettings,
         supportPhone: (payload.supportPhone || '').trim(),
+        jimengMaxConcurrency: saved,
         updateTime: new Date().toISOString()
       }
       if (volcAccessKey) {
@@ -484,7 +499,11 @@ export async function mockRequest(action, payload = {}, query = {}) {
         mockPlatformSettings.volcSecretKeyConfigured = true
         mockPlatformSettings.volcKeysUpdateTime = new Date().toISOString()
       }
-      return { ...mockPlatformSettings }
+      return {
+        ...mockPlatformSettings,
+        jimengMaxConcurrencyEffective: mockPlatformSettings.jimengMaxConcurrency,
+        jimengMaxConcurrencyOverriddenByEnv: false
+      }
     }
     case 'feedbacks.list': {
       let rows = [...mockFeedbacks]

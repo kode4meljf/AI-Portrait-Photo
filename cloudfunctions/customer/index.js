@@ -50,6 +50,10 @@ exports.main = async (event) => {
         if (!openid) return { success: false, error: '未登录' }
         data = await register.getMyOrder(openid, event)
         break
+      case 'orders.logistics':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await require('./lib/logistics').getCustomerOrderLogistics(openid, event)
+        break
       case 'createByStore':
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.createByStore(openid, event)

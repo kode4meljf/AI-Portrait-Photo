@@ -170,7 +170,7 @@ customer-edit-panel {
 }
 
 .store-scope-avatar {
-  background: linear-gradient(145deg, #4a4a4a, #1a1a1a) !important;
+  background: linear-gradient(145deg, #4a4a4a, #1a1a1a);
 }
 
 .customer-avatar {
