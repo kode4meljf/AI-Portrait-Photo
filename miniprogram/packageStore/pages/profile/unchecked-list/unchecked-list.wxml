@@ -87,7 +87,7 @@
         </view>
         <view class="row-main">
           <view class="row-top">
-            <text class="customer-name">{{item.displayName}}</text>
+            <text class="customer-name">{{item.displayName}}<text class="customer-gender">{{item.genderLabel}}</text></text>
             <text class="pill pill--{{item.pillTone}}">{{item.pillText}}</text>
           </view>
           <text class="customer-phone">{{item.phoneMasked}}</text>

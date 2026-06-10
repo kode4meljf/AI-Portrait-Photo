@@ -1,4 +1,6 @@
 /* 方案 2 · 线框极简 */
+@import "../../../../styles/customer-gender.shared.wxss";
+
 .container {
   min-height: 100vh;
   background: #fff;
@@ -127,6 +129,31 @@
   font-size: 30rpx;
   color: #3f3f46;
   line-height: 44rpx;
+}
+
+.edit-field--dial {
+  cursor: pointer;
+}
+
+.edit-field--dial-press {
+  background: #f4f4f5;
+}
+
+.edit-readonly--phone {
+  color: #0f3460;
+  font-weight: 500;
+}
+
+.edit-dial-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9a8b7a;
+  line-height: 1.45;
+}
+
+.save-bar--single {
+  margin-top: 40rpx;
 }
 
 .edit-field--textarea {

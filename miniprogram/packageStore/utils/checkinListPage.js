@@ -128,8 +128,10 @@ function mapListRow(customer, ctx) {
     row.pillTone = ctx.dateStr === getCurrentDate() ? 'success' : 'neutral'
     row.sortTime = ts || 0
   } else {
-    row.pillText = '待跟进'
-    row.pillTone = 'warning'
+    const followUpDates = Array.isArray(customer.followUpDates) ? customer.followUpDates : []
+    const followed = ctx.dateStr && followUpDates.includes(ctx.dateStr)
+    row.pillText = followed ? '已跟进' : '待跟进'
+    row.pillTone = followed ? 'success' : 'warning'
     row.metaLine = `${formatLastVisit(customer)} · 累计 ${Number(customer.totalCheckins) || 0} 次`
     row.daysSinceVisit = daysSinceLastVisit(customer, ctx.dateStr)
     row.sortTime = row.daysSinceVisit

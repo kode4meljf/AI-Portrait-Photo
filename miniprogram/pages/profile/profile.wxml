@@ -13,7 +13,6 @@
 
     <!-- 门店信息头部 · 方案 C 横版大牌面 -->
     <view class="store-header">
-      <text class="store-header-watermark">STORE</text>
       <view class="store-header-inner">
         <view class="store-head-row" wx:if="{{isOwner}}">
           <view class="help-entry gold" bindtap="onEditStore" hover-class="none">

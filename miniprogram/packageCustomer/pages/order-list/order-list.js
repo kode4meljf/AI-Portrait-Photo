@@ -18,29 +18,37 @@ Page({
     summary: { total: 0, pending: 0, producing: 0, shipped: 0, done: 0 },
     storeName: '',
     showSkeleton: true,
-    refreshing: false,
     emptyHint: '暂无订单',
     skeletonRows: [0, 1, 2]
   },
 
   async onShow() {
-    const ok = await ensureCustomerPage(this)
-    if (!ok) return
+    try {
+      const ok = await ensureCustomerPage(this)
+      if (!ok) {
+        this.setData({
+          showSkeleton: false,
+          emptyHint: '无法进入顾客订单页'
+        })
+        return
+      }
 
-    const cached = this.readCache()
-    if (cached) {
-      this.applyPayload(cached)
-      this.setData({ showSkeleton: false })
-      await this.loadOrders({ background: true })
-      return
+      const cached = this.readCache()
+      if (cached) {
+        this.applyPayload(cached)
+        this.setData({ showSkeleton: false })
+        await this.loadOrders({ background: true })
+        return
+      }
+
+      this.setData({ showSkeleton: true, orders: [] })
+      await this.loadOrders()
+    } catch (e) {
+      this.setData({
+        showSkeleton: false,
+        emptyHint: '加载失败，请下拉重试'
+      })
     }
-
-    this.setData({ showSkeleton: true, orders: [] })
-    await this.loadOrders()
-  },
-
-  onPullDownRefresh() {
-    this.loadOrders({ force: true }).finally(() => wx.stopPullDownRefresh())
   },
 
   formatTime(date) {
@@ -64,6 +72,7 @@ Page({
   },
 
   writeCache(payload) {
+    if (!(payload.list || []).length) return
     const entry = { at: Date.now(), payload }
     app.globalData._customerOrdersCache = entry
     try {
@@ -92,15 +101,11 @@ Page({
 
   async loadOrders(options = {}) {
     const { background = false, force = false } = options
-    if (this._loadingOrders) return
+    if (this._loadingOrders && !force) return
     this._loadingOrders = true
 
-    if (!background) {
-      if (force && this.data.orders.length) {
-        this.setData({ refreshing: true })
-      } else if (!this.data.orders.length) {
-        this.setData({ showSkeleton: true })
-      }
+    if (!background && !this.data.orders.length) {
+      this.setData({ showSkeleton: true })
     }
 
     try {
@@ -116,17 +121,17 @@ Page({
       this.writeCache(payload)
       this.applyPayload(payload)
     } catch (e) {
-      if (!background) {
+      if (!background || !this.data.orders.length) {
         wx.showToast({ title: e.message || '加载失败', icon: 'none' })
-        if (!this.data.orders.length) {
-          this.setData({
-            emptyHint: '加载失败，请下拉重试'
-          })
-        }
+      }
+      if (!this.data.orders.length) {
+        this.setData({
+          emptyHint: '加载失败，请下拉重试'
+        })
       }
     } finally {
       this._loadingOrders = false
-      this.setData({ showSkeleton: false, refreshing: false })
+      this.setData({ showSkeleton: false })
     }
   },
 

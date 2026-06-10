@@ -10,7 +10,29 @@
     </swiper-item>
   </swiper>
 
-  <view wx:if="{{styles.length}}" class="list-title">{{count}}种风格列表</view>
+  <view wx:if="{{stylePool.length || loadingStyles}}" class="list-header">
+    <view class="list-title"><text class="list-title-num">{{styles.length}}</text>种风格列表</view>
+    <view wx:if="{{hasLinkedCustomer}}" class="filter-source">
+      <text class="filter-source-prefix">按</text>
+      <text class="filter-source-em">{{filterCompactName}} · {{filterGenderLabel}}</text>
+      <text class="filter-source-suffix">筛选</text>
+    </view>
+    <view wx:elif="{{showGenderToggle}}" class="filter-ctrl">
+      <text class="filter-ctrl-label">适用</text>
+      <view class="gender-filter">
+        <view
+          class="gender-filter-btn {{manualGender === 'male' ? 'active' : ''}}"
+          data-gender="male"
+          bindtap="onGenderFilterTap"
+        >男</view>
+        <view
+          class="gender-filter-btn {{manualGender === 'female' ? 'active' : ''}}"
+          data-gender="female"
+          bindtap="onGenderFilterTap"
+        >女</view>
+      </view>
+    </view>
+  </view>
   <scroll-view wx:if="{{styles.length}}" class="thumb-scroll" scroll-x enhanced show-scrollbar="{{false}}">
     <view class="thumb-row">
       <view

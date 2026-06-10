@@ -6,6 +6,12 @@ const app = getApp();
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { fetchPlatformSupportPhone } = require('../../../../utils/platformSettings');
 const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../../utils/frameOrderDetailView');
+const { buildAlbumOrderView } = require('../../../../utils/albumOrderDetailView');
+const { resolveOrderType } = require('../../../../utils/orderCardThumb');
+
+function normalizeOrderType(value) {
+  return value === 'album' ? 'album' : 'frame';
+}
 
 /** 已激活的门店成员（owner/staff）；页面复用时非门店账号不展示「联系平台」 */
 function isStoreStaffAccount() {
@@ -16,6 +22,7 @@ function isStoreStaffAccount() {
 Page({
   data: {
     orderId: '',
+    orderType: 'frame',
     scrollIntoView: '',
     scrollViewHeight: 600,
     loading: true,
@@ -33,7 +40,8 @@ Page({
       return;
     }
     const scrollIntoView = options.scrollTo === 'logistics' ? 'logistics-anchor' : '';
-    this.setData({ orderId, scrollIntoView });
+    const orderType = normalizeOrderType(options.orderType);
+    this.setData({ orderId, orderType, scrollIntoView });
     this.updateScrollViewHeight();
     this.loadPlatformPhone();
     this.loadOrderDetail();
@@ -43,7 +51,6 @@ Page({
     this.updateScrollViewHeight();
   },
 
-  /** 真机上 flex+height:0 的 scroll-view 易高度为 0，需显式像素高度 */
   updateScrollViewHeight() {
     const sys = wx.getWindowInfo();
     const h = sys.windowHeight || 600;
@@ -59,19 +66,20 @@ Page({
   },
 
   buildView(order, extra = {}) {
-    return buildFrameOrderView(order, {
-      ...(this._viewOptions || {}),
-      ...extra
-    });
+    const opts = { ...(this._viewOptions || {}), ...extra };
+    const orderType = resolveOrderType(order) || this.data.orderType;
+    if (orderType === 'album') return buildAlbumOrderView(order, opts);
+    return buildFrameOrderView(order, opts);
   },
 
   async loadOrderDetail(skipLogistics = false) {
     this.setData({ loading: true });
     try {
       const { order } = await callOrderApi('get', {
-        orderType: 'frame',
+        orderType: this.data.orderType,
         orderId: this.data.orderId
       });
+      const orderType = resolveOrderType(order);
       const isStoreStaff = isStoreStaffAccount();
       this._orderRaw = order;
       this._viewOptions = {
@@ -81,6 +89,7 @@ Page({
       };
       const view = this.buildView(order);
       this.setData({
+        orderType,
         view,
         loading: false
       });
@@ -100,7 +109,7 @@ Page({
     this.setData({ view: this.buildView(this._orderRaw, { logisticsLoading: true }) });
     try {
       const { logistics } = await callOrderApi('getLogistics', {
-        orderType: 'frame',
+        orderType: this.data.orderType,
         orderId: this.data.orderId,
         force
       });
@@ -146,12 +155,27 @@ Page({
     wx.previewImage({ urls: [url], current: url });
   },
 
+  previewAlbumPhotos(e) {
+    const urls = this.data.view?.photoUrls || [];
+    if (!urls.length) {
+      wx.showToast({ title: '暂无入选写真', icon: 'none' });
+      return;
+    }
+    const index = Number(e.currentTarget.dataset.index || 0);
+    const current = urls[index] || urls[0];
+    wx.previewImage({ urls, current });
+  },
+
   onCopyOrderNo() {
-    const no = this.data.view?.orderNo;
-    if (!no) return;
+    const no = (this.data.view?.orderNo || '').trim();
+    if (!no) {
+      wx.showToast({ title: '暂无订单号', icon: 'none' });
+      return;
+    }
     wx.setClipboardData({
       data: no,
-      success: () => wx.showToast({ title: '已复制订单号', icon: 'success' })
+      success: () => wx.showToast({ title: '已复制订单号', icon: 'success' }),
+      fail: () => wx.showToast({ title: '复制失败', icon: 'none' })
     });
   },
 
@@ -171,14 +195,6 @@ Page({
     this.setData({ scrollIntoView: 'logistics-anchor' });
   },
 
-  onCustomerTap() {
-    const customerId = this.data.view?.customerId;
-    if (!customerId) return;
-    wx.navigateTo({
-      url: `/packageStore/pages/profile/customer-edit/customer-edit?id=${customerId}`
-    });
-  },
-
   onGhostAction() {
     const view = this.data.view;
     if (!view) return;
@@ -191,7 +207,6 @@ Page({
     }
   },
 
-  /** 门店端：展示平台电话（后台配置），可拨打 */
   async onContactPlatform() {
     if (!isStoreStaffAccount()) return;
     let phone = (this.data.platformSupportPhone || '').trim();
@@ -248,7 +263,7 @@ Page({
         if (!res.confirm) return;
         try {
           await callOrderApi('updateStatus', {
-            orderType: 'frame',
+            orderType: this.data.orderType,
             orderId,
             status: '制作中'
           });
@@ -270,7 +285,7 @@ Page({
         if (!res.confirm) return;
         try {
           await callOrderApi('updateStatus', {
-            orderType: 'frame',
+            orderType: this.data.orderType,
             orderId,
             status: '已完成'
           });

@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "制作影集",
+  "navigationBarBackgroundColor": "#f6f7f9",
+  "navigationBarTextStyle": "black",
+  "usingComponents": {
+    "points-cost": "/components/points-cost/points-cost"
+  }
+}

@@ -91,6 +91,13 @@
   line-height: 1.35;
 }
 
+.customer-gender {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  font-weight: 400;
+  color: #8a8a8a;
+}
+
 .customer-phone {
   display: block;
   font-size: 22rpx;

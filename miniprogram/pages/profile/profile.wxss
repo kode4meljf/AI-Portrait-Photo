@@ -30,19 +30,6 @@
   overflow: hidden;
 }
 
-.store-header-watermark {
-  position: absolute;
-  top: 16rpx;
-  left: 24rpx;
-  font-size: 104rpx;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.03);
-  letter-spacing: 0.15em;
-  line-height: 1;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 .store-header-inner {
   position: relative;
   z-index: 1;

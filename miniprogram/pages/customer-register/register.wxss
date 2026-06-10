@@ -1,4 +1,6 @@
 /* 藏青顶栏 + 全屏纵向分布（对齐 customer-register-options 方案3，铺满视口） */
+@import "../../styles/customer-gender.shared.wxss";
+
 .page {
   min-height: 100vh;
   box-sizing: border-box;

@@ -1,6 +1,8 @@
 /**
- * 平台配置（客服电话等），数据来自云库 platform_settings / default
+ * 平台配置（客服电话、影集阈值等），数据来自云库 platform_settings / default
  */
+
+const { normalizeAlbumPlatformConfig, DEFAULTS } = require('./albumPlatformConfig')
 
 let cachedSupportPhone = null
 
@@ -16,10 +18,7 @@ function getSettingsCloudTarget() {
   return { name: 'storeMember', action: 'platform.settings' }
 }
 
-function fetchPlatformSupportPhone(forceRefresh = false) {
-  if (!forceRefresh && cachedSupportPhone !== null) {
-    return Promise.resolve(cachedSupportPhone)
-  }
+function callPlatformSettings() {
   const target = getSettingsCloudTarget()
   return wx.cloud
     .callFunction({
@@ -31,9 +30,17 @@ function fetchPlatformSupportPhone(forceRefresh = false) {
       if (!result.success) {
         throw new Error(result.error || '读取平台配置失败')
       }
-      const phone = (result.data && result.data.supportPhone)
-        ? String(result.data.supportPhone).trim()
-        : ''
+      return result.data || {}
+    })
+}
+
+function fetchPlatformSupportPhone(forceRefresh = false) {
+  if (!forceRefresh && cachedSupportPhone !== null) {
+    return Promise.resolve(cachedSupportPhone)
+  }
+  return callPlatformSettings()
+    .then((data) => {
+      const phone = data.supportPhone ? String(data.supportPhone).trim() : ''
       cachedSupportPhone = phone
       return phone
     })
@@ -43,11 +50,22 @@ function fetchPlatformSupportPhone(forceRefresh = false) {
     })
 }
 
+/** 影集阈值仅制作影集流程使用，每次直读云端，不缓存 */
+function fetchAlbumPlatformConfig() {
+  return callPlatformSettings()
+    .then((data) => normalizeAlbumPlatformConfig(data))
+    .catch((err) => {
+      console.error('fetchAlbumPlatformConfig', err)
+      return { ...DEFAULTS }
+    })
+}
+
 function clearPlatformSettingsCache() {
   cachedSupportPhone = null
 }
 
 module.exports = {
   fetchPlatformSupportPhone,
+  fetchAlbumPlatformConfig,
   clearPlatformSettingsCache
 }

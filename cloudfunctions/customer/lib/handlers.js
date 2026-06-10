@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk')
 const { isValidStoreId } = require('./storeId')
 const { normalizeMobilePhone } = require('./phone')
 const { deleteCloudFileSafe } = require('./cloudFile')
+const { normalizeGender, DEFAULT_GENDER } = require('./gender')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -124,6 +125,8 @@ function formatCustomerResponse(row, extra = {}) {
     wxNickName: row.wxNickName || '',
     phone: row.phone || '',
     avatarUrl: row.avatarUrl || '',
+    gender: normalizeGender(row.gender),
+    address: (row.address || '').trim(),
     totalCheckins: row.totalCheckins || 0,
     ...extra
   }
@@ -138,6 +141,8 @@ async function createByStore(openid, payload) {
   const nickName = (payload.nickName || '').trim() || '新客户'
   const phone = normalizeMobilePhone(payload.phone)
   const remark = (payload.remark || '').trim()
+  const gender = normalizeGender(payload.gender)
+  const address = (payload.address || '').trim()
   const now = Date.now()
 
   const existing = await findByPhone(storeId, phone)
@@ -155,6 +160,8 @@ async function createByStore(openid, payload) {
       wxNickName: '',
       phone,
       remark,
+      gender,
+      address,
       avatarUrl: '',
       wxOpenId: '',
       equityAlbum: Number(payload.equityAlbum) || 0,
@@ -168,6 +175,48 @@ async function createByStore(openid, payload) {
 
   const created = await db.collection('customers').doc(addRes._id).get()
   return formatCustomerResponse(created.data)
+}
+
+function mergeFollowUpDates(existing, dateStr) {
+  const list = Array.isArray(existing) ? existing.filter(Boolean) : []
+  const d = String(dateStr || '').trim()
+  if (!d || list.includes(d)) return list
+  return [...list, d]
+}
+
+/**
+ * 未打卡名单 · 客户跟进：仅更新备注并记录当日跟进
+ */
+async function followUpByStore(customer, customerDocId, payload) {
+  const followUpDate = String(payload.followUpDate || payload.date || '').trim()
+  if (!followUpDate) throw new Error('缺少跟进日期')
+  const remark = (payload.remark || '').trim()
+  const now = Date.now()
+  const followUpDates = mergeFollowUpDates(customer.followUpDates, followUpDate)
+  await db.collection('customers').doc(customerDocId).update({
+    data: { remark, followUpDates, updateTime: now }
+  })
+  const latest = await db.collection('customers').doc(customerDocId).get()
+  return formatCustomerResponse(latest.data)
+}
+
+async function followUpByStoreForOperator(openid, payload) {
+  const member = await requireStoreOperator(openid)
+  const storeId = member.storeId
+  const customerDocId = String(payload.customerDocId || payload.id || '').trim()
+  if (!customerDocId) throw new Error('缺少客户 ID')
+
+  let customer
+  try {
+    const docRes = await db.collection('customers').doc(customerDocId).get()
+    customer = docRes.data
+  } catch (e) {
+    customer = null
+  }
+  if (!customer || customer.storeId !== storeId) {
+    throw new Error('无权编辑该客户')
+  }
+  return followUpByStore(customer, customerDocId, payload)
 }
 
 /**
@@ -190,11 +239,17 @@ async function updateByStore(openid, payload) {
     throw new Error('无权编辑该客户')
   }
 
+  if (payload.mode === 'followup') {
+    return followUpByStore(customer, customerDocId, payload)
+  }
+
   const nickName = (payload.nickName || '').trim()
   if (!nickName) throw new Error('请填写客户称呼')
 
   const phone = normalizeMobilePhone(payload.phone)
   const remark = (payload.remark || '').trim()
+  const gender = normalizeGender(payload.gender)
+  const address = (payload.address || '').trim()
   const now = Date.now()
   const storedOpenId = (customer.wxOpenId || '').trim()
   const storedPhone = (customer.phone || '').trim()
@@ -217,7 +272,7 @@ async function updateByStore(openid, payload) {
   }
 
   await db.collection('customers').doc(customerDocId).update({
-    data: { nickName, phone, remark, updateTime: now }
+    data: { nickName, phone, remark, gender, address, updateTime: now }
   })
 
   const latest = await db.collection('customers').doc(customerDocId).get()
@@ -304,11 +359,25 @@ async function scanBindCheckin(openid, payload) {
     }
   }
 
+  const existingCheckinRes = await db
+    .collection('checkins')
+    .where({
+      storeId,
+      customerDocId: customer._id,
+      checkinDate: today
+    })
+    .limit(1)
+    .get()
+  const existingCheckin = existingCheckinRes.data[0] || null
+  const isRepeatToday = !!existingCheckin
+
   const updateData = {
-    totalCheckins: _.inc(1),
     lastCheckinTime: now,
     lastCheckinDate: today,
     updateTime: now
+  }
+  if (!isRepeatToday) {
+    updateData.totalCheckins = _.inc(1)
   }
 
   if (!existingStoreId) {
@@ -341,21 +410,47 @@ async function scanBindCheckin(openid, payload) {
     }
   }
 
-  const checkinRes = await db.collection('checkins').add({
-    data: {
-      storeId,
-      customerDocId: customer._id,
-      checkinDate: today,
-      operatorOpenId: openid,
-      createTime: now
+  let rollbackCheckin = null
+  if (isRepeatToday) {
+    rollbackCheckin = {
+      type: 'update',
+      docId: existingCheckin._id,
+      prevCreateTime: existingCheckin.createTime,
+      prevOperatorOpenId: existingCheckin.operatorOpenId
     }
-  })
+    await db.collection('checkins').doc(existingCheckin._id).update({
+      data: {
+        createTime: now,
+        operatorOpenId: openid
+      }
+    })
+  } else {
+    const checkinRes = await db.collection('checkins').add({
+      data: {
+        storeId,
+        customerDocId: customer._id,
+        checkinDate: today,
+        operatorOpenId: openid,
+        createTime: now
+      }
+    })
+    rollbackCheckin = { type: 'remove', docId: checkinRes._id }
+  }
 
   try {
     await db.collection('customers').doc(customer._id).update({ data: updateData })
   } catch (err) {
     try {
-      await db.collection('checkins').doc(checkinRes._id).remove()
+      if (rollbackCheckin.type === 'remove') {
+        await db.collection('checkins').doc(rollbackCheckin.docId).remove()
+      } else {
+        await db.collection('checkins').doc(rollbackCheckin.docId).update({
+          data: {
+            createTime: rollbackCheckin.prevCreateTime,
+            operatorOpenId: rollbackCheckin.prevOperatorOpenId
+          }
+        })
+      }
     } catch (rollbackErr) {
       console.warn('[scanBindCheckin] rollback checkin failed', rollbackErr.message || rollbackErr)
     }
@@ -484,6 +579,7 @@ async function deleteByStore(openid, payload) {
 module.exports = {
   createByStore,
   updateByStore,
+  followUpByStoreForOperator,
   scanBindCheckin,
   deleteByStore
 }

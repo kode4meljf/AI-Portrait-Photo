@@ -1,8 +1,8 @@
 {
   "navigationBarTitleText": "我的订单",
-  "enablePullDownRefresh": true,
   "homeButton": false,
   "usingComponents": {
-    "customer-nav": "/components/customer-nav/customer-nav"
+    "customer-nav": "/components/customer-nav/customer-nav",
+    "order-card-thumb": "/components/order-card-thumb/order-card-thumb"
   }
 }

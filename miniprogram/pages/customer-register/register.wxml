@@ -19,7 +19,7 @@
     <view class="hero">
       <text class="hero-kicker">客户注册</text>
       <text class="hero-title">加入门店</text>
-      <text class="hero-sub">授权手机号即可完成注册，用于到店打卡</text>
+      <text class="hero-sub">授权手机号即可完成注册，用于查看个人写真</text>
       <view
         wx:if="{{storeName}}"
         class="store-chip"
@@ -55,6 +55,26 @@
             value="{{wxNickName}}"
             bindinput="onNicknameInput"
           />
+        </view>
+
+        <view class="field field--gender">
+          <view class="gender-row">
+            <text class="label">性别</text>
+            <view class="gender-row-ctrl">
+              <view class="gender-filter">
+                <view
+                  class="gender-filter-btn {{gender === 'male' ? 'active' : ''}}"
+                  bindtap="onGenderTap"
+                  data-value="male"
+                >男</view>
+                <view
+                  class="gender-filter-btn {{gender === 'female' ? 'active' : ''}}"
+                  bindtap="onGenderTap"
+                  data-value="female"
+                >女</view>
+              </view>
+            </view>
+          </view>
         </view>
 
         <view class="field field--phone">

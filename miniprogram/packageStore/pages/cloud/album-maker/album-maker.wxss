@@ -1,0 +1,193 @@
+.album-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f9;
+  box-sizing: border-box;
+}
+
+.album-preview-wrap {
+  flex-shrink: 0;
+  padding: 16rpx 24rpx 12rpx;
+  box-sizing: border-box;
+  background: #f6f7f9;
+  z-index: 2;
+}
+
+.album-preview-card {
+  position: relative;
+  width: 100%;
+  height: 520rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #e9edf3;
+}
+
+.album-preview-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.album-preview-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+.album-preview-tip {
+  position: absolute;
+  left: 20rpx;
+  bottom: 20rpx;
+  z-index: 2;
+  padding: 10rpx 18rpx;
+  border-radius: 12rpx;
+  background: rgba(17, 24, 39, 0.72);
+  color: #fff;
+  font-size: 22rpx;
+  line-height: 1.4;
+  max-width: 78%;
+}
+
+.album-select-meta {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #4b5563;
+}
+
+.album-select-range {
+  color: #9ca3af;
+  margin-left: 8rpx;
+}
+
+.album-scroll {
+  flex: 1;
+  height: 0;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+  padding-bottom: 16rpx;
+}
+
+.grid-item {
+  position: relative;
+  border-radius: 16rpx;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: #eef0f4;
+  border: 3rpx solid transparent;
+  box-sizing: border-box;
+}
+
+.grid-item--selected {
+  border-color: #2563eb;
+}
+
+.grid-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.grid-selected-cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.grid-check {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  z-index: 2;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2rpx solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.grid-item--selected .grid-check {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.grid-check-mark {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.album-status {
+  text-align: center;
+  padding: 80rpx 24rpx;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+.album-status--error {
+  color: #c2410c;
+}
+
+.album-foot {
+  text-align: center;
+  padding: 16rpx 0 8rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.album-scroll-pad {
+  height: 24rpx;
+}
+
+.album-submit-wrap {
+  flex-shrink: 0;
+  padding: 16rpx 80rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #f6f7f9;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+.album-submit-btn {
+  width: 100%;
+  height: 92rpx;
+  border-radius: 48rpx;
+  background: #111827;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 20rpx rgba(17, 24, 39, 0.18);
+}
+
+.album-submit-btn-hover {
+  transform: scale(0.985);
+  background: #1f2937;
+  opacity: 0.94;
+}
+
+.album-submit-btn--disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+  pointer-events: none;
+}

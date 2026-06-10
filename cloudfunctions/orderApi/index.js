@@ -5,6 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const { ORDER_TYPES } = require('./lib/config');
 const frameHandlers = require('./lib/frame');
+const albumHandlers = require('./lib/album');
 const logisticsHandlers = require('./lib/logistics');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
 
@@ -16,6 +17,14 @@ const HANDLERS = {
     getLogistics: logisticsHandlers.getFrameOrderLogistics,
     updateStatus: frameHandlers.updateFrameOrderStatus,
     countByStatus: frameHandlers.countFrameOrdersByStatus
+  },
+  album: {
+    create: albumHandlers.createAlbumOrder,
+    list: albumHandlers.listAlbumOrders,
+    get: albumHandlers.getAlbumOrder,
+    updateStatus: albumHandlers.updateAlbumOrderStatus,
+    getLogistics: logisticsHandlers.getAlbumOrderLogistics,
+    countByStatus: albumHandlers.countAlbumOrdersByStatus
   }
 };
 
@@ -29,7 +38,6 @@ exports.main = async (event) => {
   }
   const typeHandlers = HANDLERS[orderType];
   if (!typeHandlers || !typeHandlers[action]) {
-    if (orderType === 'album') return { success: false, error: '影集订单功能开发中' };
     return { success: false, error: `未知 action: ${action}` };
   }
 

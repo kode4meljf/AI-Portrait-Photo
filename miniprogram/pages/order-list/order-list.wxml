@@ -73,10 +73,11 @@
           hover-class="order-card--hover"
           hover-stay-time="80"
         >
-          <view class="order-photo-wrap">
-            <image class="order-photo" src="{{order.photoThumb}}" mode="aspectFill" />
-            <text class="order-photo-label">摆台预览</text>
-          </view>
+          <order-card-thumb
+            url="{{order.photoThumb}}"
+            variant="{{order.thumbVariant}}"
+            label="{{order.thumbLabel}}"
+          />
           <view class="order-main">
             <view class="order-top">
               <view class="order-head-text">

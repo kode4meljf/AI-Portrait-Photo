@@ -1,7 +1,7 @@
 const { login, verifyToken } = require('./lib/auth')
 const { parseHttpEvent, httpResponse, ok, fail } = require('./lib/http')
 const { PUBLIC_ACTIONS, dispatch } = require('./lib/handlers')
-const { assertProductionSecurity, warnIfInsecure } = require('../lib/productionGuard')
+const { assertProductionSecurity, warnIfInsecure } = require('./lib/productionGuard')
 
 function extractToken(event, authHeader) {
   if (authHeader) {

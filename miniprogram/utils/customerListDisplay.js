@@ -2,6 +2,7 @@
  * 客户列表行展示（首页 customer-picker / 工作台客户列表共用）
  */
 const { getCustomerDisplayName } = require('./customerDisplay')
+const { genderLabel } = require('./customerGender')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -35,6 +36,7 @@ function mapCustomerRow(c) {
     ...c,
     todayCheckedIn: isToday(c.lastCheckinTime || c.lastCheckinDate),
     displayName: getCustomerDisplayName(c),
+    genderLabel: genderLabel(c.gender),
     avatarInitial: initialFromName(c.nickName || c.wxNickName),
     avatarTint: pickAvatarTint(c._id || nick)
   }

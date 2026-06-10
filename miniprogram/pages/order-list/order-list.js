@@ -10,7 +10,7 @@ const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId, resolveSessionIfNeeded } = require('../../utils/storeSession');
 
-const PLACEHOLDER_THUMB = '/assets/icons/album-placeholder.png';
+const { buildOrderCardThumb } = require('../../utils/orderCardThumb');
 const { parseCloudDate } = require('../../utils/cloudDate');
 
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
@@ -97,14 +97,21 @@ Page({
 
     try {
       const page = loadMore ? this.data.currentPage + 1 : 1;
-      const res = await callOrderApi('list', {
-        orderType: 'frame',
+      const query = {
         statusTab: this.data.currentTab,
         page,
         pageSize: this.data.pageSize
+      };
+      const [frameRes, albumRes] = await Promise.all([
+        callOrderApi('list', { ...query, orderType: 'frame' }),
+        callOrderApi('list', { ...query, orderType: 'album' }).catch(() => ({ list: [] }))
+      ]);
+      const list = [...(frameRes.list || []), ...(albumRes.list || [])].sort((a, b) => {
+        const ta = new Date(a.createTime).getTime();
+        const tb = new Date(b.createTime).getTime();
+        return tb - ta;
       });
-      const list = res.list || [];
-      const hasMore = !!res.hasMore;
+      const hasMore = !!(frameRes.hasMore || albumRes.hasMore);
 
       const formattedOrders = this.formatOrders(list);
       await this.updateTabCounts();
@@ -138,12 +145,15 @@ Page({
 
   async updateTabCounts() {
     try {
-      const { counts } = await callOrderApi('countByStatus', {
-        orderType: 'frame'
-      });
+      const [frameRes, albumRes] = await Promise.all([
+        callOrderApi('countByStatus', { orderType: 'frame' }),
+        callOrderApi('countByStatus', { orderType: 'album' }).catch(() => ({ counts: {} }))
+      ]);
+      const frameCounts = frameRes.counts || {};
+      const albumCounts = albumRes.counts || {};
       const tabs = this.data.tabs.map((tab) => ({
         ...tab,
-        count: counts[tab.status] ?? 0
+        count: (frameCounts[tab.status] ?? 0) + (albumCounts[tab.status] ?? 0)
       }));
       this.setData({ tabs });
     } catch (err) {
@@ -166,13 +176,16 @@ Page({
         default: statusClass = "pending";
       }
       const legacyPhoto = Array.isArray(order.photos) ? order.photos[0] : '';
-      const thumb = order.photoUrl || legacyPhoto || '';
+      const thumbMeta = buildOrderCardThumb(order);
       return {
         ...order,
         createTimeStr: formatDate(order.createTime, "MM-dd HH:mm"),
         customerInfo,
         displayCustomerName: getCustomerDisplayName(customerInfo),
-        photoThumb: thumb || PLACEHOLDER_THUMB,
+        photoThumb: thumbMeta.photoThumb,
+        thumbVariant: thumbMeta.thumbVariant,
+        thumbLabel: thumbMeta.thumbLabel,
+        orderType: thumbMeta.orderType,
         statusClass,
         statusText,
         showConfirmProduction: statusClass === 'pending',
@@ -245,23 +258,27 @@ Page({
 
   stopActionBubble() {},
 
+  buildOrderDetailUrl(order, extra = {}) {
+    if (!order || !order._id) return '';
+    const orderType = order.orderType || 'frame';
+    const parts = [`orderId=${order._id}`, `orderType=${orderType}`];
+    if (extra.scrollTo) parts.push(`scrollTo=${extra.scrollTo}`);
+    return `/packageStore/pages/order/order-detail/order-detail?${parts.join('&')}`;
+  },
+
   onOrderDetail(e) {
     const order = e.currentTarget.dataset.order;
-    if (!order || !order._id) return;
-    wx.navigateTo({
-      url: `/packageStore/pages/order/order-detail/order-detail?orderId=${order._id}`
-    });
+    const url = this.buildOrderDetailUrl(order);
+    if (!url) return;
+    wx.navigateTo({ url });
   },
 
   onViewLogistics(e) {
     const order = e.currentTarget.dataset.order;
     if (!order || !order._id) return;
     const scrollTo = order.shippingNo || order.status === '已发货' ? 'logistics' : '';
-    const query = scrollTo
-      ? `orderId=${order._id}&scrollTo=${scrollTo}`
-      : `orderId=${order._id}`;
     wx.navigateTo({
-      url: `/packageStore/pages/order/order-detail/order-detail?${query}`
+      url: this.buildOrderDetailUrl(order, scrollTo ? { scrollTo } : {})
     });
   },
 
@@ -273,7 +290,7 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           await callOrderApi('updateStatus', {
-            orderType: 'frame',
+            orderType: order.orderType || 'frame',
             orderId: order._id,
             status: '制作中'
           });
@@ -292,7 +309,7 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           await callOrderApi('updateStatus', {
-            orderType: 'frame',
+            orderType: order.orderType || 'frame',
             orderId: order._id,
             status: '已完成'
           });

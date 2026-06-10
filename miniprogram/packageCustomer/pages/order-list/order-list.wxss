@@ -1,14 +1,6 @@
 .page {
   min-height: 100vh;
   background: #f7f8fa;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-.scroll-area {
-  flex: 1;
-  min-height: 100vh;
   box-sizing: border-box;
   padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
@@ -85,36 +77,6 @@
 
 .order-card--hover {
   opacity: 0.94;
-}
-
-.order-photo-wrap {
-  width: 176rpx;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.order-photo {
-  width: 176rpx;
-  height: 220rpx;
-  border-radius: 24rpx;
-  background: #f4f4f5;
-  border: 6rpx solid #c9a962;
-  box-sizing: border-box;
-  box-shadow: inset 0 0 0 6rpx #fff;
-  display: block;
-}
-
-.order-photo-label {
-  position: absolute;
-  left: 50%;
-  bottom: 12rpx;
-  transform: translateX(-50%);
-  font-size: 18rpx;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.38);
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  white-space: nowrap;
 }
 
 .order-main {
@@ -235,14 +197,6 @@
   font-size: 28rpx;
   color: #9ca3af;
   line-height: 1.6;
-}
-
-.refresh-bar {
-  text-align: center;
-  font-size: 22rpx;
-  color: #6b7280;
-  padding: 12rpx;
-  background: #eef0f4;
 }
 
 /* 骨架屏 */

@@ -17,7 +17,7 @@
       </view>
       <view class="top-main">
           <view class="top-name-row">
-          <view class="name-tap" bindtap="onOpenNickModal">
+          <view class="name-tap" bindtap="onOpenProfileModal">
             <text class="name-text">{{wxNickName}}</text>
           </view>
           <view class="help-entry" bindtap="onOpenHelp">
@@ -25,7 +25,7 @@
             <text>帮助</text>
           </view>
         </view>
-        <text class="tap-hint" bindtap="onOpenNickModal">点击修改昵称</text>
+        <text class="tap-hint" bindtap="onOpenProfileModal">点击修改资料</text>
         <view class="store-chip">
           <text class="chip-prefix">所属·</text>
           <text class="chip-name">{{storeName}}</text>
@@ -48,26 +48,43 @@
 </view>
 
 <view
-  wx:if="{{showNickModal}}"
+  wx:if="{{showProfileModal}}"
   class="nick-mask"
   catchtouchmove="preventMove"
-  bindtap="onCloseNickModal"
+  bindtap="onCloseProfileModal"
 >
   <view class="nick-dialog" catchtap="preventMove">
-    <text class="dialog-title">修改昵称</text>
+    <text class="dialog-title">修改资料</text>
     <text class="dialog-label">昵称</text>
     <input
       class="dialog-input"
       value="{{nickDraft}}"
       placeholder="请输入昵称"
       maxlength="20"
-      focus="{{showNickModal}}"
+      focus="{{showProfileModal}}"
       bindinput="onNickDraftInput"
     />
-    <text class="dialog-hint">2～20 字，保存后顶区名称同步更新</text>
+    <view class="gender-row gender-row--dialog">
+      <text class="dialog-label">性别</text>
+      <view class="gender-row-ctrl">
+        <view class="gender-filter">
+          <view
+            class="gender-filter-btn {{genderDraft === 'male' ? 'active' : ''}}"
+            bindtap="onGenderDraftTap"
+            data-value="male"
+          >男</view>
+          <view
+            class="gender-filter-btn {{genderDraft === 'female' ? 'active' : ''}}"
+            bindtap="onGenderDraftTap"
+            data-value="female"
+          >女</view>
+        </view>
+      </view>
+    </view>
+    <text class="dialog-hint">昵称 2～20 字；保存后顶区名称同步更新</text>
     <view class="dialog-btns">
-      <view class="dialog-cancel" bindtap="onCloseNickModal">取消</view>
-      <view class="dialog-ok" bindtap="onConfirmNick">确定</view>
+      <view class="dialog-cancel" bindtap="onCloseProfileModal">取消</view>
+      <view class="dialog-ok" bindtap="onConfirmProfile">确定</view>
     </view>
   </view>
 </view>

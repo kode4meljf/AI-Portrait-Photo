@@ -1,99 +1,90 @@
 <view class="page">
-  <view wx:if="{{refreshing}}" class="refresh-bar">更新中…</view>
-
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}">
-    <!-- 骨架屏 -->
-    <block wx:if="{{showSkeleton}}">
-      <view class="sk-summary">
-        <view class="sk-line sk-line--short"></view>
-        <view class="sk-line sk-line--num"></view>
-        <view class="sk-line sk-line--mid"></view>
-        <view class="sk-chips">
-          <view class="sk-chip" wx:for="{{[0,1,2]}}" wx:key="*this"></view>
+  <block wx:if="{{showSkeleton}}">
+    <view class="sk-summary">
+      <view class="sk-line sk-line--short"></view>
+      <view class="sk-line sk-line--num"></view>
+      <view class="sk-line sk-line--mid"></view>
+      <view class="sk-chips">
+        <view class="sk-chip" wx:for="{{[0,1,2]}}" wx:key="*this"></view>
+      </view>
+    </view>
+    <view class="list-body">
+      <view class="sk-card" wx:for="{{skeletonRows}}" wx:key="*this">
+        <view class="sk-thumb"></view>
+        <view class="sk-body">
+          <view class="sk-line sk-line--title"></view>
+          <view class="sk-line sk-line--sub"></view>
+          <view class="sk-line sk-line--meta"></view>
+          <view class="sk-bar"></view>
         </view>
       </view>
-      <view class="list-body">
-        <view class="sk-card" wx:for="{{skeletonRows}}" wx:key="*this">
-          <view class="sk-thumb"></view>
-          <view class="sk-body">
-            <view class="sk-line sk-line--title"></view>
-            <view class="sk-line sk-line--sub"></view>
-            <view class="sk-line sk-line--meta"></view>
-            <view class="sk-bar"></view>
-          </view>
-        </view>
-      </view>
-    </block>
+    </view>
+  </block>
 
   <block wx:else>
-      <view wx:if="{{summary.total > 0}}" class="summary">
-        <text class="summary-label">我的摆台订单</text>
-        <text class="summary-num">{{summary.total}}</text>
-        <text class="summary-sub">{{storeName}} · 累计摆台</text>
-        <view class="summary-chips">
-          <view class="summary-chip">
-            <text class="chip-num">{{summary.pending}}</text>
-            <text class="chip-txt">待处理</text>
+    <view wx:if="{{summary.total > 0}}" class="summary">
+      <text class="summary-label">我的摆台订单</text>
+      <text class="summary-num">{{summary.total}}</text>
+      <text class="summary-sub">{{storeName}} · 累计摆台</text>
+      <view class="summary-chips">
+        <view class="summary-chip">
+          <text class="chip-num">{{summary.pending}}</text>
+          <text class="chip-txt">待处理</text>
+        </view>
+        <view class="summary-chip">
+          <text class="chip-num">{{summary.producing}}</text>
+          <text class="chip-txt">制作中</text>
+        </view>
+        <view class="summary-chip">
+          <text class="chip-num">{{summary.shipped}}</text>
+          <text class="chip-txt">已发货</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="list-body">
+      <view
+        wx:for="{{orders}}"
+        wx:key="_id"
+        class="order-card"
+        bindtap="goDetail"
+        data-id="{{item._id}}"
+        hover-class="order-card--hover"
+        hover-stay-time="80"
+      >
+        <order-card-thumb
+          url="{{item.photoThumb}}"
+          variant="{{item.thumbVariant}}"
+          label="{{item.thumbLabel}}"
+        />
+        <view class="order-main">
+          <view class="order-top">
+            <view class="order-head-text">
+              <text class="order-title">{{item.frameTitle}}</text>
+              <text wx:if="{{item.styleLine}}" class="order-style">{{item.styleLine}}</text>
+            </view>
+            <text class="order-status {{item.statusClass}}">{{item.statusText}}</text>
           </view>
-          <view class="summary-chip">
-            <text class="chip-num">{{summary.producing}}</text>
-            <text class="chip-txt">制作中</text>
-          </view>
-          <view class="summary-chip">
-            <text class="chip-num">{{summary.shipped}}</text>
-            <text class="chip-txt">已发货</text>
+          <text class="order-meta">{{item.metaLine}}</text>
+          <view class="order-progress">
+            <view class="progress-steps">
+              <text
+                wx:for="{{item.progressSteps}}"
+                wx:for-item="step"
+                wx:key="*this"
+                class="progress-step-label"
+              >{{step}}</text>
+            </view>
+            <view class="progress-bar">
+              <view class="progress-bar-fill" style="width: {{item.progressWidth}};"></view>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="list-body">
-        <view
-          wx:for="{{orders}}"
-          wx:key="_id"
-          class="order-card"
-          bindtap="goDetail"
-          data-id="{{item._id}}"
-          hover-class="order-card--hover"
-          hover-stay-time="80"
-        >
-          <view class="order-photo-wrap">
-            <image
-              class="order-photo"
-              src="{{item.photoThumb}}"
-              mode="aspectFill"
-              lazy-load
-            />
-            <text class="order-photo-label">摆台预览</text>
-          </view>
-          <view class="order-main">
-            <view class="order-top">
-              <view class="order-head-text">
-                <text class="order-title">{{item.frameTitle}}</text>
-                <text wx:if="{{item.styleLine}}" class="order-style">{{item.styleLine}}</text>
-              </view>
-              <text class="order-status {{item.statusClass}}">{{item.statusText}}</text>
-            </view>
-            <text class="order-meta">{{item.metaLine}}</text>
-            <view class="order-progress">
-              <view class="progress-steps">
-                <text
-                  wx:for="{{item.progressSteps}}"
-                  wx:for-item="step"
-                  wx:key="*this"
-                  class="progress-step-label"
-                >{{step}}</text>
-              </view>
-              <view class="progress-bar">
-                <view class="progress-bar-fill" style="width: {{item.progressWidth}};"></view>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <view wx:if="{{!orders.length}}" class="state-empty">{{emptyHint}}</view>
-      </view>
-    </block>
-  </scroll-view>
-
-  <customer-nav current="orders" />
+      <view wx:if="{{!orders.length}}" class="state-empty">{{emptyHint}}</view>
+    </view>
+  </block>
 </view>
+
+<customer-nav current="orders" />

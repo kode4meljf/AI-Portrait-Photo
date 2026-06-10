@@ -1,0 +1,81 @@
+/* 方案 D：标签与 gender-filter 同行；行内选择器固定 280rpx */
+
+.gender-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  width: 100%;
+}
+
+.gender-row .edit-label,
+.gender-row .dialog-label,
+.gender-row .label {
+  flex-shrink: 0;
+  width: auto !important;
+  min-width: 56rpx;
+  margin: 0 !important;
+  padding: 0;
+}
+
+.gender-row--dialog {
+  margin-top: 24rpx;
+}
+
+.gender-row-ctrl {
+  flex: 0 0 280rpx;
+  width: 280rpx;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.gender-row .gender-filter {
+  width: 280rpx;
+  background: #f4f4f5;
+  border: 1rpx solid #e4e4e7;
+}
+
+.gender-filter {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx;
+  background: #fff;
+  border-radius: 36rpx;
+  gap: 4rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.gender-row .gender-filter-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.gender-filter-btn {
+  min-width: 68rpx;
+  height: 52rpx;
+  border-radius: 26rpx;
+  background: transparent;
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.gender-filter-btn.active {
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+}
+
+.edit-field-hint--store {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.4;
+}

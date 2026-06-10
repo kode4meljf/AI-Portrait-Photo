@@ -7,6 +7,7 @@ const {
 } = require('../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
+const { genderLabel } = require('../../../utils/customerGender')
 const { CUSTOMER_BASE } = require('../../../utils/helpCenter')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
@@ -31,6 +32,7 @@ function applyProfileToPage(page, profile) {
   page.setData({
     profile,
     wxNickName,
+    genderLabel: genderLabel(profile.gender),
     phone,
     phoneMasked: maskPhone(phone),
     storeName: profile.storeName || '',
@@ -44,12 +46,14 @@ Page({
   data: {
     profile: null,
     wxNickName: '微信用户',
+    genderLabel: '男',
     phone: '',
     phoneMasked: '未绑定',
     storeName: '',
     avatarInitial: '我',
-    showNickModal: false,
-    nickDraft: ''
+    showProfileModal: false,
+    nickDraft: '',
+    genderDraft: 'male'
   },
 
   async onShow() {
@@ -85,39 +89,58 @@ Page({
     wx.navigateTo({ url: `${CUSTOMER_BASE}/index` })
   },
 
-  onOpenNickModal() {
+  onOpenProfileModal() {
+    const profile = this.data.profile || {}
     this.setData({
-      showNickModal: true,
-      nickDraft: this.data.wxNickName === '微信用户' ? '' : this.data.wxNickName
+      showProfileModal: true,
+      nickDraft: this.data.wxNickName === '微信用户' ? '' : this.data.wxNickName,
+      genderDraft: profile.gender === 'female' ? 'female' : 'male'
     })
   },
 
-  onCloseNickModal() {
-    this.setData({ showNickModal: false, nickDraft: '' })
+  onCloseProfileModal() {
+    this.setData({ showProfileModal: false, nickDraft: '', genderDraft: 'male' })
   },
 
   onNickDraftInput(e) {
     this.setData({ nickDraft: e.detail.value || '' })
   },
 
-  async onConfirmNick() {
+  onGenderDraftTap(e) {
+    const value = e.currentTarget.dataset.value
+    if (value !== 'male' && value !== 'female') return
+    this.setData({ genderDraft: value })
+  },
+
+  async onConfirmProfile() {
     const nick = (this.data.nickDraft || '').trim()
+    const gender = this.data.genderDraft === 'female' ? 'female' : 'male'
+    const profile = this.data.profile || {}
+    const currentGender = profile.gender === 'female' ? 'female' : 'male'
+
     if (nick.length < 2 || nick.length > 20) {
       wx.showToast({ title: '昵称需为 2～20 字', icon: 'none' })
       return
     }
-    if (nick === this.data.wxNickName) {
-      this.onCloseNickModal()
+
+    const nickChanged = nick !== this.data.wxNickName
+    const genderChanged = gender !== currentGender
+    if (!nickChanged && !genderChanged) {
+      this.onCloseProfileModal()
       return
     }
+
+    const payload = {}
+    if (nickChanged) payload.wxNickName = nick
+    if (genderChanged) payload.gender = gender
 
     if (isDevCustomerPreview()) {
       const account = await applySessionToApp(app)
       if (account.accountKind !== 'customer') {
-        const profile = { ...this.data.profile, wxNickName: nick }
-        app.globalData.customer = profile
-        applyProfileToPage(this, profile)
-        this.onCloseNickModal()
+        const nextProfile = { ...profile, ...payload }
+        app.globalData.customer = nextProfile
+        applyProfileToPage(this, nextProfile)
+        this.onCloseProfileModal()
         wx.showToast({ title: '已更新', icon: 'success' })
         return
       }
@@ -125,10 +148,10 @@ Page({
 
     wx.showLoading({ title: '保存中' })
     try {
-      const profile = await callCustomer('profile.update', { wxNickName: nick })
-      app.globalData.customer = profile
-      applyProfileToPage(this, profile)
-      this.onCloseNickModal()
+      const nextProfile = await callCustomer('profile.update', payload)
+      app.globalData.customer = nextProfile
+      applyProfileToPage(this, nextProfile)
+      this.onCloseProfileModal()
       wx.showToast({ title: '已更新', icon: 'success' })
     } catch (e) {
       wx.showToast({ title: e.message || '保存失败', icon: 'none' })

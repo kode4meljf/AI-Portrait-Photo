@@ -1,6 +1,8 @@
 const { callCustomer } = require('../../../../utils/storeSession')
 const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../../../utils/customerForm')
 const { canShowDeleteCustomer, confirmDeleteCustomer } = require('../../../../utils/customerDelete')
+const { getCurrentDate } = require('../../../utils/date')
+const { DEFAULT_GENDER, normalizeGender } = require('../../../../utils/customerGender')
 
 const app = getApp()
 
@@ -28,12 +30,16 @@ Page({
     form: {
       nickName: '',
       phone: '',
-      remark: ''
+      remark: '',
+      gender: DEFAULT_GENDER,
+      address: ''
     },
     snapshot: {
       nickName: '',
       phone: '',
-      remark: ''
+      remark: '',
+      gender: DEFAULT_GENDER,
+      address: ''
     },
     avatarUrl: '',
     avatarInitial: '客',
@@ -42,7 +48,9 @@ Page({
     phoneLocked: false,
     canDelete: false,
     deleting: false,
-    customerRaw: null
+    customerRaw: null,
+    isFollowUp: false,
+    followUpDate: ''
   },
 
   onLoad(options) {
@@ -52,21 +60,32 @@ Page({
       setTimeout(() => wx.navigateBack(), 400)
       return
     }
-    this.setData({ id })
-    this.loadCustomer()
+    const isFollowUp = options.mode === 'followup'
+    const followUpDate = (options.date || getCurrentDate()).trim()
+    if (isFollowUp) {
+      wx.setNavigationBarTitle({ title: '客户跟进' })
+    }
+    this.setData({ id, isFollowUp, followUpDate })
+    this.loadCustomer(isFollowUp)
   },
 
-  async loadCustomer() {
+  async loadCustomer(isFollowUpMode) {
+    const followUp = typeof isFollowUpMode === 'boolean' ? isFollowUpMode : this.data.isFollowUp
     try {
       const db = wx.cloud.database()
       const res = await db.collection('customers').doc(this.data.id).get()
       const data = res.data
-      const nickName = data.nickName || ''
+      const wxNick = (data.wxNickName || '').trim()
+      const nickName = (data.nickName || '').trim()
+      const displayNickName = nickName || wxNick
       const phone = data.phone || ''
       const remark = data.remark || ''
-      const snapshot = { nickName, phone, remark }
+      const gender = normalizeGender(data.gender)
+      const address = (data.address || '').trim()
+      const snapshot = { nickName, phone, remark, gender, address }
+      const formNickName = followUp ? displayNickName : nickName
       this.setData({
-        form: { ...snapshot },
+        form: { nickName: formNickName, phone, remark, gender, address },
         snapshot,
         changed: false,
         canSave: false,
@@ -93,12 +112,46 @@ Page({
     this.setData(patch, this.refreshSaveState)
   },
 
+  onGenderTap(e) {
+    const value = e.currentTarget.dataset.value
+    this.setData({ 'form.gender': normalizeGender(value) }, this.refreshSaveState)
+  },
+
+  onRemarkInput(e) {
+    const value = e.detail.value || ''
+    this.setData({ 'form.remark': value }, this.refreshSaveState)
+  },
+
+  onDialPhone() {
+    const phone = String(this.data.form.phone || '').trim()
+    if (!/^1\d{10}$/.test(phone)) {
+      wx.showToast({ title: '暂无有效手机号', icon: 'none' })
+      return
+    }
+    wx.makePhoneCall({
+      phoneNumber: phone,
+      fail: (err) => {
+        const msg = (err && err.errMsg) || ''
+        if (!/cancel/i.test(msg)) {
+          wx.showToast({ title: '无法拨号', icon: 'none' })
+        }
+      }
+    })
+  },
+
   refreshSaveState() {
-    const { form, snapshot } = this.data
+    const { form, snapshot, isFollowUp } = this.data
+    if (isFollowUp) {
+      const changed = form.remark !== snapshot.remark
+      this.setData({ changed, canSave: changed })
+      return
+    }
     const changed =
       form.nickName !== snapshot.nickName ||
       form.phone !== snapshot.phone ||
-      form.remark !== snapshot.remark
+      form.remark !== snapshot.remark ||
+      form.gender !== snapshot.gender ||
+      form.address !== snapshot.address
     const valid = validateStoreCustomerForm(form)
     this.setData({
       changed,
@@ -109,7 +162,31 @@ Page({
   async onSave() {
     if (this.data.saving || !this.data.canSave) return
 
-    const valid = validateStoreCustomerForm(this.data.form)
+    const { isFollowUp, followUpDate, form } = this.data
+
+    if (isFollowUp) {
+      this.setData({ saving: true })
+      try {
+        await callCustomer('followUpByStore', {
+          followUpDate,
+          customerDocId: this.data.id,
+          remark: (form.remark || '').trim()
+        })
+        wx.showToast({ title: '保存成功', icon: 'success' })
+        setTimeout(() => wx.navigateBack(), 400)
+      } catch (e) {
+        const msg = e.message || '保存失败'
+        const hint = /未知 action|请填写客户称呼/i.test(msg)
+          ? '请重新部署 customer 云函数后重试'
+          : msg
+        wx.showToast({ title: hint, icon: 'none', duration: 2800 })
+      } finally {
+        this.setData({ saving: false })
+      }
+      return
+    }
+
+    const valid = validateStoreCustomerForm(form)
     if (!valid.ok) {
       wx.showToast({ title: valid.error, icon: 'none' })
       return
@@ -121,7 +198,9 @@ Page({
         customerDocId: this.data.id,
         nickName: valid.nickName,
         phone: valid.phone,
-        remark: valid.remark
+        remark: valid.remark,
+        gender: valid.gender,
+        address: valid.address
       })
       wx.showToast({ title: '保存成功', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 400)

@@ -20,6 +20,10 @@ const {
   toastPortraitError
 } = require('../../../../utils/portraitBilling.js');
 const { setBatchFavorite, loadBatchFavorite } = require('../../../../utils/batchFavorite.js');
+const { resolveLinkedCustomerId } = require('../../../utils/albumCustomer.js');
+const { countCustomerAiPhotos } = require('../../../utils/albumPhotos.js');
+const { fetchAlbumPlatformConfig } = require('../../../../utils/platformSettings.js');
+const { isValidStoreId } = require('../../../../utils/storeSession.js');
 
 const db = wx.cloud.database();
 
@@ -55,6 +59,7 @@ Page({
     if (mode === 'batch') {
       this.setData({ batchId: options.batchId || '', navTitle: '云相册' });
       this.loadBatchFavoriteState();
+      this.loadBatchMeta();
       this.loadPhotos();
       return;
     }
@@ -68,6 +73,27 @@ Page({
 
   onHide() {
     this.stopPolling();
+  },
+
+  onShow() {
+    if (this._mode === 'batch' && this.data.batchId) {
+      this.loadBatchMeta();
+    }
+  },
+
+  async loadBatchMeta() {
+    const batchId = this.data.batchId;
+    if (!batchId) {
+      this._batchCustomerId = '';
+      return;
+    }
+    try {
+      const res = await db.collection('batches').doc(batchId).get();
+      this._batchCustomerId = (res.data && res.data.customerId) || '';
+    } catch (e) {
+      console.warn('[portrait-viewer] loadBatchMeta', e);
+      this._batchCustomerId = '';
+    }
   },
 
   stopPolling() {
@@ -402,13 +428,45 @@ Page({
     }
   },
 
-  onMakeAlbum(e) {
-    const index = (e.detail && e.detail.index) ?? this.data.currentIndex;
-    const item = this.data.results[index];
-    wx.showToast({
-      title: item ? `制作影集：${item.name}` : '制作影集（待接入）',
-      icon: 'none'
+  async onMakeAlbum() {
+    const customerId = resolveLinkedCustomerId(app, {
+      customerId: this._batchCustomerId
     });
+    if (!customerId) {
+      wx.showToast({ title: '请先关联客户', icon: 'none', duration: 2400 });
+      return;
+    }
+
+    const storeId = app.globalData.storeId;
+    if (!isValidStoreId(storeId)) {
+      wx.showToast({ title: '请先登录门店', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '校验中…', mask: true });
+    try {
+      const albumConfig = await fetchAlbumPlatformConfig();
+      const entryMin = albumConfig.albumEntryMinTotal;
+      const total = await countCustomerAiPhotos(db, storeId, customerId, entryMin);
+      wx.hideLoading();
+      if (total < entryMin) {
+        wx.showModal({
+          title: '数量不足',
+          content: `该客户 AI 写真仅 ${total} 张，需要达到 ${entryMin} 张才可制作影集。`,
+          showCancel: false,
+          confirmText: '知道了'
+        });
+        return;
+      }
+      app.globalData.pendingAlbumPlatformConfig = albumConfig
+      wx.navigateTo({
+        url: `/packageStore/pages/cloud/album-maker/album-maker?customerId=${encodeURIComponent(customerId)}`
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('[portrait-viewer] onMakeAlbum', err);
+      wx.showToast({ title: '校验失败，请重试', icon: 'none' });
+    }
   },
 
   onMakeFrame(e) {
@@ -425,10 +483,17 @@ Page({
       return;
     }
 
+    const customerId =
+      this._batchCustomerId ||
+      app.globalData.galleryFilterCustomerId ||
+      app.globalData.selectedCustomerId ||
+      null;
+
     app.globalData.pendingFrameOrder = {
       photoFileId,
       styleId: item.styleId || item.id || '',
-      styleName: item.name || ''
+      styleName: item.name || '',
+      customerId: customerId || null
     };
 
     wx.navigateTo({

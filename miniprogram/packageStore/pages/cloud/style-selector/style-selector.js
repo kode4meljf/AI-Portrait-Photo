@@ -3,9 +3,15 @@ const {
   pickStyles
 } = require('../../../../config/styles.js')
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js')
+const { getCustomerDisplayName, compactDisplayName } = require('../../../../utils/customerDisplay')
+const { GENDER_MALE, GENDER_FEMALE } = require('../../../../utils/customerGender')
+const {
+  filterStylesByGender,
+  styleGenderFromCustomer
+} = require('../../../../utils/styleGender')
 
 const db = wx.cloud.database()
-const { buildShootQuery, setPendingShoot } = require('../../../../utils/shootContext.js')
+const { buildShootQuery, setPendingShoot, getShootCustomerId } = require('../../../../utils/shootContext.js')
 const { portraitCostForCount, assertPortraitBalance } = require('../../../../utils/portraitBilling.js')
 
 Page({
@@ -21,7 +27,12 @@ Page({
     canSubmit: false,
     submitShowCost: true,
     submitCost: 10,
-    submitPlainText: '立即生成'
+    submitPlainText: '立即生成',
+    hasLinkedCustomer: false,
+    showGenderToggle: false,
+    filterCompactName: '',
+    filterGenderLabel: '',
+    manualGender: GENDER_MALE
   },
 
   onLoad(options) {
@@ -52,7 +63,69 @@ Page({
     if (Object.keys(nextData).length) {
       this.syncSubmitState(nextData)
     }
-    this.updateNavTitle(this.data.currentStyleName)
+
+    if (this.data.stylePool.length) {
+      this.applyGenderFilter(this.data.count, this.data.stylePool)
+    } else {
+      this.updateNavTitle(this.data.currentStyleName)
+    }
+  },
+
+  resolveGenderFilter() {
+    const app = getApp()
+    const customerId = getShootCustomerId(app)
+    const customer = app.globalData.selectedCustomer
+    if (customerId && customer && customer._id === customerId) {
+      const genderLabel = styleGenderFromCustomer(customer.gender)
+      return {
+        hasLinkedCustomer: true,
+        genderLabel,
+        compactName: compactDisplayName(getCustomerDisplayName(customer))
+      }
+    }
+    const manualGender = this.data.manualGender === GENDER_FEMALE ? GENDER_FEMALE : GENDER_MALE
+    return {
+      hasLinkedCustomer: false,
+      genderLabel: styleGenderFromCustomer(manualGender),
+      compactName: ''
+    }
+  },
+
+  getFilteredPool(pool) {
+    const { genderLabel } = this.resolveGenderFilter()
+    return filterStylesByGender(pool, genderLabel)
+  },
+
+  applyGenderFilter(count, pool) {
+    const filterState = this.resolveGenderFilter()
+    const filtered = filterStylesByGender(pool, filterState.genderLabel)
+    const styles = pickStyles(filtered, count)
+    let nextIndex = this.data.currentIndex
+    if (nextIndex >= styles.length) nextIndex = 0
+    const currentStyleName = styles[nextIndex]?.name || ''
+
+    let stylesError = ''
+    if (!pool.length) {
+      stylesError = '暂无可用风格，请联系管理员配置'
+    } else if (!filtered.length) {
+      stylesError = filterState.hasLinkedCustomer
+        ? '该客户性别暂无可用风格'
+        : '该性别暂无可用风格'
+    }
+
+    this.syncSubmitState({
+      stylePool: pool,
+      styles,
+      currentIndex: nextIndex,
+      currentStyleName,
+      stylesError,
+      hasLinkedCustomer: filterState.hasLinkedCustomer,
+      showGenderToggle: !filterState.hasLinkedCustomer,
+      filterCompactName: filterState.compactName,
+      filterGenderLabel: filterState.genderLabel,
+      loadingStyles: false
+    })
+    this.updateNavTitle(currentStyleName)
   },
 
   syncSubmitState(extra = {}) {
@@ -81,31 +154,11 @@ Page({
         onlyEnabled: true
       })
       if (!pool.length) {
-        this.syncSubmitState({
-          stylePool: [],
-          styles: [],
-          currentIndex: 0,
-          currentStyleName: '',
-          stylesError: '暂无可用风格，请联系管理员配置',
-          loadingStyles: false
-        })
+        this.applyGenderFilter(count, [])
         wx.showToast({ title: '暂无可用风格', icon: 'none' })
         return
       }
-
-      const styles = pickStyles(pool, count)
-      let nextIndex = this.data.currentIndex
-      if (nextIndex >= styles.length) nextIndex = 0
-      const currentStyleName = styles[nextIndex]?.name || ''
-      this.syncSubmitState({
-        stylePool: pool,
-        styles,
-        currentIndex: nextIndex,
-        currentStyleName,
-        stylesError: '',
-        loadingStyles: false
-      })
-      this.updateNavTitle(currentStyleName)
+      this.applyGenderFilter(count, pool)
     } catch (err) {
       console.error('[style-selector] 加载风格失败', err)
       this.syncSubmitState({
@@ -132,7 +185,20 @@ Page({
     const count = Number(e.currentTarget.dataset.count || 3)
     if (count === this.data.count) return
     this.setData({ count })
-    this.loadStyles(count)
+    if (this.data.stylePool.length) {
+      this.applyGenderFilter(count, this.data.stylePool)
+    } else {
+      this.loadStyles(count)
+    }
+  },
+
+  onGenderFilterTap(e) {
+    const gender = e.currentTarget.dataset.gender
+    if (!gender || gender === this.data.manualGender) return
+    this.setData({ manualGender: gender, currentIndex: 0 })
+    if (this.data.stylePool.length) {
+      this.applyGenderFilter(this.data.count, this.data.stylePool)
+    }
   },
 
   onThumbTap(e) {
@@ -184,7 +250,12 @@ Page({
     } catch (e) {
       return
     }
-    const styles = pickStyles(pool, count)
+    const filtered = this.getFilteredPool(pool)
+    const styles = pickStyles(filtered, count)
+    if (!styles.length) {
+      wx.showToast({ title: '该性别暂无可用风格', icon: 'none' })
+      return
+    }
     setPendingShoot({
       count,
       styles,

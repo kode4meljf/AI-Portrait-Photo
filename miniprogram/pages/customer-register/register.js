@@ -4,6 +4,7 @@ const { applySessionToApp } = require('../../utils/storeSession')
 const { clearSessionDirty } = require('../../utils/sessionDirty')
 const { parseCustomerRegisterFromScan } = require('../../utils/inviteCode')
 const { requireLegalAgreed } = require('../../utils/legalConsent')
+const { DEFAULT_GENDER, normalizeGender } = require('../../utils/customerGender')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const RESCAN_TOAST = '请重新扫描门店注册小程序码'
@@ -21,6 +22,7 @@ Page({
     wxNickName: '',
     phoneReady: false,
     phoneCode: '',
+    gender: DEFAULT_GENDER,
     legalAgreed: false
   },
 
@@ -122,6 +124,11 @@ Page({
     this.setData({ wxNickName: (e.detail.value || '').trim() })
   },
 
+  onGenderTap(e) {
+    const value = e.currentTarget.dataset.value
+    this.setData({ gender: normalizeGender(value) })
+  },
+
   onGetPhoneNumber(e) {
     if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (e.detail.errMsg && !e.detail.errMsg.includes('ok')) {
@@ -168,7 +175,8 @@ Page({
         token: this.data.token,
         phoneCode: this.data.phoneCode,
         wxNickName: this.data.wxNickName,
-        avatarUrl
+        avatarUrl,
+        gender: this.data.gender
       })
 
       await applySessionToApp(app)

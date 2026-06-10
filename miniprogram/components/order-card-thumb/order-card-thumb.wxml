@@ -1,0 +1,23 @@
+<view class="order-photo-wrap {{variant === 'album' ? 'order-thumb-album' : ''}}">
+  <block wx:if="{{variant === 'album'}}">
+    <view class="album-book">
+      <view class="album-book-face">
+        <view class="album-page-left"></view>
+        <view class="album-spine"></view>
+        <view class="album-page-right">
+          <image class="album-page-photo" src="{{url}}" mode="aspectFill" />
+        </view>
+      </view>
+      <view class="album-thickness" aria-hidden="true">
+        <view class="album-sheet s1"></view>
+        <view class="album-sheet s2"></view>
+        <view class="album-sheet s3"></view>
+        <view class="album-sheet s4"></view>
+      </view>
+    </view>
+  </block>
+  <block wx:else>
+    <image class="order-thumb-frame" src="{{url}}" mode="aspectFill" />
+  </block>
+  <text wx:if="{{label}}" class="order-photo-label">{{label}}</text>
+</view>

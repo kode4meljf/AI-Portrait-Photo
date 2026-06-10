@@ -2,6 +2,8 @@
  * @file 风格模板：云库读取与展示字段归一化
  */
 
+const { normalizeStyleGender } = require('../utils/styleGender')
+
 function parseStyleCode(id) {
   const m = String(id || '').match(/^S(\d{1,2})$/i)
   return m ? Number(m[1]) : 9999
@@ -24,7 +26,8 @@ function normalizeStyle(row) {
     sampleFileId,
     sampleThumbFileId,
     sort: row.sort != null ? row.sort : 0,
-    enabled: row.enabled !== false
+    enabled: row.enabled !== false,
+    gender: normalizeStyleGender(row.gender)
   }
 }
 

@@ -10,8 +10,12 @@ function orderCreateTimeMs(value) {
 }
 const { getPhoneFromCode } = require('./phone')
 const { buildCheckinQrPayload } = require('./qrPayload')
-const { ensureCheckinQr } = require('./checkinQr')
 const { deleteReplacedCloudFile } = require('./cloudFile')
+const { normalizeGender, DEFAULT_GENDER } = require('./gender')
+
+function ensureCheckinQr(row, options) {
+  return require('./checkinQr').ensureCheckinQr(row, options)
+}
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -97,6 +101,7 @@ function formatCustomer(row) {
     wxNickName: row.wxNickName || '',
     phone: row.phone || '',
     avatarUrl: row.avatarUrl || '',
+    gender: normalizeGender(row.gender),
     totalCheckins: row.totalCheckins || 0,
     equityAlbum: row.equityAlbum != null ? row.equityAlbum : 0,
     equityFrame: row.equityFrame != null ? row.equityFrame : 0,
@@ -153,6 +158,7 @@ async function registerComplete(openid, payload) {
   const phone = await getPhoneFromCode(payload.phoneCode)
   const wxNickName = (payload.wxNickName || '').trim()
   const avatarUrl = (payload.avatarUrl || '').trim()
+  const gender = normalizeGender(payload.gender)
   const now = Date.now()
 
   const existing = await getCustomerByOpenId(openid)
@@ -168,6 +174,7 @@ async function registerComplete(openid, payload) {
 
     const patch = {
       phone,
+      gender,
       updateTime: now,
       boundAt: existing.boundAt || now
     }
@@ -198,6 +205,7 @@ async function registerComplete(openid, payload) {
     }
     const patch = {
       wxOpenId: openid,
+      gender,
       updateTime: now,
       boundAt: row.boundAt || now
     }
@@ -219,8 +227,10 @@ async function registerComplete(openid, payload) {
       wxNickName,
       phone,
       avatarUrl,
+      gender,
       wxOpenId: openid,
       remark: '',
+      address: '',
       equityAlbum: 0,
       equityFrame: 0,
       totalCheckins: 0,
@@ -282,6 +292,10 @@ async function updateMyProfile(openid, payload) {
     data.wxNickName = wxNickName
   }
 
+  if (payload.gender !== undefined) {
+    data.gender = normalizeGender(payload.gender)
+  }
+
   if (payload.phoneCode) {
     const phone = await getPhoneFromCode(payload.phoneCode)
     if (phone !== (row.phone || '').trim()) {
@@ -312,33 +326,52 @@ async function listMyOrders(openid) {
     where.storeId = row.storeId
   }
 
-  const field = {
+  const frameField = {
     _id: true,
     orderNo: true,
     frameName: true,
     styleName: true,
     photoUrl: true,
     status: true,
-    createTime: true
+    createTime: true,
+    orderType: true
+  }
+  const albumField = {
+    ...frameField,
+    photoUrls: true,
+    photoCount: true
   }
 
-  let rows = []
-  try {
-    const res = await db
-      .collection('frame_orders')
-      .where(where)
-      .field(field)
-      .orderBy('createTime', 'desc')
-      .limit(50)
-      .get()
-    rows = res.data || []
-  } catch (err) {
-    console.warn('[listMyOrders] orderBy failed, fallback', err.message || err)
-    const res = await db.collection('frame_orders').where(where).field(field).limit(100).get()
-    rows = res.data || []
-    rows.sort((a, b) => orderCreateTimeMs(b.createTime) - orderCreateTimeMs(a.createTime))
-    rows = rows.slice(0, 50)
+  async function fetchOrderList(collection, field) {
+    try {
+      const res = await db
+        .collection(collection)
+        .where(where)
+        .field(field)
+        .orderBy('createTime', 'desc')
+        .limit(50)
+        .get()
+      return res.data || []
+    } catch (err) {
+      console.warn(`[listMyOrders] ${collection} orderBy failed, fallback`, err.message || err)
+      const res = await db.collection(collection).where(where).field(field).limit(100).get()
+      const part = res.data || []
+      part.sort((a, b) => orderCreateTimeMs(b.createTime) - orderCreateTimeMs(a.createTime))
+      return part.slice(0, 50)
+    }
   }
+
+  const [frameRows, albumRows] = await Promise.all([
+    fetchOrderList('frame_orders', frameField),
+    fetchOrderList('album_orders', albumField)
+  ])
+
+  let rows = [
+    ...frameRows.map((o) => ({ ...o, orderType: o.orderType || 'frame' })),
+    ...albumRows.map((o) => ({ ...o, orderType: 'album' }))
+  ]
+  rows.sort((a, b) => orderCreateTimeMs(b.createTime) - orderCreateTimeMs(a.createTime))
+  rows = rows.slice(0, 50)
 
   let storeName = ''
   if (isValidStoreId(row.storeId)) {
@@ -353,8 +386,19 @@ async function getMyOrder(openid, payload) {
   if (!row) throw new Error('您尚未注册为顾客')
   const orderId = payload.orderId
   if (!orderId) throw new Error('缺少 orderId')
-  const res = await db.collection('frame_orders').doc(orderId).get()
-  const order = res.data
+
+  let order = null
+  for (const collection of ['frame_orders', 'album_orders']) {
+    try {
+      const res = await db.collection(collection).doc(orderId).get()
+      if (res.data) {
+        order = res.data
+        break
+      }
+    } catch (e) {
+      /* try next collection */
+    }
+  }
   if (!order || order.customerId !== row._id) {
     throw new Error('订单不存在或无权查看')
   }

@@ -1,4 +1,5 @@
 const { STYLE_TEMPLATES_COLLECTION } = require('./db')
+const { DEFAULT_STYLE_GENDER } = require('./styleGender')
 
 /** S01–S09 默认风格（样图由 upload-style-samples 或后台上传补充） */
 const SEED_STYLES = [
@@ -9,7 +10,8 @@ const SEED_STYLES = [
       'professional airline pilot portrait, studio lighting, crisp uniform, confident expression',
     resolution: '1536:1152',
     sort: 10,
-    enabled: true
+    enabled: true,
+    gender: DEFAULT_STYLE_GENDER
   },
   {
     id: 'S02',
@@ -104,6 +106,7 @@ async function seedStyles(db) {
         sampleFileId: '',
         sort: row.sort != null ? row.sort : 0,
         enabled: row.enabled !== false,
+        gender: row.gender || DEFAULT_STYLE_GENDER,
         createTime: now,
         updateTime: now
       }

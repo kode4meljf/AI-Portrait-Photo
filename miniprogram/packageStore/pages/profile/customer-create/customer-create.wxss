@@ -1,4 +1,6 @@
 /* 与 customer-edit / 首页客户编辑弹层保持一致 · 线框极简 */
+@import "../../../../styles/customer-gender.shared.wxss";
+
 .container {
   min-height: 100vh;
   background: #fff;

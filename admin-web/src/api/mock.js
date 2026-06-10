@@ -93,11 +93,18 @@ const mockCustomers = [
   }
 ]
 
+function normalizeMockStyleGender(value) {
+  const s = String(value || '').trim()
+  if (s === '女' || s === 'female') return '女'
+  return '男'
+}
+
 function withStyleSampleUrl(row) {
   const sampleFileId = row.sampleFileId || ''
   return {
     ...row,
     resolution: row.resolution || '1536:1152',
+    gender: normalizeMockStyleGender(row.gender),
     sampleFileId,
     sampleUrl: sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : row.sampleUrl || ''
   }
@@ -128,6 +135,10 @@ let mockPlatformSettings = {
   volcSecretKeyConfigured: false,
   volcKeysUpdateTime: null,
   jimengMaxConcurrency: 1,
+  albumEntryMinTotal: 40,
+  albumSelectMin: 30,
+  albumSelectMax: 40,
+  albumPointsPerPhoto: 23,
   updateTime: new Date().toISOString()
 }
 
@@ -375,6 +386,7 @@ export async function mockRequest(action, payload = {}, query = {}) {
         name: (payload.name || '').trim(),
         prompt: payload.prompt || '',
         resolution: payload.resolution || '1536:1152',
+        gender: normalizeMockStyleGender(payload.gender),
         sampleFileId: payload.sampleFileId || '',
         sort: payload.sort || 0,
         enabled: payload.enabled !== false
@@ -483,10 +495,30 @@ export async function mockRequest(action, payload = {}, query = {}) {
         10,
         Math.max(1, Math.floor(Number(payload.jimengMaxConcurrency) || 1))
       )
+      const albumSelectMin = Math.min(
+        200,
+        Math.max(1, Math.floor(Number(payload.albumSelectMin) || 30))
+      )
+      let albumSelectMax = Math.min(
+        200,
+        Math.max(albumSelectMin, Math.floor(Number(payload.albumSelectMax) || 40))
+      )
+      const albumEntryMinTotal = Math.min(
+        500,
+        Math.max(albumSelectMax, Math.floor(Number(payload.albumEntryMinTotal) || 40))
+      )
+      const albumPointsPerPhoto = Math.min(
+        999,
+        Math.max(1, Math.floor(Number(payload.albumPointsPerPhoto) || 23))
+      )
       mockPlatformSettings = {
         ...mockPlatformSettings,
         supportPhone: (payload.supportPhone || '').trim(),
         jimengMaxConcurrency: saved,
+        albumSelectMin,
+        albumSelectMax,
+        albumEntryMinTotal,
+        albumPointsPerPhoto,
         updateTime: new Date().toISOString()
       }
       if (volcAccessKey) {

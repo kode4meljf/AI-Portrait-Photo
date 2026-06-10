@@ -87,8 +87,48 @@
       </view>
     </view>
 
+    <!-- 写真集：入选写真网格 -->
+    <view class="preview-card" wx:if="{{view.isAlbumOrder}}">
+      <view class="sec-title-row">
+        <text class="sec-title">入选写真</text>
+        <text class="sec-hint">共 {{view.photoCount}} 张 · 点击可预览</text>
+      </view>
+      <view class="album-grid">
+        <view
+          wx:for="{{view.previewPhotos}}"
+          wx:for-index="idx"
+          wx:key="index"
+          class="album-cell"
+          bindtap="previewAlbumPhotos"
+          data-index="{{item.index}}"
+        >
+          <image class="album-cell-img" src="{{item.url}}" mode="aspectFill" />
+          <view
+            wx:if="{{view.photoMoreCount > 0 && idx === view.previewPhotos.length - 1}}"
+            class="album-more-overlay"
+          >
+            <text class="album-more-text">+{{view.photoMoreCount}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="product-rows">
+        <view class="product-row">
+          <text class="k">产品</text>
+          <text class="v">{{view.productName}}</text>
+        </view>
+        <view class="product-row">
+          <text class="k">入选张数</text>
+          <text class="v">{{view.photoCount}} 张</text>
+        </view>
+        <view class="product-row">
+          <text class="k">消耗积分</text>
+          <text class="v">{{view.pointsCostLabel}}{{view.pointsPerPhotoHint}}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 摆台成片：仅角标提示，点击整图预览 -->
-    <view class="preview-card">
+    <view class="preview-card" wx:else>
       <view class="sec-title">摆台成片</view>
       <view class="frame-stage">
         <view class="frame-photo-wrap" bindtap="previewImage">
@@ -112,10 +152,10 @@
       </view>
     </view>
 
-    <!-- 关联客户 -->
+    <!-- 客户信息（只读，不可更换） -->
     <view class="info-card" wx:if="{{view.hasCustomer}}">
-      <view class="head">关联客户</view>
-      <view class="cell" bindtap="onCustomerTap">
+      <view class="head">客户信息</view>
+      <view class="cell cell--readonly">
         <image
           wx:if="{{view.customerAvatar}}"
           class="avatar"
@@ -127,7 +167,6 @@
           <view class="name">{{view.displayCustomerName}}</view>
           <view class="desc" wx:if="{{view.customerDesc}}">{{view.customerDesc}}</view>
         </view>
-        <text class="arrow">›</text>
       </view>
     </view>
 
@@ -136,9 +175,9 @@
       <view class="head">订单信息</view>
       <view class="kv">
         <text class="k">订单编号</text>
-        <view class="v">
+        <view class="v v--copy">
           <text class="mono">{{view.orderNo}}</text>
-          <text class="copy-btn" catchtap="onCopyOrderNo">复制</text>
+          <view class="copy-btn" catchtap="onCopyOrderNo">复制</view>
         </view>
       </view>
       <view class="kv">

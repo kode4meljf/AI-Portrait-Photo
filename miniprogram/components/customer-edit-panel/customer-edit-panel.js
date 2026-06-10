@@ -6,6 +6,7 @@ const { callCustomer } = require('../../utils/storeSession')
 const { initialFromName, pickAvatarTint } = require('../../utils/customerListDisplay')
 const { validateStoreCustomerForm, showCustomerPhoneError } = require('../../utils/customerForm')
 const { canShowDeleteCustomer, confirmDeleteCustomer } = require('../../utils/customerDelete')
+const { DEFAULT_GENDER, normalizeGender } = require('../../utils/customerGender')
 
 function avatarMetaFromCustomer(customer, id) {
   const nick = customer?.nickName || customer?.wxNickName || ''
@@ -33,8 +34,8 @@ Component({
   },
 
   data: {
-    editForm: { nickName: '', phone: '', remark: '' },
-    editSnapshot: { nickName: '', phone: '', remark: '' },
+    editForm: { nickName: '', phone: '', remark: '', gender: DEFAULT_GENDER, address: '' },
+    editSnapshot: { nickName: '', phone: '', remark: '', gender: DEFAULT_GENDER, address: '' },
     editAvatarUrl: '',
     editAvatarInitial: '客',
     editAvatarTint: '#4e7cf6',
@@ -58,7 +59,9 @@ Component({
         const nickName = customer.nickName || ''
         const phone = customer.phone || ''
         const remark = customer.remark || ''
-        const snapshot = { nickName, phone, remark }
+        const gender = normalizeGender(customer.gender)
+        const address = (customer.address || '').trim()
+        const snapshot = { nickName, phone, remark, gender, address }
         this.setData({
           editWxNickName: (customer.wxNickName || '').trim(),
           editPhoneLocked: !!(customer.wxOpenId || '').trim(),
@@ -92,13 +95,33 @@ Component({
       const editChanged =
         editForm.nickName !== editSnapshot.nickName ||
         editForm.phone !== editSnapshot.phone ||
-        editForm.remark !== editSnapshot.remark
+        editForm.remark !== editSnapshot.remark ||
+        editForm.gender !== editSnapshot.gender ||
+        editForm.address !== editSnapshot.address
       const valid = validateStoreCustomerForm(editForm)
       const patch = { editForm, editChanged, editCanSave: editChanged && valid.ok }
       if (key === 'nickName') {
         patch.editAvatarInitial = initialFromName(value)
       }
       this.setData(patch)
+    },
+
+    onGenderTap(e) {
+      const value = e.currentTarget.dataset.value
+      const editForm = { ...this.data.editForm, gender: normalizeGender(value) }
+      const { editSnapshot } = this.data
+      const editChanged =
+        editForm.nickName !== editSnapshot.nickName ||
+        editForm.phone !== editSnapshot.phone ||
+        editForm.remark !== editSnapshot.remark ||
+        editForm.gender !== editSnapshot.gender ||
+        editForm.address !== editSnapshot.address
+      const valid = validateStoreCustomerForm(editForm)
+      this.setData({
+        editForm,
+        editChanged,
+        editCanSave: editChanged && valid.ok
+      })
     },
 
     async onSave() {
@@ -117,7 +140,9 @@ Component({
           customerDocId: id,
           nickName: valid.nickName,
           phone: valid.phone,
-          remark: valid.remark
+          remark: valid.remark,
+          gender: valid.gender,
+          address: valid.address
         })
         if (app.globalData.selectedCustomerId === id) {
           app.globalData.selectedCustomer = latest

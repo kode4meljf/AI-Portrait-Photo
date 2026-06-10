@@ -4,7 +4,7 @@ const { isPayConfigured, getPayConfigSummary, assertPayConfigured, getPayConfig 
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
 const { verifyMerchantCredentials } = require('./lib/wxpay');
 const recharge = require('./lib/recharge');
-const { assertProductionSecurity, warnIfInsecure } = require('../lib/productionGuard');
+const { assertProductionSecurity, warnIfInsecure } = require('./lib/productionGuard');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 

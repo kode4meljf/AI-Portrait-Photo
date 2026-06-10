@@ -1,3 +1,5 @@
+@import "../../../../styles/customer-gender.shared.wxss";
+
 .style-page {
   min-height: 100vh;
   background: #f6f7f9;
@@ -44,11 +46,61 @@
   line-height: 1.5;
 }
 
-.list-title {
+.list-header {
   margin-top: 18rpx;
   margin-bottom: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-height: 52rpx;
+}
+
+.list-title {
   font-size: 24rpx;
   color: #4b5563;
+  flex-shrink: 0;
+}
+
+.list-title-num {
+  font-weight: 600;
+  color: #374151;
+}
+
+.filter-source {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-source-em {
+  color: #6b7280;
+  font-weight: 500;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.filter-ctrl-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
 .thumb-scroll {

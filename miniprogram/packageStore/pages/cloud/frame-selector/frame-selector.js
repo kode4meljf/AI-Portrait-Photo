@@ -12,6 +12,7 @@ const {
   fetchStoreBalance,
   FRAME_POINTS
 } = require('../../../../utils/portraitBilling.js');
+const { resolveFrameOrderCustomerId } = require('../../../../utils/frameOrderCustomer.js');
 const db = wx.cloud.database();
 
 const MOCK_STORE = {
@@ -210,7 +211,7 @@ Page({
       return;
     }
 
-    const customerId = app.globalData.selectedCustomerId || null;
+    const customerId = resolveFrameOrderCustomerId(app, app.globalData.pendingFrameOrder);
     if (!customerId) {
       const modal = await wx.showModal({
         title: '未关联客户',
@@ -238,7 +239,7 @@ Page({
         photoUrl,
         styleId: styleId || '',
         styleName: styleName || '',
-        customerId: app.globalData.selectedCustomerId || null
+        customerId
       });
 
       if (app.globalData.pendingFrameOrder) {

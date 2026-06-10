@@ -1,3 +1,5 @@
+@import "../../styles/customer-gender.shared.wxss";
+
 .edit-root {
   display: flex;
   flex-direction: column;

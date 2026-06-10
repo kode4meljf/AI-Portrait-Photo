@@ -32,6 +32,40 @@
           data-key="phone"
         />
       </view>
+      <view class="edit-field edit-field--gender">
+        <view class="gender-row">
+          <text class="edit-label">性别</text>
+          <view class="gender-row-ctrl">
+            <view class="gender-filter">
+              <view
+                class="gender-filter-btn {{form.gender === 'male' ? 'active' : ''}}"
+                bindtap="onGenderTap"
+                data-value="male"
+              >男</view>
+              <view
+                class="gender-filter-btn {{form.gender === 'female' ? 'active' : ''}}"
+                bindtap="onGenderTap"
+                data-value="female"
+              >女</view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="edit-field edit-field--textarea">
+        <text class="edit-label">住址</text>
+        <textarea
+          class="edit-textarea"
+          placeholder-class="edit-placeholder"
+          placeholder="选填，仅门店可见"
+          value="{{form.address}}"
+          bindinput="onInput"
+          data-key="address"
+          maxlength="200"
+          auto-height
+          show-confirm-bar="{{false}}"
+        />
+        <text class="edit-field-hint--store">仅门店端可见，顾客不可见</text>
+      </view>
       <view class="edit-field edit-field--textarea">
         <text class="edit-label">备注</text>
         <textarea

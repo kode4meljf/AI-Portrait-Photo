@@ -32,6 +32,7 @@
         "pages/cloud/style-selector/style-selector",
         "pages/cloud/change-original/change-original",
         "pages/cloud/frame-selector/frame-selector",
+        "pages/cloud/album-maker/album-maker",
         "pages/order/order-detail/order-detail",
         "pages/order/frame-template/frame-template",
         "pages/profile/customer-invite/customer-invite",

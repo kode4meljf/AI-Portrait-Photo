@@ -10,6 +10,7 @@ const {
 } = require('./cloudUpload')
 const { formatCustomerForAdmin } = require('./customerFormat')
 const { seedStyles: seedDefaultStyles } = require('./seedStyles')
+const { normalizeStyleGender, formatStyleGenderRow } = require('./styleGender')
 const { normalizeStyleResolution } = require('./styleResolution')
 const {
   sendStoreAssetAdjustCode,
@@ -452,7 +453,7 @@ async function listStyles(query) {
     const sb = Number(b.sort) || 0
     return sa - sb
   })
-  const list = await attachStyleSampleUrls(sorted.slice(skip, skip + pageSize))
+  const list = (await attachStyleSampleUrls(sorted.slice(skip, skip + pageSize))).map(formatStyleGenderRow)
   return {
     list,
     total: countRes.total,
@@ -475,7 +476,7 @@ async function getStyle(payload) {
     row = res.data[0]
   }
   const [withUrl] = await attachStyleSampleUrls([row])
-  return withUrl
+  return formatStyleGenderRow(withUrl)
 }
 
 async function createStyle(payload) {
@@ -503,6 +504,7 @@ async function createStyle(payload) {
     prompt,
     sampleFileId,
     resolution,
+    gender: normalizeStyleGender(payload.gender),
     sort: Number(payload.sort) || 0,
     enabled,
     createTime: now,
@@ -510,7 +512,7 @@ async function createStyle(payload) {
   }
   const addRes = await db.collection(STYLE_TEMPLATES_COLLECTION).add({ data })
   const [row] = await attachStyleSampleUrls([{ _id: addRes._id, ...data }])
-  return row
+  return formatStyleGenderRow(row)
 }
 
 async function updateStyle(payload) {
@@ -529,7 +531,7 @@ async function updateStyle(payload) {
     }
   }
 
-  const allowed = ['name', 'prompt', 'sampleFileId', 'resolution', 'sort', 'enabled']
+  const allowed = ['name', 'prompt', 'sampleFileId', 'resolution', 'gender', 'sort', 'enabled']
   const data = { updateTime: new Date() }
   if (payload.name !== undefined) {
     const name = (payload.name || '').trim()
@@ -561,6 +563,10 @@ async function updateStyle(payload) {
     }
     if (key === 'resolution') {
       data.resolution = normalizeStyleResolution(payload.resolution)
+      return
+    }
+    if (key === 'gender') {
+      data.gender = normalizeStyleGender(payload.gender)
     }
   })
 
@@ -804,6 +810,11 @@ async function deleteFrame(payload) {
   return { deleted: true }
 }
 
+const {
+  normalizeAlbumPlatformConfig,
+  validateAlbumPlatformConfigPayload
+} = require('./albumPlatformConfig')
+
 const PLATFORM_SETTINGS_COL = 'platform_settings'
 const PLATFORM_SETTINGS_ID = 'default'
 
@@ -839,6 +850,7 @@ async function getPlatformSettings() {
   const raw = await readPlatformSettingsDoc()
   const saved = clampJimengMaxConcurrency(raw.jimengMaxConcurrency ?? 1)
   const envVal = readEnvJimengMaxConcurrency()
+  const album = normalizeAlbumPlatformConfig(raw)
   return {
     _id: PLATFORM_SETTINGS_ID,
     supportPhone: raw.supportPhone || '',
@@ -848,6 +860,10 @@ async function getPlatformSettings() {
     jimengMaxConcurrency: saved,
     jimengMaxConcurrencyEffective: envVal != null ? envVal : saved,
     jimengMaxConcurrencyOverriddenByEnv: envVal != null,
+    albumEntryMinTotal: album.albumEntryMinTotal,
+    albumSelectMin: album.albumSelectMin,
+    albumSelectMax: album.albumSelectMax,
+    albumPointsPerPhoto: album.albumPointsPerPhoto,
     updateTime: raw.updateTime || null
   }
 }
@@ -885,6 +901,29 @@ async function updatePlatformSettings(payload) {
     data.volcSecretKey = volcSecretKey
     data.volcKeysUpdateTime = new Date()
   }
+
+  const album = validateAlbumPlatformConfigPayload({
+    albumSelectMin:
+      payload.albumSelectMin != null && payload.albumSelectMin !== ''
+        ? payload.albumSelectMin
+        : existing.albumSelectMin,
+    albumSelectMax:
+      payload.albumSelectMax != null && payload.albumSelectMax !== ''
+        ? payload.albumSelectMax
+        : existing.albumSelectMax,
+    albumEntryMinTotal:
+      payload.albumEntryMinTotal != null && payload.albumEntryMinTotal !== ''
+        ? payload.albumEntryMinTotal
+        : existing.albumEntryMinTotal,
+    albumPointsPerPhoto:
+      payload.albumPointsPerPhoto != null && payload.albumPointsPerPhoto !== ''
+        ? payload.albumPointsPerPhoto
+        : existing.albumPointsPerPhoto
+  })
+  data.albumEntryMinTotal = album.albumEntryMinTotal
+  data.albumSelectMin = album.albumSelectMin
+  data.albumSelectMax = album.albumSelectMax
+  data.albumPointsPerPhoto = album.albumPointsPerPhoto
 
   await db.collection(PLATFORM_SETTINGS_COL).doc(PLATFORM_SETTINGS_ID).set({ data })
   return getPlatformSettings()

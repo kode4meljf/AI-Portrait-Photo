@@ -79,9 +79,9 @@
             bindtap="previewAvatar"
           />
           <view class="customer-detail">
-            <text class="customer-name">{{checkinResult.displayName || '匿名用户'}}</text>
+            <text class="customer-name">{{checkinResult.displayName || '匿名用户'}}<text class="customer-gender">{{checkinResult.genderLabel}}</text></text>
             <text class="customer-meta">{{checkinResult.phone || '未绑定手机'}} · {{checkinResult.timeText}}</text>
-            <view class="checkin-badge">✅ 今日已打卡 · 累计 {{checkinResult.totalCheckins || 0}} 次</view>
+            <view class="checkin-badge">✅ 今日已打卡 · 总计 {{checkinResult.totalCheckins || 0}} 次</view>
           </view>
         </view>
       </view>

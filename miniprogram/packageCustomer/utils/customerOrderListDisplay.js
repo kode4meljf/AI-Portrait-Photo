@@ -1,7 +1,7 @@
 /**
  * 顾客端订单列表展示（方案 A：成片卡片）
  */
-const { PLACEHOLDER_THUMB } = require('./frameOrderDetailView')
+const { buildOrderCardThumb, resolveOrderType } = require('../../utils/orderCardThumb')
 
 const STATUS_FLOW = ['待处理', '制作中', '已发货', '已完成']
 const PROGRESS_WIDTH = ['25%', '50%', '75%', '100%']
@@ -31,17 +31,26 @@ function stepIndexFor(status) {
  */
 function formatCustomerOrderRow(order, formatTime) {
   const status = order.status || '待处理'
-  const legacyPhoto = Array.isArray(order.photos) ? order.photos[0] : ''
-  const thumb = (order.photoUrl || legacyPhoto || '').trim() || PLACEHOLDER_THUMB
+  const orderType = resolveOrderType(order)
+  const thumbMeta = buildOrderCardThumb(order)
   const createTimeStr = formatTime(order.createTime)
   const orderNo = (order.orderNo || '').trim()
   const metaLine =
     orderNo && createTimeStr ? `${orderNo} · ${createTimeStr}` : orderNo || createTimeStr
+  const frameName = (order.frameName || '').trim()
+  let frameTitle = frameName || '写真摆台'
+  if (orderType === 'album') {
+    const count = Number(order.photoCount) || 0
+    frameTitle = count > 0 ? `写真集 · ${count} 张` : frameName || '写真集'
+  }
 
   return {
     ...order,
-    photoThumb: thumb,
-    frameTitle: (order.frameName || '').trim() || '写真摆台',
+    orderType,
+    photoThumb: thumbMeta.photoThumb,
+    thumbVariant: thumbMeta.thumbVariant,
+    thumbLabel: thumbMeta.thumbLabel,
+    frameTitle,
     styleLine: (order.styleName || '').trim() ? `风格 · ${order.styleName.trim()}` : '',
     metaLine,
     statusClass: statusClassFor(status),

@@ -1,17 +1,38 @@
 <view class="page">
-  <view class="intro">门店为您生成的写真成片</view>
-  <view class="grid">
-    <view
-      wx:for="{{batches}}"
-      wx:key="_id"
-      class="item"
-      bindtap="previewBatch"
-      data-url="{{item.coverUrl || item.thumbUrl}}"
-    >
-      <image wx:if="{{item.coverUrl || item.thumbUrl}}" src="{{item.coverUrl || item.thumbUrl}}" mode="aspectFill" />
-      <view wx:else class="placeholder">成片</view>
+  <scroll-view
+    class="scroll-area"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    lower-threshold="120"
+    bindscrolltolower="onLoadMore"
+  >
+    <view class="intro">门店为您生成的 AI 写真成片</view>
+    <view wx:if="{{loading}}" class="status">加载中…</view>
+    <view wx:elif="{{loadError}}" class="status status--error">{{loadError}}</view>
+    <view wx:elif="{{!photos.length}}" class="empty">暂无相册内容</view>
+    <view wx:else class="grid">
+      <view
+        wx:for="{{photos}}"
+        wx:key="_id"
+        class="item"
+        bindtap="previewPhoto"
+        data-index="{{index}}"
+      >
+        <view class="photo-wrap">
+          <image
+            class="photo-img"
+            src="{{item.url}}"
+            mode="aspectFill"
+            lazy-load="{{false}}"
+          />
+        </view>
+        <text class="photo-name">{{item.styleName || '写真'}}</text>
+      </view>
     </view>
-  </view>
-  <view wx:if="{{!batches.length}}" class="empty">暂无相册内容</view>
+    <view wx:if="{{loadingMore}}" class="foot">加载更多…</view>
+    <view wx:elif="{{!hasMore && photos.length}}" class="foot">已加载全部写真</view>
+    <view class="scroll-pad"></view>
+  </scroll-view>
 </view>
 <customer-nav current="gallery" />

@@ -1,0 +1,65 @@
+<view class="album-page">
+  <view class="album-preview-wrap">
+    <view class="album-preview-card" bindtap="onPreviewMain">
+      <image
+        wx:if="{{previewUrl}}"
+        class="album-preview-img"
+        src="{{previewUrl}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="album-preview-empty">选择下方写真预览</view>
+      <text class="album-preview-tip">制作影集需选择 {{albumSelectMin}}～{{albumSelectMax}} 张</text>
+    </view>
+    <view class="album-select-meta">
+      <text>已选 {{selectedCount}} 张</text>
+      <text class="album-select-range">（{{albumSelectMin}}～{{albumSelectMax}} 张可提交）</text>
+    </view>
+  </view>
+
+  <scroll-view
+    class="album-scroll"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    lower-threshold="120"
+    bindscrolltolower="onLoadMore"
+  >
+    <view wx:if="{{loading}}" class="album-status">加载写真中…</view>
+    <view wx:elif="{{loadError}}" class="album-status album-status--error">{{loadError}}</view>
+    <view wx:elif="{{!photos.length}}" class="album-status">暂无可用 AI 写真</view>
+    <view wx:else class="album-grid">
+      <view
+        wx:for="{{photos}}"
+        wx:key="_id"
+        class="grid-item {{item.selected ? 'grid-item--selected' : ''}}"
+        data-id="{{item._id}}"
+        data-url="{{item.url}}"
+        bindtap="onTogglePhoto"
+      >
+        <image class="grid-img" src="{{item.url}}" mode="aspectFill" />
+        <view wx:if="{{item.selected}}" class="grid-selected-cover"></view>
+        <view class="grid-check">
+          <text wx:if="{{item.selected}}" class="grid-check-mark">✓</text>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="album-foot">加载中…</view>
+    <view wx:elif="{{!hasMore && photos.length}}" class="album-foot">已加载全部写真</view>
+    <view class="album-scroll-pad"></view>
+  </scroll-view>
+
+  <view class="album-submit-wrap">
+    <view
+      class="album-submit-btn {{canSubmit && !submitting ? '' : 'album-submit-btn--disabled'}}"
+      hover-class="{{canSubmit && !submitting ? 'album-submit-btn-hover' : ''}}"
+      hover-stay-time="80"
+      bindtap="onSubmit"
+    >
+      <points-cost
+        label="提交影集"
+        value="{{totalPoints}}"
+        theme="on-dark"
+      />
+    </view>
+  </view>
+</view>

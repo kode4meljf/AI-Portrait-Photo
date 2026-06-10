@@ -189,8 +189,20 @@ Page({
   onCustomerTap(e) {
     const id = e.currentTarget.dataset.id
     if (!id) return
+    const { mode, date } = this.data
+    if (mode === 'unchecked') {
+      wx.navigateTo({
+        url: `/packageStore/pages/profile/customer-edit/customer-edit?id=${id}&mode=followup&date=${encodeURIComponent(date)}`
+      })
+      return
+    }
     wx.navigateTo({
       url: `/packageStore/pages/profile/customer-edit/customer-edit?id=${id}`
     })
+  },
+
+  onShow() {
+    if (this._listReady) this.loadList()
+    this._listReady = true
   }
 })

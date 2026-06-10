@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { normalizeAlbumPlatformConfig } = require('./albumPlatformConfig')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -9,10 +10,25 @@ const DOC_ID = 'default'
 async function getSettingsForStore() {
   try {
     const res = await db.collection(COLLECTION).doc(DOC_ID).get()
-    const phone = (res.data && res.data.supportPhone) ? String(res.data.supportPhone).trim() : ''
-    return { supportPhone: phone }
+    const raw = res.data || {}
+    const phone = raw.supportPhone ? String(raw.supportPhone).trim() : ''
+    const album = normalizeAlbumPlatformConfig(raw)
+    return {
+      supportPhone: phone,
+      albumEntryMinTotal: album.albumEntryMinTotal,
+      albumSelectMin: album.albumSelectMin,
+      albumSelectMax: album.albumSelectMax,
+      albumPointsPerPhoto: album.albumPointsPerPhoto
+    }
   } catch (e) {
-    return { supportPhone: '' }
+    const album = normalizeAlbumPlatformConfig({})
+    return {
+      supportPhone: '',
+      albumEntryMinTotal: album.albumEntryMinTotal,
+      albumSelectMin: album.albumSelectMin,
+      albumSelectMax: album.albumSelectMax,
+      albumPointsPerPhoto: album.albumPointsPerPhoto
+    }
   }
 }
 

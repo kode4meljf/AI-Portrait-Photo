@@ -1,4 +1,5 @@
 const { normalizeMobilePhone } = require('./phone')
+const { normalizeGender, DEFAULT_GENDER } = require('./customerGender')
 
 function validateStoreCustomerForm(form) {
   const nickName = (form.nickName || '').trim()
@@ -13,7 +14,9 @@ function validateStoreCustomerForm(form) {
     ok: true,
     nickName,
     phone: phoneResult.phone,
-    remark: (form.remark || '').trim()
+    remark: (form.remark || '').trim(),
+    gender: normalizeGender(form.gender || DEFAULT_GENDER),
+    address: (form.address || '').trim()
   }
 }
 

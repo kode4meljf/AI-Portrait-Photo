@@ -35,6 +35,11 @@
       </el-table-column>
       <el-table-column prop="id" label="编号" width="80" />
       <el-table-column prop="name" label="名称" width="120" />
+      <el-table-column label="适用性别" width="88" align="center">
+        <template #default="{ row }">
+          {{ row.gender || '男' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="resolution" label="分辨率" width="112" show-overflow-tooltip />
       <el-table-column prop="prompt" label="提示词" min-width="200" show-overflow-tooltip />
       <el-table-column prop="sort" label="排序" width="72" />
@@ -79,6 +84,22 @@
         </el-form-item>
         <el-form-item label="名称" required>
           <el-input v-model="editForm.name" placeholder="名称不可重复" />
+        </el-form-item>
+        <el-form-item label="适用性别" required>
+          <div class="gender-row-ctrl gender-row-ctrl--form">
+            <div class="gender-filter">
+              <button
+                v-for="opt in genderOptions"
+                :key="opt.value"
+                type="button"
+                class="gender-filter-btn"
+                :class="{ active: editForm.gender === opt.value }"
+                @click="editForm.gender = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="提示词" required>
           <el-input
@@ -155,8 +176,14 @@ import {
   buildStyleResolution,
   parseStyleResolution
 } from '@/utils/styleResolution'
+import {
+  DEFAULT_STYLE_GENDER,
+  STYLE_GENDER_OPTIONS,
+  normalizeStyleGender
+} from '@/utils/styleGender'
 
 const resolutionHint = STYLE_RESOLUTION_HINT
+const genderOptions = STYLE_GENDER_OPTIONS
 
 const list = ref([])
 const loading = ref(false)
@@ -204,6 +231,7 @@ function openCreate() {
   nextStyleId.value = previewNextStyleId(list.value) || ''
   editForm.value = {
     name: '',
+    gender: DEFAULT_STYLE_GENDER,
     prompt: '',
     resolutionWidth: DEFAULT_RESOLUTION_WIDTH,
     resolutionHeight: DEFAULT_RESOLUTION_HEIGHT,
@@ -222,6 +250,7 @@ function openEdit(row) {
     _id: row._id,
     id: row.id,
     name: row.name,
+    gender: normalizeStyleGender(row.gender),
     prompt: row.prompt || '',
     resolutionWidth: width,
     resolutionHeight: height,
@@ -253,6 +282,7 @@ async function saveStyle() {
     if (isCreate.value) {
       await api.createStyle({
         name: editForm.value.name,
+        gender: editForm.value.gender,
         prompt: editForm.value.prompt,
         resolution,
         sampleFileId: editForm.value.sampleFileId,
@@ -264,6 +294,7 @@ async function saveStyle() {
       await api.updateStyle({
         _id: editForm.value._id,
         name: editForm.value.name,
+        gender: editForm.value.gender,
         prompt: editForm.value.prompt,
         resolution,
         sampleFileId: editForm.value.sampleFileId,
@@ -380,5 +411,57 @@ onMounted(loadList)
   font-size: 14px;
   line-height: 32px;
   user-select: none;
+}
+
+.gender-row-ctrl--form {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 140px;
+  width: 140px;
+  margin-left: auto;
+}
+
+.gender-row-ctrl--form .gender-filter {
+  width: 140px;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+}
+
+.gender-filter {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: #fff;
+  border-radius: 18px;
+  gap: 2px;
+  box-sizing: border-box;
+}
+
+.gender-row-ctrl--form .gender-filter-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.gender-filter-btn {
+  min-width: 34px;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 13px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gender-filter-btn.active {
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
 }
 </style>

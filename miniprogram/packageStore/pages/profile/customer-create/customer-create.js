@@ -7,6 +7,7 @@ const {
   showCustomerPhoneError,
   showPhoneConflictModal
 } = require('../../../../utils/customerForm')
+const { DEFAULT_GENDER, normalizeGender } = require('../../../../utils/customerGender')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -28,7 +29,9 @@ Page({
     form: {
       nickName: '',
       phone: '',
-      remark: ''
+      remark: '',
+      gender: DEFAULT_GENDER,
+      address: ''
     },
     avatarInitial: '客',
     avatarTint: '#4e7cf6',
@@ -46,6 +49,11 @@ Page({
       patch.avatarTint = pickAvatarTint(value)
     }
     this.setData(patch, this.refreshCanSave)
+  },
+
+  onGenderTap(e) {
+    const value = e.currentTarget.dataset.value
+    this.setData({ 'form.gender': normalizeGender(value) }, this.refreshCanSave)
   },
 
   refreshCanSave() {
@@ -97,7 +105,9 @@ Page({
       const res = await callCustomer('createByStore', {
         nickName: valid.nickName,
         phone: valid.phone,
-        remark: valid.remark
+        remark: valid.remark,
+        gender: valid.gender,
+        address: valid.address
       })
       const tintKey = res._id || valid.nickName
       this.setData({
@@ -125,7 +135,7 @@ Page({
   onAddAnother() {
     this.setData({
       created: false,
-      form: { nickName: '', phone: '', remark: '' },
+      form: { nickName: '', phone: '', remark: '', gender: DEFAULT_GENDER, address: '' },
       avatarInitial: '客',
       avatarTint: pickAvatarTint(''),
       canSave: false

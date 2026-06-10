@@ -1,4 +1,5 @@
 @import "../../../styles/help-entry.shared.wxss";
+@import "../../../styles/customer-gender.shared.wxss";
 
 .page {
   min-height: 100vh;
@@ -100,6 +101,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.name-gender {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .tap-hint {
@@ -241,6 +249,10 @@
   font-size: 26rpx;
   color: #6b7280;
   margin-bottom: 16rpx;
+}
+
+.dialog-label--gap {
+  margin-top: 24rpx;
 }
 
 .dialog-input {

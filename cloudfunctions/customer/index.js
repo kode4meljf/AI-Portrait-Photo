@@ -3,7 +3,7 @@ const handlers = require('./lib/handlers')
 const register = require('./lib/register')
 const platform = require('./lib/platform')
 const feedback = require('./lib/feedback')
-const { checkinQrImage } = require('./lib/checkinQr')
+const gallery = require('./lib/gallery')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -39,8 +39,12 @@ exports.main = async (event) => {
         {
           const row = await register.getCustomerByOpenId(openid)
           if (!row || !row.storeId) throw new Error('您尚未注册为顾客')
-          data = await checkinQrImage(row, { openId: openid })
+          data = await require('./lib/checkinQr').checkinQrImage(row, { openId: openid })
         }
+        break
+      case 'gallery.list':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await gallery.listMyGallery(openid, event)
         break
       case 'orders.list':
         if (!openid) return { success: false, error: '未登录' }
@@ -61,6 +65,10 @@ exports.main = async (event) => {
       case 'updateByStore':
         if (!openid) return { success: false, error: '未登录' }
         data = await handlers.updateByStore(openid, event)
+        break
+      case 'followUpByStore':
+        if (!openid) return { success: false, error: '未登录' }
+        data = await handlers.followUpByStoreForOperator(openid, event)
         break
       case 'deleteByStore':
         if (!openid) return { success: false, error: '未登录' }

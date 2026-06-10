@@ -24,6 +24,8 @@ App({
     ordersNeedRefresh: false,
     /** 生成结果 → 摆台：cloud:// fileID，避免 query 重复传大图路径 */
     pendingFrameOrder: null,
+    /** 成片页 → 制作影集：准入校验已拉取的影集平台配置，避免重复请求 */
+    pendingAlbumPlatformConfig: null,
     /** 云相册：从客户列表返回后展示关联成功提示 */
     pendingGalleryToast: '',
     /** 云相册：刚关联的批次与客户（列表即时展示，刷新后以库为准） */

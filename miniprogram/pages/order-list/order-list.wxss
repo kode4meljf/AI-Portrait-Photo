@@ -277,36 +277,6 @@
   opacity: 0.92;
 }
 
-.order-photo-wrap {
-  width: 176rpx;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.order-photo {
-  width: 176rpx;
-  height: 220rpx;
-  border-radius: 16rpx;
-  background: #f4f4f5;
-  border: 6rpx solid #c9a962;
-  box-sizing: border-box;
-  box-shadow: inset 0 0 0 6rpx #fff;
-  display: block;
-}
-
-.order-photo-label {
-  position: absolute;
-  left: 50%;
-  bottom: 12rpx;
-  transform: translateX(-50%);
-  font-size: 18rpx;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.38);
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  white-space: nowrap;
-}
-
 .order-main {
   flex: 1;
   min-width: 0;

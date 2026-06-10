@@ -43,6 +43,7 @@ function getMockCustomerProfile() {
     equityAlbum: 5,
     equityFrame: 1,
     avatarUrl: '',
+    gender: 'male',
     wxOpenId: ''
   }
   row.qrPayload = buildCheckinQrPayload(row, '')
