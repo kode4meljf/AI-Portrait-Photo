@@ -1,6 +1,7 @@
 const { login, verifyToken } = require('./lib/auth')
 const { parseHttpEvent, httpResponse, ok, fail } = require('./lib/http')
 const { PUBLIC_ACTIONS, dispatch } = require('./lib/handlers')
+const { assertProductionSecurity, warnIfInsecure } = require('../lib/productionGuard')
 
 function extractToken(event, authHeader) {
   if (authHeader) {
@@ -24,6 +25,11 @@ async function runAction(action, payload, query, token) {
   }
 
   if (action === 'login') {
+    try {
+      assertProductionSecurity('adminApi')
+    } catch (err) {
+      return fail(err.message || '生产环境安全配置不合规', err.code || 'PRODUCTION_SECURITY')
+    }
     const result = await dispatch(action, payload, query)
     return result.success === false ? fail(result.error, 'AUTH_FAILED') : ok(result)
   }
@@ -54,6 +60,7 @@ async function runAction(action, payload, query, token) {
 }
 
 exports.main = async (event) => {
+  warnIfInsecure('adminApi')
   const httpCtx = parseHttpEvent(event)
 
   if (httpCtx) {
@@ -82,6 +89,11 @@ exports.main = async (event) => {
   const token = extractToken(event, event.authorization)
 
   if (action === 'login' && payload.username && payload.password && !event.action) {
+    try {
+      assertProductionSecurity('adminApi')
+    } catch (err) {
+      return { success: false, error: err.message || '生产环境安全配置不合规', code: err.code || 'PRODUCTION_SECURITY' }
+    }
     const loginResult = login(payload.username, payload.password)
     return loginResult
   }

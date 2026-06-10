@@ -3,6 +3,7 @@ const { callCustomer } = require('../../utils/customerApi')
 const { applySessionToApp } = require('../../utils/storeSession')
 const { clearSessionDirty } = require('../../utils/sessionDirty')
 const { parseCustomerRegisterFromScan } = require('../../utils/inviteCode')
+const { requireLegalAgreed } = require('../../utils/legalConsent')
 
 const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const RESCAN_TOAST = '请重新扫描门店注册小程序码'
@@ -19,7 +20,8 @@ Page({
     avatarUrl: '',
     wxNickName: '',
     phoneReady: false,
-    phoneCode: ''
+    phoneCode: '',
+    legalAgreed: false
   },
 
   onLoad(options) {
@@ -105,8 +107,13 @@ Page({
 
   preventBubble() {},
 
+  onLegalConsentChange(e) {
+    this.setData({ legalAgreed: !!(e.detail && e.detail.agreed) })
+  },
+
   onChooseAvatar(e) {
     if (!this.requireToken()) return
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     const url = e.detail.avatarUrl || ''
     if (url) this.setData({ avatarUrl: url })
   },
@@ -116,6 +123,7 @@ Page({
   },
 
   onGetPhoneNumber(e) {
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (e.detail.errMsg && !e.detail.errMsg.includes('ok')) {
       wx.showToast({ title: '需授权手机号才能完成注册', icon: 'none' })
       return
@@ -131,6 +139,7 @@ Page({
 
   async onSubmit() {
     if (!this.requireToken()) return
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (this.data.submitting) return
     if (!this.data.phoneReady || !this.data.phoneCode) {
       wx.showToast({ title: '请先授权手机号', icon: 'none' })

@@ -2,5 +2,9 @@
   "navigationBarTitleText": "加入门店",
   "navigationBarBackgroundColor": "#fff9f5",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#faf6f0"
+  "backgroundColor": "#faf6f0",
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/privacy-popup",
+    "legal-consent": "/components/legal-consent/legal-consent"
+  }
 }

@@ -1,6 +1,7 @@
 // app.js
 const { CLOUD_ENV_ID } = require('./config/cloudEnv');
 const { applySessionToApp, isValidStoreId, resolveSessionIfNeeded } = require('./utils/storeSession');
+const { initPrivacyAuthorization } = require('./utils/privacy');
 
 App({
   globalData: {
@@ -34,6 +35,8 @@ App({
   },
 
   async onLaunch() {
+    initPrivacyAuthorization(this);
+
     if (!wx.cloud) {
       console.error('请使用 2.2.3 或以上的基础库以使用云能力');
       return;

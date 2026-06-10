@@ -70,6 +70,7 @@
       </view>
 
       <view class="card-submit-wrap">
+        <legal-consent agreed="{{legalAgreed}}" bind:change="onLegalConsentChange" />
         <button
           class="submit-btn {{submitting || !phoneReady ? 'submit-btn--disabled' : ''}}"
           disabled="{{submitting}}"
@@ -121,3 +122,5 @@
     >知道了</button>
   </view>
 </view>
+
+<privacy-popup />

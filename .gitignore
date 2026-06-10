@@ -26,6 +26,9 @@ miniprogram/assets/styles/
 miniprogram/assets/styles-34/
 miniprogram/assets/styles-generated/
 
+# 微信小程序 · 开发者工具个人配置（编译模式等，仅本地）
+miniprogram/project.private.config.json
+
 # Custom
 .cursor/
 .npm-cache/

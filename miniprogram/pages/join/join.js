@@ -1,6 +1,7 @@
 const { callStoreMember, applySessionToApp } = require('../../utils/storeSession')
 const { markSessionDirty, clearSessionDirty, reLaunchLaunch } = require('../../utils/sessionDirty')
 const { parseInviteFromScan } = require('../../utils/inviteCode')
+const { requireLegalAgreed } = require('../../utils/legalConsent')
 
 function formatExpireText(expireAt) {
   if (!expireAt || typeof expireAt !== 'number') return ''
@@ -33,7 +34,8 @@ Page({
     sessionReady: false,
     phoneReady: false,
     phoneAuthId: '',
-    phoneDisplay: ''
+    phoneDisplay: '',
+    legalAgreed: false
   },
 
   onLoad(options) {
@@ -82,7 +84,12 @@ Page({
     this.setData({ staffNickName: (e.detail.value || '').trim() })
   },
 
+  onLegalConsentChange(e) {
+    this.setData({ legalAgreed: !!(e.detail && e.detail.agreed) })
+  },
+
   async onGetPhoneNumber(e) {
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (e.detail.errMsg && !e.detail.errMsg.includes('ok')) {
       wx.showToast({ title: '未授权手机号', icon: 'none' })
       return
@@ -137,6 +144,7 @@ Page({
   async onPreview() {
     const form = this.validateBeforePreview()
     if (!form) return
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (!(await ensureOpenId())) return
 
     try {
@@ -155,6 +163,7 @@ Page({
   async onAccept() {
     const form = this.validateBeforePreview()
     if (!form) return
+    if (!requireLegalAgreed(this.data.legalAgreed)) return
     if (!this.data.preview) {
       wx.showToast({ title: '请先查看门店信息', icon: 'none' })
       return

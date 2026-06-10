@@ -1,0 +1,11 @@
+<view class="legal-consent" bindtap="onToggle">
+  <view class="legal-consent__box {{agreed ? 'legal-consent__box--checked' : ''}}">
+    <text wx:if="{{agreed}}" class="legal-consent__tick">✓</text>
+  </view>
+  <view class="legal-consent__text">
+    <text>我已阅读并同意</text>
+    <text class="legal-consent__link" catchtap="onOpenAgreement">《用户协议》</text>
+    <text>和</text>
+    <text class="legal-consent__link" catchtap="onOpenPrivacy">《隐私政策》</text>
+  </view>
+</view>

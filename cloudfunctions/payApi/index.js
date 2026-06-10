@@ -4,6 +4,7 @@ const { isPayConfigured, getPayConfigSummary, assertPayConfigured, getPayConfig 
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
 const { verifyMerchantCredentials } = require('./lib/wxpay');
 const recharge = require('./lib/recharge');
+const { assertProductionSecurity, warnIfInsecure } = require('../lib/productionGuard');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -40,6 +41,7 @@ async function dispatchCallFunction(action, event, openid) {
       return ok({ packages: await recharge.listPackages() });
 
     case 'recharge.create': {
+      assertProductionSecurity('payApi');
       const storeId = await resolveStoreIdFromOpenid(openid);
       const packageId = event.packageId;
       const data = await recharge.createRechargeOrder(openid, storeId, packageId, opts);
@@ -58,6 +60,7 @@ async function dispatchCallFunction(action, event, openid) {
 }
 
 exports.main = async (event) => {
+  warnIfInsecure('payApi');
   const httpCtx = parseHttpEvent(event);
   if (httpCtx) {
     if (httpCtx.method === 'OPTIONS') {
@@ -70,6 +73,7 @@ exports.main = async (event) => {
         body: JSON.stringify({ code: 'FAIL', message: 'Method Not Allowed' })
       };
     }
+    assertProductionSecurity('payApi');
     const result = await recharge.handlePayNotify({
       headers: httpCtx.headers,
       body: typeof event.body === 'string' ? event.body : JSON.stringify(httpCtx.body || {})

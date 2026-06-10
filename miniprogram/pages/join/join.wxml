@@ -60,6 +60,8 @@
       <text class="field-hint">每次申请需单独授权；不授权则店长侧不显示手机号</text>
     </view>
 
+    <legal-consent agreed="{{legalAgreed}}" bind:change="onLegalConsentChange" />
+
     <button
       class="btn btn-primary join-preview-trigger"
       hover-class="btn-primary--press"
@@ -133,3 +135,5 @@
     >返回修改</button>
   </view>
 </view>
+
+<privacy-popup />

@@ -94,6 +94,7 @@
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "cloud": true,
+  "__usePrivacyCheck__": true,
   "requiredPrivateInfos": [
     "chooseLocation"
   ]

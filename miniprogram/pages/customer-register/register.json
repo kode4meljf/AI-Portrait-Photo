@@ -5,5 +5,8 @@
   "backgroundColor": "#eef0f4",
   "enablePullDownRefresh": false,
   "homeButton": false,
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/privacy-popup",
+    "legal-consent": "/components/legal-consent/legal-consent"
+  }
 }

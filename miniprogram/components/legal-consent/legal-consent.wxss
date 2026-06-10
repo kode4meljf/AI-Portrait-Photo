@@ -1,0 +1,45 @@
+.legal-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.legal-consent__box {
+  flex-shrink: 0;
+  width: 36rpx;
+  height: 36rpx;
+  margin-top: 4rpx;
+  border-radius: 8rpx;
+  border: 2rpx solid #d1d5db;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.legal-consent__box--checked {
+  border-color: #0f3460;
+  background: #0f3460;
+}
+
+.legal-consent__tick {
+  font-size: 22rpx;
+  color: #fff;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.legal-consent__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  color: #6b7280;
+  line-height: 1.55;
+}
+
+.legal-consent__link {
+  color: #0f3460;
+  font-weight: 600;
+}

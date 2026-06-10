@@ -97,3 +97,5 @@
   </view>
   <view class="page-foot"></view>
 </view>
+
+<privacy-popup />
