@@ -395,7 +395,7 @@ page {
   gap: 4rpx;
 }
 
-/* 样板展示：方案 C（组件 style-showcase-home） */
+/* 风格样板：双列网格 + 分页（组件 style-showcase-home） */
 .index-showcase {
   display: block;
   padding: 20rpx 40rpx 40rpx;

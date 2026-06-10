@@ -96,6 +96,8 @@
   />
 </view>
 
+<privacy-popup />
+
 <template name="batchCard">
   <view class="batch-card" bindtap="onBatchTap" data-batch="{{batch}}">
     <view class="card-top">

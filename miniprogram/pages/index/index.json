@@ -2,7 +2,8 @@
   "navigationBarTitleText": "AI写真馆",
   "usingComponents": {
     "customer-picker": "/components/customer-picker/customer-picker",
-    "style-showcase-home": "/components/style-showcase-home/style-showcase-home"
+    "style-showcase-home": "/components/style-showcase-home/style-showcase-home",
+    "privacy-popup": "/components/privacy-popup/privacy-popup"
   },
   "enablePullDownRefresh": false,
   "backgroundColor": "#f5f5f5"

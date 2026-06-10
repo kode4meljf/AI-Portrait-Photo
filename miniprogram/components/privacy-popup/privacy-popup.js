@@ -3,7 +3,8 @@ const {
   agreePrivacyAuthorization,
   rejectPrivacyAuthorization,
   openPrivacyContract,
-  getPrivacySetting
+  getPrivacySetting,
+  normalizeContractName
 } = require('../../utils/privacy')
 
 Component({
@@ -20,7 +21,9 @@ Component({
       })
       getPrivacySetting().then((res) => {
         if (res && res.privacyContractName) {
-          this.setData({ contractName: res.privacyContractName })
+          this.setData({
+            contractName: normalizeContractName(res.privacyContractName)
+          })
         }
       })
     },

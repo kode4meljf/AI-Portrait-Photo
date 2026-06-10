@@ -244,3 +244,5 @@
     <view class="price-modal-btn" bindtap="onClosePriceList">知道了</view>
   </view>
 </view>
+
+<privacy-popup />

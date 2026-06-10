@@ -8,7 +8,10 @@ const {
 } = require('../../utils/devCustomerPreview')
 const { callCustomer } = require('../../../utils/customerApi')
 const { getCustomerWxDisplayName } = require('../../../utils/customerDisplay')
-const { fetchStyleTemplates } = require('../../../config/styles')
+const {
+  initShowcaseTemplates,
+  loadMoreShowcaseTemplates
+} = require('../../../utils/styleShowcaseList')
 
 const QR_UNAVAILABLE_HINT = '暂无法显示打卡码，请联系店长协助处理'
 
@@ -24,7 +27,10 @@ Page({
     equityFrame: 0,
     checkinQrFileId: '',
     codeWarn: '',
-    previewTemplates: []
+    templates: [],
+    templatesLoading: false,
+    templatesHasMore: false,
+    templatesLoadingMore: false
   },
 
   onLoad(options) {
@@ -89,22 +95,17 @@ Page({
   },
 
   async loadPreviewTemplates() {
-    try {
-      const db = wx.cloud.database()
-      const templates = await fetchStyleTemplates(db, { limit: 4 })
-      this.setData({ previewTemplates: templates })
-    } catch (e) {
-      console.warn('[home] preview templates', e)
-    }
+    const db = wx.cloud.database()
+    await initShowcaseTemplates(this, db, { onlyEnabled: true })
   },
 
-  goShowcase() {
-    wx.navigateTo({ url: '/packageCustomer/pages/showcase/showcase' })
+  onReachBottom() {
+    loadMoreShowcaseTemplates(this)
   },
 
   onPreviewSample(e) {
     const index = e.detail && e.detail.index != null ? e.detail.index : e.currentTarget.dataset.index
-    const urls = this.data.previewTemplates
+    const urls = this.data.templates
       .map((t) => t.sampleDisplayUrl || t.sampleFileId)
       .filter(Boolean)
     if (!urls.length) return

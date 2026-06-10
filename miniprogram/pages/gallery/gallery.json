@@ -1,7 +1,8 @@
 {
   "navigationBarTitleText": "云相册",
   "usingComponents": {
-    "customer-picker": "/components/customer-picker/customer-picker"
+    "customer-picker": "/components/customer-picker/customer-picker",
+    "privacy-popup": "/components/privacy-popup/privacy-popup"
   },
   "enablePullDownRefresh": false,
   "onReachBottomDistance": 100

@@ -39,10 +39,11 @@
 
   <style-showcase-home
     class="home-showcase"
-    templates="{{previewTemplates}}"
+    templates="{{templates}}"
     title="风格样品"
-    more-text="查看全部 ›"
-    bind:more="goShowcase"
+    loading="{{templatesLoading}}"
+    loading-more="{{templatesLoadingMore}}"
+    has-more="{{templatesHasMore}}"
     bind:preview="onPreviewSample"
   />
 </view>

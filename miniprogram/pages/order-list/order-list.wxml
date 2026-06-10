@@ -128,3 +128,5 @@
     <view wx:if="{{!hasMore && orderGroups.length > 0}}" class="no-more">没有更多了</view>
   </scroll-view>
 </view>
+
+<privacy-popup />

@@ -5,13 +5,17 @@
 const app = getApp();
 const { uploadSingle } = require('../../utils/media.js');
 const { STYLE_TEMPLATES_COLLECTION } = require('../../config/constants.js');
-const { fetchStyleTemplates } = require('../../config/styles.js');
+const {
+  initShowcaseTemplates,
+  loadMoreShowcaseTemplates
+} = require('../../utils/styleShowcaseList.js');
 const { isValidStoreId } = require('../../utils/storeSession');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { getProfileCollection } = require('../../utils/account');
 const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
 const { syncStoreTabBar, setStoreTabBarHidden } = require('../../utils/storeTabBar');
+const { ensurePrivacyAuthorized } = require('../../utils/privacy');
 
 function linkedCustomerView(customer) {
   if (!customer) {
@@ -46,6 +50,9 @@ Page({
     equityAlbum: 0,
     equityFrame: 0,
     templates: [],
+    templatesLoading: false,
+    templatesHasMore: false,
+    templatesLoadingMore: false,
     storeInfo: {},
     loading: false,
     checkinResult: null,
@@ -157,18 +164,15 @@ Page({
   },
 
   async loadTemplates() {
-    try {
-      const db = wx.cloud.database();
-      const templates = await fetchStyleTemplates(db, {
-        collection: STYLE_TEMPLATES_COLLECTION,
-        limit: 12,
-        onlyEnabled: true
-      });
-      this.setData({ templates: templates.slice(0, 4) });
-    } catch (err) {
-      console.error('加载模板失败', err);
-      this.setData({ templates: [] });
-    }
+    const db = wx.cloud.database();
+    await initShowcaseTemplates(this, db, {
+      collection: STYLE_TEMPLATES_COLLECTION,
+      onlyEnabled: true
+    });
+  },
+
+  onShowcaseScrollLower() {
+    loadMoreShowcaseTemplates(this);
   },
 
   async refreshCustomerInfo() {
@@ -371,7 +375,13 @@ Page({
     uploadSingle(avatarUrl).catch(err => console.error('上传失败', err));
   },
 
-  chooseMedia() {
+  async chooseMedia() {
+    try {
+      await ensurePrivacyAuthorized();
+    } catch (e) {
+      wx.showToast({ title: '需同意隐私政策后使用拍摄', icon: 'none' });
+      return;
+    }
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
@@ -400,7 +410,5 @@ Page({
     wx.previewImage({ current: url, urls: [url] });
   },
 
-  onMoreTemplates() {
-    wx.navigateTo({ url: '/packageCustomer/pages/showcase/showcase' });
-  }
+
 });

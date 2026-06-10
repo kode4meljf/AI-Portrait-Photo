@@ -1,5 +1,12 @@
 /** 微信用户隐私保护指引（基础库 2.32.3+） */
 
+function normalizeContractName(name) {
+  return String(name || '用户隐私保护指引')
+    .trim()
+    .replace(/^《+/, '')
+    .replace(/》+$/, '')
+}
+
 function getPrivacyState(app) {
   if (!app.globalData.privacy) {
     app.globalData.privacy = { show: false, resolve: null, listeners: [] }
@@ -98,6 +105,7 @@ async function ensurePrivacyAuthorized() {
 }
 
 module.exports = {
+  normalizeContractName,
   initPrivacyAuthorization,
   subscribePrivacyShow,
   agreePrivacyAuthorization,

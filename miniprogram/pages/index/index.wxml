@@ -1,7 +1,13 @@
 <!--pages/index/index.wxml-->
 <page-meta page-style="{{pickerVisible ? 'overflow: hidden;' : ''}}" />
 <view class="phone-container">
-  <scroll-view class="scroll-area" scroll-y="{{!pickerVisible}}" show-scrollbar="{{false}}">
+  <scroll-view
+    class="scroll-area"
+    scroll-y="{{!pickerVisible}}"
+    show-scrollbar="{{false}}"
+    lower-threshold="120"
+    bindscrolltolower="onShowcaseScrollLower"
+  >
     <view class="scroll-inner">
       <view class="home-header">
         <view class="header-row">
@@ -90,8 +96,9 @@
         class="index-showcase"
         templates="{{templates}}"
         title="风格样板展示"
-        more-text="更多 ›"
-        bind:more="onMoreTemplates"
+        loading="{{templatesLoading}}"
+        loading-more="{{templatesLoadingMore}}"
+        has-more="{{templatesHasMore}}"
         bind:preview="onPreviewTemplate"
       />
     </view>
@@ -105,3 +112,5 @@
     bind:customerUpdated="onPickerCustomerUpdated"
   />
 </view>
+
+<privacy-popup />

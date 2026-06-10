@@ -16,44 +16,33 @@ Component({
     templates: {
       type: Array,
       value: [],
-      observer: 'buildLayout'
+      observer: 'buildItems'
     },
     title: {
       type: String,
       value: '风格样品'
     },
-    moreText: {
-      type: String,
-      value: '查看全部 ›'
+    loading: {
+      type: Boolean,
+      value: false
+    },
+    loadingMore: {
+      type: Boolean,
+      value: false
+    },
+    hasMore: {
+      type: Boolean,
+      value: false
     }
   },
 
   data: {
-    layout: 'empty',
-    hero: null,
-    subs: []
+    items: []
   },
 
   methods: {
-    buildLayout() {
-      const list = normalizeList(this.properties.templates)
-      if (!list.length) {
-        this.setData({ layout: 'empty', hero: null, subs: [] })
-        return
-      }
-      if (list.length === 1) {
-        this.setData({ layout: 'single', hero: list[0], subs: [] })
-        return
-      }
-      this.setData({
-        layout: 'feature',
-        hero: list[0],
-        subs: list.slice(1, 3)
-      })
-    },
-
-    onMore() {
-      this.triggerEvent('more')
+    buildItems() {
+      this.setData({ items: normalizeList(this.properties.templates) })
     },
 
     onPreview(e) {

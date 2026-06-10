@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "订单",
-  "usingComponents": {},
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/privacy-popup"
+  },
   "onReachBottomDistance": 100
 }
