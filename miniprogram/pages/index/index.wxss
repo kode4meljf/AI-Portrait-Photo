@@ -186,7 +186,7 @@ page {
   padding: 24rpx;
   background: #f8fafc;
   border-radius: 24rpx;
-  margin-bottom: 24rpx;
+  margin-top: 24rpx;
   border: 1rpx solid #e8eef4;
 }
 .customer-avatar {

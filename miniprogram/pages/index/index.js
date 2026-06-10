@@ -231,8 +231,10 @@ Page({
     });
   },
 
-  onContinueCheckin() {
-    this.onCheckinTap();
+  onCustomerInvite() {
+    wx.navigateTo({
+      url: '/packageStore/pages/profile/customer-invite/customer-invite'
+    });
   },
 
   onPickerSelect(e) {

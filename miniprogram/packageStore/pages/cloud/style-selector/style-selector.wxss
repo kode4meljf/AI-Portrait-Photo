@@ -1,7 +1,7 @@
 .style-page {
   min-height: 100vh;
   background: #f6f7f9;
-  padding: 16rpx 0 calc(24rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -185,7 +185,7 @@
 
 .submit-wrap {
   width: 100%;
-  margin-top: 32rpx;
+  margin-top: 56rpx;
   padding: 0 80rpx;
   box-sizing: border-box;
 }
