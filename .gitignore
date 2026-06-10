@@ -34,3 +34,12 @@ miniprogram/project.private.config.json
 .npm-cache/
 docs/
 memory/
+tmp/
+
+# UI 设计稿 / 原型 HTML（非运行代码，本地按需生成）
+admin-web/design/
+miniprogram/docs/*.html
+miniprogram/docs/e2e-smoke-report.json
+miniprogram/docs/*-checklist.md
+docs/design/
+docs/*.xlsx
