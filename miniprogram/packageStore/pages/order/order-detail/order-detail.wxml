@@ -259,3 +259,5 @@
 
 <view wx:elif="{{loading}}" class="state-tip">加载中…</view>
 <view wx:else class="state-tip">订单不存在或加载失败</view>
+
+<privacy-popup />

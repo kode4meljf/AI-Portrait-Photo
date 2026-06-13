@@ -1,6 +1,7 @@
 const app = getApp()
 const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession')
 const { isStoreOwner } = require('../../../../utils/storeRole')
+const { copyTextToClipboard } = require('../../../../utils/clipboard')
 
 function decorateMember(row, isOwner) {
   const name = (row.nickName || '').trim() || '微信用户'
@@ -165,21 +166,17 @@ Page({
         console.warn('[members] invite.qrImage', qrErr)
       }
       this.setData({ inviteToken: res.token, inviteQrUrl })
-      wx.setClipboardData({ data: res.token })
-      wx.showToast({ title: inviteQrUrl ? '邀请码已复制' : '邀请码已复制（二维码生成失败）', icon: 'success' })
+      await copyTextToClipboard(res.token, { successToast: inviteQrUrl ? '邀请码已复制' : '邀请码已复制（二维码生成失败）' })
     } catch (e) {
       wx.hideLoading()
       wx.showToast({ title: e.message || '生成失败', icon: 'none' })
     }
   },
 
-  onCopyInvite() {
+  async onCopyInvite() {
     const token = this.data.inviteToken
     if (!token) return
-    wx.setClipboardData({
-      data: token,
-      success: () => wx.showToast({ title: '已复制', icon: 'success' })
-    })
+    await copyTextToClipboard(token, { successToast: '已复制' })
   },
 
   async onApprove(e) {

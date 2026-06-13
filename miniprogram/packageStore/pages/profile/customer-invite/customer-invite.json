@@ -2,5 +2,8 @@
   "navigationBarTitleText": "邀请客户",
   "navigationBarBackgroundColor": "#1a1a2e",
   "navigationBarTextStyle": "white",
-  "backgroundColor": "#f3f4f6"
+  "backgroundColor": "#f3f4f6",
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/privacy-popup"
+  }
 }

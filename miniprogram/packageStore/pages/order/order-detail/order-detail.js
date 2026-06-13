@@ -5,6 +5,7 @@
 const app = getApp();
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { fetchPlatformSupportPhone } = require('../../../../utils/platformSettings');
+const { copyTextToClipboard } = require('../../../../utils/clipboard');
 const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../../utils/frameOrderDetailView');
 const { buildAlbumOrderView } = require('../../../../utils/albumOrderDetailView');
 const { resolveOrderType } = require('../../../../utils/orderCardThumb');
@@ -166,28 +167,17 @@ Page({
     wx.previewImage({ urls, current });
   },
 
-  onCopyOrderNo() {
-    const no = (this.data.view?.orderNo || '').trim();
-    if (!no) {
-      wx.showToast({ title: '暂无订单号', icon: 'none' });
-      return;
-    }
-    wx.setClipboardData({
-      data: no,
-      success: () => wx.showToast({ title: '已复制订单号', icon: 'success' }),
-      fail: () => wx.showToast({ title: '复制失败', icon: 'none' })
+  async onCopyOrderNo() {
+    await copyTextToClipboard(this.data.view?.orderNo, {
+      emptyToast: '暂无订单号',
+      successToast: '已复制订单号'
     });
   },
 
-  onCopyShippingNo() {
-    const no = this.data.view?.shippingNo;
-    if (!no) {
-      wx.showToast({ title: '暂无运单号', icon: 'none' });
-      return;
-    }
-    wx.setClipboardData({
-      data: no,
-      success: () => wx.showToast({ title: '已复制运单号', icon: 'success' })
+  async onCopyShippingNo() {
+    await copyTextToClipboard(this.data.view?.shippingNo, {
+      emptyToast: '暂无运单号',
+      successToast: '已复制运单号'
     });
   },
 

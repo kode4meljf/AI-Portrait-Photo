@@ -54,3 +54,5 @@
     <view class="page-footer"></view>
   </scroll-view>
 </view>
+
+<privacy-popup />

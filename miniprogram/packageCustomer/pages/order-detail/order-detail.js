@@ -2,6 +2,7 @@ const app = getApp()
 const { ensureCustomerPage } = require('../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
 const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../utils/frameOrderDetailView')
+const { copyTextToClipboard } = require('../../../utils/clipboard')
 
 Page({
   behaviors: [require('../../behaviors/customerPageNav')],
@@ -110,24 +111,17 @@ Page({
     wx.previewImage({ urls: [url], current: url })
   },
 
-  onCopyOrderNo() {
-    const no = this.data.view?.orderNo
-    if (!no) return
-    wx.setClipboardData({
-      data: no,
-      success: () => wx.showToast({ title: '已复制订单号', icon: 'success' })
+  async onCopyOrderNo() {
+    await copyTextToClipboard(this.data.view?.orderNo, {
+      emptyToast: '暂无订单号',
+      successToast: '已复制订单号'
     })
   },
 
-  onCopyShippingNo() {
-    const no = this.data.view?.shippingNo
-    if (!no) {
-      wx.showToast({ title: '暂无运单号', icon: 'none' })
-      return
-    }
-    wx.setClipboardData({
-      data: no,
-      success: () => wx.showToast({ title: '已复制运单号', icon: 'success' })
+  async onCopyShippingNo() {
+    await copyTextToClipboard(this.data.view?.shippingNo, {
+      emptyToast: '暂无运单号',
+      successToast: '已复制运单号'
     })
   },
 

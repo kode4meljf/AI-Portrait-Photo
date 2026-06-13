@@ -1,5 +1,6 @@
 const { callStoreMember } = require('../../../../utils/storeSession')
 const { getInviteEnvVersion } = require('../../../utils/inviteEnv')
+const { copyTextToClipboard } = require('../../../../utils/clipboard')
 
 function formatExpire(ts) {
   if (!ts) return ''
@@ -62,15 +63,12 @@ Page({
     }
   },
 
-  onCopyLink() {
+  async onCopyLink() {
     const link = this.data.inviteLink
     if (!link) {
       wx.showToast({ title: '暂无链接，请重新生成', icon: 'none' })
       return
     }
-    wx.setClipboardData({
-      data: link,
-      success: () => wx.showToast({ title: '已复制邀请链接', icon: 'success' })
-    })
+    await copyTextToClipboard(link, { successToast: '已复制邀请链接' })
   }
 })

@@ -200,3 +200,5 @@
     <button class="edit-cancel" disabled="{{editSaving}}" bindtap="closeEdit">取消</button>
   </view>
 </view>
+
+<privacy-popup />
