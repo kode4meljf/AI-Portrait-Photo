@@ -5,6 +5,7 @@
         <span class="brand-dot" />
         AI写真馆后台
       </div>
+      <div class="aside-menu-wrap">
       <el-menu
         :default-active="activeMenu"
         router
@@ -57,9 +58,10 @@
           <span>平台配置</span>
         </el-menu-item>
       </el-menu>
+      </div>
     </el-aside>
 
-    <el-container>
+    <el-container class="admin-body">
       <el-header class="admin-header">
         <div class="header-left">
           <span class="page-title">{{ pageTitle }}</span>
@@ -109,12 +111,37 @@ function onUserCommand(cmd) {
 
 <style scoped>
 .admin-layout {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 .admin-aside {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: #1f2430;
   color: #fff;
+  flex-shrink: 0;
+}
+
+.aside-menu-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.admin-body {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .brand {
@@ -122,6 +149,7 @@ function onUserCommand(cmd) {
   align-items: center;
   gap: 10px;
   height: 60px;
+  flex-shrink: 0;
   padding: 0 20px;
   font-weight: 700;
   font-size: 16px;
@@ -140,6 +168,8 @@ function onUserCommand(cmd) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
+  height: 60px;
   background: #fff;
   border-bottom: 1px solid #ebeef5;
 }
@@ -164,6 +194,11 @@ function onUserCommand(cmd) {
 }
 
 .admin-main {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 20px;
+  background: var(--admin-bg);
 }
 </style>

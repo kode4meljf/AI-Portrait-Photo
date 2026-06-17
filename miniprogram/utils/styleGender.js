@@ -20,11 +20,28 @@ function filterStylesByGender(pool, genderLabel) {
   return (pool || []).filter((s) => normalizeStyleGender(s.gender) === g)
 }
 
+/** 云数据库 where：按适用性别筛选（与 adminApi buildStyleListWhere 一致） */
+function buildStyleGenderDbWhere(db, genderLabel) {
+  const genderRaw = String(genderLabel || '').trim()
+  if (!genderRaw) return null
+  const _ = db.command
+  const g = normalizeStyleGender(genderRaw)
+  if (g === STYLE_GENDER_FEMALE) {
+    return { gender: STYLE_GENDER_FEMALE }
+  }
+  return _.or([
+    { gender: STYLE_GENDER_MALE },
+    { gender: _.exists(false) },
+    { gender: '' }
+  ])
+}
+
 module.exports = {
   STYLE_GENDER_MALE,
   STYLE_GENDER_FEMALE,
   DEFAULT_STYLE_GENDER,
   normalizeStyleGender,
   styleGenderFromCustomer,
-  filterStylesByGender
+  filterStylesByGender,
+  buildStyleGenderDbWhere
 }

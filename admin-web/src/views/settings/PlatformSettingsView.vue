@@ -2,7 +2,7 @@
   <div class="page-card" v-loading="loading">
     <h2 class="page-heading">平台配置</h2>
     <p class="page-desc">
-      门店小程序订单详情中「联系平台」将展示此处配置的电话；制作影集的准入张数、选图区间与积分单价也在此配置；即梦 AI 密钥与生成并发在此统一配置，Worker 云函数会自动读取并缓存。
+      门店小程序订单详情中「联系平台」将展示此处配置的电话；写真生成引擎、密钥与并发由 Worker 云函数自动读取并缓存；制作影集规则见下方独立配置。
     </p>
 
     <el-form
@@ -23,35 +23,205 @@
         <div class="form-tip">支持数字、空格、横线；留空则门店端提示「暂未配置」</div>
       </el-form-item>
 
-      <h3 class="section-title">即梦 AI 密钥</h3>
-      <el-form-item label="Access Key">
-        <el-input
-          v-model="form.volcAccessKey"
-          placeholder="留空则不修改已保存的 Access Key"
-          clearable
-          autocomplete="off"
-        />
-        <div v-if="form.volcAccessKeyMasked" class="form-tip">
-          当前已配置：{{ form.volcAccessKeyMasked }}
+      <h3 class="section-title">写真生成引擎</h3>
+      <p class="section-desc">切换下方分段控件决定全平台门店成片使用的引擎；仅展示当前选中引擎的凭证配置。</p>
+
+      <el-alert
+        v-if="engineStatusWarning"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="engine-status-alert"
+      >
+        <template #title>已选择智绘引擎，但未就绪</template>
+        <div class="engine-status-body">
+          请填写方舟 API Key 后再保存；保存前门店仍使用上次生效的
+          <strong>{{ savedEngineLabel }}</strong>
         </div>
-      </el-form-item>
-      <el-form-item label="Secret Key">
-        <el-input
-          v-model="form.volcSecretKey"
-          type="password"
-          show-password
-          placeholder="留空则不修改已保存的 Secret Key"
-          clearable
-          autocomplete="new-password"
+      </el-alert>
+      <el-alert
+        v-else
+        type="success"
+        :closable="false"
+        show-icon
+        class="engine-status-alert"
+      >
+        <template #title>{{ engineStatusTitle }}</template>
+        <div class="engine-status-body">{{ engineStatusBody }}</div>
+        <div v-if="form.updateTime" class="engine-status-meta">
+          上次变更：{{ formatTime(form.updateTime) }}
+        </div>
+      </el-alert>
+
+      <el-form-item label="切换生效引擎">
+        <el-segmented
+          v-model="form.portraitEngine"
+          :options="portraitSegmentOptions"
+          class="engine-segmented"
         />
-        <div class="form-tip">
-          <span v-if="form.volcSecretKeyConfigured">Secret Key 已保存</span>
-          <span v-else>尚未配置 Secret Key</span>
-          · 云函数内存缓存 5 分钟，鉴权失败时会自动重新读取
+        <div class="form-tip segment-hint">
+          左：稳定人像保真 · 右：豆包 Seedream 5.0 多模态生图
         </div>
       </el-form-item>
 
-      <h3 class="section-title">制作影集</h3>
+      <div v-if="form.portraitEngine === PORTRAIT_ENGINE_JIMENG" class="credentials-wrap">
+        <div class="credential-card active">
+          <div class="credential-card-head">
+            <span class="credential-card-title">
+              经典引擎（即梦）
+              <code class="engine-req-key">{{ JIMENG_PORTRAIT_REQ_KEY }}</code>
+            </span>
+            <el-tag type="success" size="small" effect="plain">当前生效</el-tag>
+          </div>
+          <el-form-item label="Access Key" label-width="108px" class="engine-sub-item">
+            <el-input
+              v-model="form.volcAccessKey"
+              placeholder="留空则不修改已保存的 Access Key"
+              clearable
+              autocomplete="off"
+              class="engine-wide-control"
+            />
+            <div v-if="form.volcAccessKeyMasked" class="form-tip">
+              当前已配置：{{ form.volcAccessKeyMasked }}
+            </div>
+          </el-form-item>
+          <el-form-item label="Secret Key" label-width="108px" class="engine-sub-item">
+            <el-input
+              v-model="form.volcSecretKey"
+              type="password"
+              show-password
+              placeholder="留空则不修改已保存的 Secret Key"
+              clearable
+              autocomplete="new-password"
+              class="engine-wide-control"
+            />
+            <div class="form-tip">
+              <span v-if="form.volcSecretKeyConfigured">Secret Key 已保存</span>
+              <span v-else>尚未配置 Secret Key</span>
+              · 云函数内存缓存 5 分钟，鉴权失败时会自动重新读取
+            </div>
+          </el-form-item>
+          <el-form-item label="最大并发" label-width="108px" class="engine-sub-item">
+            <el-input-number
+              v-model="form.jimengMaxConcurrency"
+              :min="1"
+              :max="10"
+              :step="1"
+              :precision="0"
+              controls-position="right"
+            />
+            <div class="form-tip">
+              当前保存值：<strong>{{ form.jimengMaxConcurrency }}</strong>
+              <template v-if="form.jimengMaxConcurrencyOverriddenByEnv">
+                · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
+                （云函数环境变量 <code>JIMENG_MAX_CONCURRENCY</code> 优先于本配置）
+              </template>
+              <template v-else>
+                · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
+              </template>
+            </div>
+            <div class="form-tip">
+              与火山账号生成任务并发配额一致：体验版填 1，付费版填 2。修改后约 5 分钟内生效。
+            </div>
+          </el-form-item>
+        </div>
+      </div>
+
+      <div v-else class="credentials-wrap">
+        <div
+          class="credential-card active"
+          :class="{ 'pending-key': !seedreamReady }"
+        >
+          <div class="credential-card-head">
+            <span class="credential-card-title">智绘引擎（Seedream / 方舟）</span>
+            <el-tag
+              v-if="!seedreamReady"
+              type="warning"
+              size="small"
+              effect="plain"
+            >
+              待配置
+            </el-tag>
+            <el-tag v-else type="success" size="small" effect="plain">当前生效</el-tag>
+          </div>
+          <el-form-item label="方舟 API Key" label-width="108px" class="engine-sub-item">
+            <el-input
+              v-model="form.arkApiKey"
+              type="password"
+              show-password
+              placeholder="留空则不修改已保存的 API Key"
+              clearable
+              autocomplete="new-password"
+              class="engine-wide-control"
+            />
+            <div v-if="form.arkApiKeyMasked" class="form-tip">
+              当前已配置：{{ form.arkApiKeyMasked }}
+            </div>
+            <div class="form-tip">
+              <span v-if="seedreamReady">API Key 已保存</span>
+              <span v-else>尚未配置 API Key</span>
+              · 在火山方舟控制台创建
+            </div>
+          </el-form-item>
+          <el-form-item label="模型 ID" label-width="108px" class="engine-sub-item">
+            <el-select v-model="form.seedreamModelId" class="engine-wide-control">
+              <el-option
+                v-for="opt in seedreamModelOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+            <div class="form-tip">成片尺寸由下方清晰度与画幅决定，不再使用各风格「分辨率」</div>
+          </el-form-item>
+          <el-form-item label="清晰度" label-width="108px" class="engine-sub-item">
+            <el-segmented
+              v-model="form.seedreamSizeTier"
+              :options="seedreamSizeTierOptions"
+              class="engine-segmented engine-segmented--compact"
+            />
+          </el-form-item>
+          <el-form-item label="画幅" label-width="108px" class="engine-sub-item">
+            <el-segmented
+              v-model="form.seedreamOrientation"
+              :options="seedreamOrientationOptions"
+              class="engine-segmented engine-segmented--compact"
+            />
+            <div class="form-tip">
+              当前成片：
+              <strong>{{ seedreamOutputSizePreview }}</strong>
+              <template v-if="form.seedreamOrientation === SEEDREAM_ORIENTATION_AUTO">
+                · 自动模式请求不传 size，走官方默认
+              </template>
+            </div>
+          </el-form-item>
+          <el-form-item label="最大并发" label-width="108px" class="engine-sub-item">
+            <el-input-number
+              v-model="form.seedreamMaxConcurrency"
+              :min="1"
+              :max="50"
+              :step="1"
+              :precision="0"
+              controls-position="right"
+            />
+            <div class="form-tip">
+              当前保存值：<strong>{{ form.seedreamMaxConcurrency }}</strong>
+              <template v-if="form.seedreamMaxConcurrencyOverriddenByEnv">
+                · Worker 实际生效：<strong>{{ form.seedreamMaxConcurrencyEffective }}</strong>
+                （云函数环境变量 <code>SEEDREAM_MAX_CONCURRENCY</code> 优先于本配置）
+              </template>
+              <template v-else>
+                · Worker 实际生效：<strong>{{ form.seedreamMaxConcurrencyEffective }}</strong>
+              </template>
+            </div>
+            <div class="form-tip">
+              方舟 Seedream 按 IPM（约 500 张/分钟）限流；建议 10～20，遇 429 再调低。修改后约 5 分钟内生效。
+            </div>
+          </el-form-item>
+        </div>
+      </div>
+
+      <h3 class="section-title section-title--spaced">制作影集</h3>
       <el-alert
         v-if="albumConfigIssues.length"
         type="error"
@@ -112,32 +282,6 @@
         </div>
       </el-form-item>
 
-      <h3 class="section-title">即梦生成调度</h3>
-      <el-form-item label="最大并发">
-        <el-input-number
-          v-model="form.jimengMaxConcurrency"
-          :min="1"
-          :max="10"
-          :step="1"
-          :precision="0"
-          controls-position="right"
-        />
-        <div class="form-tip">
-          当前保存值：<strong>{{ form.jimengMaxConcurrency }}</strong>
-          <template v-if="form.jimengMaxConcurrencyOverriddenByEnv">
-            · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
-            （云函数环境变量 <code>JIMENG_MAX_CONCURRENCY</code> 优先于本配置）
-          </template>
-          <template v-else>
-            · Worker 实际生效：<strong>{{ form.jimengMaxConcurrencyEffective }}</strong>
-          </template>
-        </div>
-        <div class="form-tip">
-          与火山引擎账号的即梦「提交任务」并发配额一致：体验版填 1，付费版填 2。
-          修改后约 5 分钟内生效（或等 Worker 实例回收）。
-        </div>
-      </el-form-item>
-
       <el-form-item v-if="form.updateTime" label="最近更新">
         <span class="muted">{{ formatTime(form.updateTime) }}</span>
       </el-form-item>
@@ -164,10 +308,40 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '@/api/admin'
+import {
+  DEFAULT_PORTRAIT_ENGINE,
+  DEFAULT_SEEDREAM_MODEL_ID,
+  JIMENG_PORTRAIT_REQ_KEY,
+  SEEDREAM_MODEL_OPTIONS,
+  PORTRAIT_ENGINE_JIMENG,
+  PORTRAIT_ENGINE_SEEDREAM,
+  normalizePortraitEngine,
+  getPortraitEngineLabel
+} from '@/utils/portraitEngine'
+import {
+  DEFAULT_SEEDREAM_ORIENTATION,
+  DEFAULT_SEEDREAM_SIZE_TIER,
+  SEEDREAM_ORIENTATION_AUTO,
+  SEEDREAM_ORIENTATION_OPTIONS,
+  SEEDREAM_SIZE_TIER_OPTIONS,
+  describeSeedreamOutputSize,
+  normalizeSeedreamOrientation,
+  normalizeSeedreamSizeTier
+} from '@/utils/seedreamOutputSize'
+
+const portraitSegmentOptions = [
+  { label: '经典引擎（即梦）', value: PORTRAIT_ENGINE_JIMENG },
+  { label: '智绘引擎', value: PORTRAIT_ENGINE_SEEDREAM }
+]
+const seedreamModelOptions = SEEDREAM_MODEL_OPTIONS
+const seedreamSizeTierOptions = SEEDREAM_SIZE_TIER_OPTIONS
+const seedreamOrientationOptions = SEEDREAM_ORIENTATION_OPTIONS
 
 const loading = ref(false)
 const saving = ref(false)
 const form = ref(null)
+/** 服务端已保存的成片引擎（保存成功或初次加载后更新） */
+const savedPortraitEngine = ref(DEFAULT_PORTRAIT_ENGINE)
 
 function collectAlbumConfigIssues(values) {
   if (!values) return []
@@ -218,10 +392,54 @@ const albumSelectMaxError = computed(() => {
   return ''
 })
 
+const seedreamReady = computed(() => {
+  const f = form.value
+  if (!f) return false
+  return !!f.arkApiKeyConfigured || !!(f.arkApiKey || '').trim()
+})
+
+const seedreamOutputSizePreview = computed(() => {
+  const f = form.value
+  if (!f) return ''
+  return describeSeedreamOutputSize(f.seedreamSizeTier, f.seedreamOrientation)
+})
+
+const engineStatusWarning = computed(() => {
+  return (
+    form.value?.portraitEngine === PORTRAIT_ENGINE_SEEDREAM && !seedreamReady.value
+  )
+})
+
+const savedEngineLabel = computed(() => getPortraitEngineLabel(savedPortraitEngine.value))
+
+const engineStatusTitle = computed(() => {
+  const f = form.value
+  if (!f) return ''
+  if (f.portraitEngine === PORTRAIT_ENGINE_SEEDREAM) {
+    return '当前全平台成片引擎：智绘引擎（Seedream 5.0）'
+  }
+  return '当前全平台成片引擎：经典引擎（即梦）'
+})
+
+const engineStatusBody = computed(() => {
+  const f = form.value
+  if (!f) return ''
+  if (f.portraitEngine === PORTRAIT_ENGINE_SEEDREAM) {
+    const model = (f.seedreamModelId || DEFAULT_SEEDREAM_MODEL_ID).trim()
+    const sizeHint = describeSeedreamOutputSize(f.seedreamSizeTier, f.seedreamOrientation)
+    return `同步图生图 · 模型 ${model} · 成片 ${sizeHint} · 密钥已就绪`
+  }
+  const keyHint = f.volcSecretKeyConfigured ? '密钥已就绪' : '请配置即梦 Access Key / Secret Key'
+  return `门店拍摄提交后走 ${JIMENG_PORTRAIT_REQ_KEY} · ${keyHint}`
+})
+
 const saveBlockedReason = computed(() => {
   const phone = (form.value?.supportPhone || '').trim()
   if (!phone) return '请先填写平台客服电话后再保存'
   if (!albumConfigValid.value) return '影集配置无效，请按上方红色提示修正后再保存'
+  if (engineStatusWarning.value) {
+    return '智绘引擎须先配置方舟 API Key'
+  }
   return ''
 })
 
@@ -238,6 +456,12 @@ function clampJimengMaxConcurrency(raw) {
   const n = Number(raw)
   if (!Number.isFinite(n)) return 1
   return Math.min(10, Math.max(1, Math.floor(n)))
+}
+
+function clampSeedreamMaxConcurrency(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 10
+  return Math.min(50, Math.max(1, Math.floor(n)))
 }
 
 function clampAlbumInt(raw, fallback, min, max) {
@@ -261,20 +485,38 @@ function applyAlbumFormFields(data) {
 }
 
 function applyPlatformForm(data) {
-  const saved = clampJimengMaxConcurrency(data?.jimengMaxConcurrency)
-  const effective = clampJimengMaxConcurrency(
+  const savedJimeng = clampJimengMaxConcurrency(data?.jimengMaxConcurrency)
+  const effectiveJimeng = clampJimengMaxConcurrency(
     data?.jimengMaxConcurrencyEffective != null
       ? data.jimengMaxConcurrencyEffective
-      : saved
+      : savedJimeng
+  )
+  const savedSeedream = clampSeedreamMaxConcurrency(data?.seedreamMaxConcurrency)
+  const effectiveSeedream = clampSeedreamMaxConcurrency(
+    data?.seedreamMaxConcurrencyEffective != null
+      ? data.seedreamMaxConcurrencyEffective
+      : savedSeedream
   )
   return {
     ...data,
     ...applyAlbumFormFields(data),
-    jimengMaxConcurrency: saved,
-    jimengMaxConcurrencyEffective: effective,
+    portraitEngine: normalizePortraitEngine(data?.portraitEngine || DEFAULT_PORTRAIT_ENGINE),
+    seedreamModelId: (data?.seedreamModelId || DEFAULT_SEEDREAM_MODEL_ID).trim(),
+    seedreamSizeTier: normalizeSeedreamSizeTier(
+      data?.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER
+    ),
+    seedreamOrientation: normalizeSeedreamOrientation(
+      data?.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+    ),
+    jimengMaxConcurrency: savedJimeng,
+    jimengMaxConcurrencyEffective: effectiveJimeng,
     jimengMaxConcurrencyOverriddenByEnv: !!data?.jimengMaxConcurrencyOverriddenByEnv,
+    seedreamMaxConcurrency: savedSeedream,
+    seedreamMaxConcurrencyEffective: effectiveSeedream,
+    seedreamMaxConcurrencyOverriddenByEnv: !!data?.seedreamMaxConcurrencyOverriddenByEnv,
     volcAccessKey: '',
-    volcSecretKey: ''
+    volcSecretKey: '',
+    arkApiKey: ''
   }
 }
 
@@ -283,6 +525,9 @@ async function load() {
   try {
     const data = await api.getPlatformSettings()
     form.value = applyPlatformForm(data)
+    savedPortraitEngine.value = normalizePortraitEngine(
+      data?.portraitEngine || DEFAULT_PORTRAIT_ENGINE
+    )
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -312,7 +557,16 @@ async function save() {
 
   const payload = {
     supportPhone,
+    portraitEngine: form.value?.portraitEngine || DEFAULT_PORTRAIT_ENGINE,
+    seedreamModelId: (form.value?.seedreamModelId || DEFAULT_SEEDREAM_MODEL_ID).trim(),
+    seedreamSizeTier: normalizeSeedreamSizeTier(
+      form.value?.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER
+    ),
+    seedreamOrientation: normalizeSeedreamOrientation(
+      form.value?.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+    ),
     jimengMaxConcurrency: form.value?.jimengMaxConcurrency ?? 1,
+    seedreamMaxConcurrency: form.value?.seedreamMaxConcurrency ?? 10,
     albumSelectMin,
     albumSelectMax,
     albumEntryMinTotal,
@@ -322,11 +576,16 @@ async function save() {
   const volcSecretKey = (form.value?.volcSecretKey || '').trim()
   if (volcAccessKey) payload.volcAccessKey = volcAccessKey
   if (volcSecretKey) payload.volcSecretKey = volcSecretKey
+  const arkApiKey = (form.value?.arkApiKey || '').trim()
+  if (arkApiKey) payload.arkApiKey = arkApiKey
 
   saving.value = true
   try {
     const data = await api.updatePlatformSettings(payload)
     form.value = applyPlatformForm(data)
+    savedPortraitEngine.value = normalizePortraitEngine(
+      data?.portraitEngine || DEFAULT_PORTRAIT_ENGINE
+    )
     ElMessage.success('保存成功')
   } catch (e) {
     ElMessage.error({
@@ -363,6 +622,165 @@ onMounted(load)
   color: #303133;
 }
 
+.section-title--spaced {
+  margin-top: 28px;
+}
+
+.section-desc {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.5;
+}
+
+.subsection-title {
+  margin: 0 0 12px;
+  padding-left: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.subsection-title + .engine-sub-item {
+  margin-top: 0;
+}
+
+.engine-status-alert {
+  margin: 0 0 20px;
+}
+
+.engine-status-body {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.engine-status-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.engine-segmented {
+  max-width: 100%;
+}
+
+.engine-segmented--compact {
+  max-width: 360px;
+}
+
+.segment-hint {
+  margin-top: 8px;
+}
+
+.credentials-wrap {
+  --engine-sub-label-width: 108px;
+  margin: 4px 0 16px 140px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  width: calc(100% - 140px);
+  box-sizing: border-box;
+}
+
+.credential-card {
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--el-color-primary);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.12);
+}
+
+.credential-card.pending-key {
+  border-left: 3px solid var(--el-color-warning);
+}
+
+.credential-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.credential-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.credential-card .engine-sub-item {
+  --el-form-label-width: var(--engine-sub-label-width);
+  margin-bottom: 14px;
+}
+
+.credential-card .engine-sub-item:last-child {
+  margin-bottom: 0;
+}
+
+.credential-card .engine-sub-item :deep(.el-form-item__label) {
+  width: var(--engine-sub-label-width) !important;
+  padding-right: 8px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  flex: 0 0 var(--engine-sub-label-width) !important;
+  justify-content: flex-end;
+}
+
+.credential-card .engine-sub-item :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.credential-card .engine-wide-control {
+  width: 100%;
+}
+
+.engine-sub-config {
+  --engine-sub-label-width: 108px;
+  margin: 4px 0 20px 140px;
+  padding: 14px 16px 6px;
+  background: #f9fafb;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  width: calc(100% - 140px);
+  box-sizing: border-box;
+}
+
+.engine-sub-config .engine-sub-item {
+  --el-form-label-width: var(--engine-sub-label-width);
+  margin-bottom: 18px;
+}
+
+.engine-sub-config .engine-sub-item :deep(.el-form-item__label) {
+  width: var(--engine-sub-label-width) !important;
+  padding-right: 8px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  flex: 0 0 var(--engine-sub-label-width) !important;
+  justify-content: flex-end;
+}
+
+.engine-sub-config .engine-sub-item :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.engine-sub-config .engine-wide-control {
+  width: 100%;
+}
+
+.engine-sub-config .subsection-title:not(:first-child) {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #e4e7ed;
+}
+
 .settings-form {
   max-width: 560px;
 }
@@ -397,5 +815,17 @@ onMounted(load)
 .save-blocked-tip {
   margin-top: 10px;
   color: #f56c6c;
+}
+
+.engine-req-key {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-weight: 500;
 }
 </style>

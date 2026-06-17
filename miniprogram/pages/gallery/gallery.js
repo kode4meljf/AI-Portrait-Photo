@@ -8,6 +8,7 @@ const { syncStoreTabBar } = require('../../utils/storeTabBar');
 const { kickPortraitWorker } = require('../../utils/jimengPortraitAi');
 const { getProfileCollection } = require('../../utils/account');
 const { setBatchFavorite } = require('../../utils/batchFavorite');
+const { fetchPhotosByBatchIds, fetchPhotosByBatchId } = require('../../utils/batchPhotos');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
 const AUTO_REFRESH_INTERVAL_MS = 8000;
@@ -321,16 +322,7 @@ Page({
     const db = wx.cloud.database();
     const batchIds = batches.map((b) => b._id);
 
-    const photosRes = await db
-      .collection('photos')
-      .where({ batchId: db.command.in(batchIds) })
-      .get();
-
-    const photoMap = {};
-    photosRes.data.forEach((photo) => {
-      if (!photoMap[photo.batchId]) photoMap[photo.batchId] = [];
-      photoMap[photo.batchId].push(photo);
-    });
+    const photoMap = await fetchPhotosByBatchIds(db, batchIds);
 
     const customerIds = [...new Set(batches.map((b) => b.customerId).filter(Boolean))];
     const customerMap = await this.fetchCustomersByIds(customerIds);
@@ -583,8 +575,7 @@ Page({
     wx.showLoading({ title: '获取照片...' });
     try {
       const db = wx.cloud.database();
-      const res = await db.collection('photos').where({ batchId: batch._id }).get();
-      const photos = res.data;
+      const photos = await fetchPhotosByBatchId(db, batch._id);
       if (photos.length === 0) {
         wx.showToast({ title: '没有可下载的照片', icon: 'none' });
         return;

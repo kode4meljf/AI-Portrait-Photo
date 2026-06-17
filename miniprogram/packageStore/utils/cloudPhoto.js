@@ -44,7 +44,6 @@ async function pickRandomCloudPhotoFileId() {
   try {
     const pool = await fetchStyleTemplates(db, {
       collection: STYLE_TEMPLATES_COLLECTION,
-      limit: 20,
       onlyEnabled: true
     })
     const withCloud = pool

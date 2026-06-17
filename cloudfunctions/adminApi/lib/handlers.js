@@ -11,6 +11,14 @@ const {
 const { formatCustomerForAdmin } = require('./customerFormat')
 const { seedStyles: seedDefaultStyles } = require('./seedStyles')
 const { normalizeStyleGender, formatStyleGenderRow } = require('./styleGender')
+const {
+  STYLE_MAX_COUNT,
+  STYLE_MAX_ENABLED,
+  compareStyleId,
+  allocateStyleIdFromRows,
+  normalizeStyleBusinessId,
+  styleIdFullRangeLabel
+} = require('./styleId')
 const { normalizeStyleResolution } = require('./styleResolution')
 const {
   sendStoreAssetAdjustCode,
@@ -366,48 +374,21 @@ async function getOrderStatusCounts(query) {
   return { all, ...counts }
 }
 
-const STYLE_MAX_ENABLED = 12
-const STYLE_MAX_COUNT = 12
-
-function formatStyleCode(num) {
-  return `S${String(num).padStart(2, '0')}`
-}
-
-function parseStyleCode(id) {
-  const m = String(id || '').match(/^S(\d{1,2})$/i)
-  if (!m) return null
-  const n = Number(m[1])
-  return n >= 1 && n <= STYLE_MAX_COUNT ? n : null
-}
-
-function compareStyleId(a, b) {
-  const na = parseStyleCode(a.id)
-  const nb = parseStyleCode(b.id)
-  if (na != null && nb != null && na !== nb) return na - nb
-  if (na != null && nb == null) return -1
-  if (na == null && nb != null) return 1
-  return String(a.id || '').localeCompare(String(b.id || ''))
-}
-
-async function collectUsedStyleCodes() {
+async function collectAllStyleRows() {
   const res = await db.collection(STYLE_TEMPLATES_COLLECTION).limit(100).get()
-  const used = new Set()
-  res.data.forEach((row) => {
-    const n = parseStyleCode(row.id)
-    if (n) used.add(n)
-  })
-  return { total: res.data.length, used }
+  return res.data || []
 }
 
-async function allocateStyleId() {
-  const { total, used } = await collectUsedStyleCodes()
-  if (total >= STYLE_MAX_COUNT) {
-    throw new Error(`风格最多 ${STYLE_MAX_COUNT} 个（S01–S12）`)
-  }
-  for (let i = 1; i <= STYLE_MAX_COUNT; i++) {
-    if (!used.has(i)) return formatStyleCode(i)
-  }
-  throw new Error('风格编号 S01–S12 已满')
+async function findStyleByBusinessId(id) {
+  const trimmed = String(id || '').trim().toUpperCase()
+  if (!trimmed) return null
+  const res = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ id: trimmed }).limit(1).get()
+  return res.data[0] || null
+}
+
+async function allocateStyleId(gender) {
+  const rows = await collectAllStyleRows()
+  return allocateStyleIdFromRows(rows, gender)
 }
 
 async function countEnabledStyles() {
@@ -415,32 +396,61 @@ async function countEnabledStyles() {
   return res.total
 }
 
-async function findStyleByName(name) {
+async function findStyleByNameAndGender(name, gender) {
   const trimmed = (name || '').trim()
   if (!trimmed) return null
-  const res = await db.collection(STYLE_TEMPLATES_COLLECTION).where({ name: trimmed }).limit(1).get()
+  const g = normalizeStyleGender(gender)
+  const res = await db
+    .collection(STYLE_TEMPLATES_COLLECTION)
+    .where({ name: trimmed, gender: g })
+    .limit(1)
+    .get()
   return res.data[0] || null
 }
 
-async function assertStyleNameUnique(name, excludeDocId) {
+/** 同性别内名称不可重复；男女可同名（如 F01/M01 均为「经典肖像」） */
+async function assertStyleNameUnique(name, gender, excludeDocId) {
   const trimmed = (name || '').trim()
   if (!trimmed) throw new Error('请填写风格名称')
-  const existing = await findStyleByName(trimmed)
+  const g = normalizeStyleGender(gender)
+  const existing = await findStyleByNameAndGender(trimmed, g)
   if (existing && existing._id !== excludeDocId) {
     const code = existing.id ? `编号 ${existing.id}` : '已有记录'
-    throw new Error(`风格名称「${trimmed}」已存在（${code}）`)
+    throw new Error(`该性别下风格名称「${trimmed}」已存在（${code}）`)
   }
+}
+
+function buildStyleListWhere(keyword, gender) {
+  const parts = []
+  const kw = (keyword || '').trim()
+  if (kw) {
+    parts.push(_.or([
+      { name: db.RegExp({ regexp: kw, options: 'i' }) },
+      { id: db.RegExp({ regexp: kw, options: 'i' }) }
+    ]))
+  }
+  const genderRaw = String(gender || '').trim()
+  if (genderRaw === '女' || genderRaw === 'female') {
+    parts.push({ gender: '女' })
+  } else if (genderRaw === '男' || genderRaw === 'male') {
+    parts.push(_.or([
+      { gender: '男' },
+      { gender: _.exists(false) },
+      { gender: '' }
+    ]))
+  }
+  if (!parts.length) return null
+  if (parts.length === 1) return parts[0]
+  return _.and(parts)
 }
 
 async function listStyles(query) {
   const { page, pageSize, skip } = parsePage(query)
   const keyword = (query.keyword || '').trim()
   let coll = db.collection(STYLE_TEMPLATES_COLLECTION)
-  if (keyword) {
-    coll = coll.where(_.or([
-      { name: db.RegExp({ regexp: keyword, options: 'i' }) },
-      { id: db.RegExp({ regexp: keyword, options: 'i' }) }
-    ]))
+  const where = buildStyleListWhere(keyword, query.gender)
+  if (where) {
+    coll = coll.where(where)
   }
   const [countRes, listRes] = await Promise.all([
     coll.count(),
@@ -485,9 +495,18 @@ async function createStyle(payload) {
   const sampleFileId = (payload.sampleFileId || '').trim()
   if (!name) throw new Error('请填写风格名称')
   if (!sampleFileId) throw new Error('请上传风格样图')
-  await assertStyleNameUnique(name)
+  const gender = normalizeStyleGender(payload.gender)
+  await assertStyleNameUnique(name, gender)
 
-  const id = await allocateStyleId()
+  let id
+  if (payload.id != null && String(payload.id).trim()) {
+    id = normalizeStyleBusinessId(payload.id, gender)
+    const existing = await findStyleByBusinessId(id)
+    if (existing) throw new Error(`风格编号 ${id} 已存在`)
+  } else {
+    id = await allocateStyleId(gender)
+  }
+
   const enabled = payload.enabled !== false
   if (enabled) {
     const enabledCount = await countEnabledStyles()
@@ -504,7 +523,7 @@ async function createStyle(payload) {
     prompt,
     sampleFileId,
     resolution,
-    gender: normalizeStyleGender(payload.gender),
+    gender,
     sort: Number(payload.sort) || 0,
     enabled,
     createTime: now,
@@ -537,7 +556,11 @@ async function updateStyle(payload) {
     const name = (payload.name || '').trim()
     if (!name) throw new Error('风格名称不能为空')
     if (name !== String(current.name || '').trim()) {
-      await assertStyleNameUnique(name, docId)
+      const genderForName =
+        payload.gender !== undefined
+          ? normalizeStyleGender(payload.gender)
+          : normalizeStyleGender(current.gender)
+      await assertStyleNameUnique(name, genderForName, docId)
     }
     data.name = name
   }
@@ -814,6 +837,20 @@ const {
   normalizeAlbumPlatformConfig,
   validateAlbumPlatformConfigPayload
 } = require('./albumPlatformConfig')
+const {
+  PORTRAIT_ENGINE_OPTIONS,
+  PORTRAIT_ENGINE_SEEDREAM,
+  normalizePortraitEngine,
+  getPortraitEngineLabel,
+  normalizeSeedreamModelId
+} = require('./portraitEngineConfig')
+const {
+  DEFAULT_SEEDREAM_SIZE_TIER,
+  DEFAULT_SEEDREAM_ORIENTATION,
+  normalizeSeedreamSizeTier,
+  normalizeSeedreamOrientation,
+  describeSeedreamOutputSize
+} = require('./seedreamOutputSize')
 
 const PLATFORM_SETTINGS_COL = 'platform_settings'
 const PLATFORM_SETTINGS_ID = 'default'
@@ -831,10 +868,22 @@ function clampJimengMaxConcurrency(raw) {
   return Math.min(10, Math.max(1, Math.floor(n)))
 }
 
+function clampSeedreamMaxConcurrency(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 10
+  return Math.min(50, Math.max(1, Math.floor(n)))
+}
+
 function readEnvJimengMaxConcurrency() {
   const raw = process.env.JIMENG_MAX_CONCURRENCY
   if (raw === undefined || raw === null || String(raw).trim() === '') return null
   return clampJimengMaxConcurrency(raw)
+}
+
+function readEnvSeedreamMaxConcurrency() {
+  const raw = process.env.SEEDREAM_MAX_CONCURRENCY
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null
+  return clampSeedreamMaxConcurrency(raw)
 }
 
 async function readPlatformSettingsDoc() {
@@ -848,18 +897,39 @@ async function readPlatformSettingsDoc() {
 
 async function getPlatformSettings() {
   const raw = await readPlatformSettingsDoc()
-  const saved = clampJimengMaxConcurrency(raw.jimengMaxConcurrency ?? 1)
-  const envVal = readEnvJimengMaxConcurrency()
+  const savedJimeng = clampJimengMaxConcurrency(raw.jimengMaxConcurrency ?? 1)
+  const savedSeedream = clampSeedreamMaxConcurrency(raw.seedreamMaxConcurrency ?? 10)
+  const envJimeng = readEnvJimengMaxConcurrency()
+  const envSeedream = readEnvSeedreamMaxConcurrency()
   const album = normalizeAlbumPlatformConfig(raw)
+  const portraitEngine = normalizePortraitEngine(raw.portraitEngine)
   return {
     _id: PLATFORM_SETTINGS_ID,
     supportPhone: raw.supportPhone || '',
     volcAccessKeyMasked: maskAccessKey(raw.volcAccessKey),
     volcSecretKeyConfigured: !!String(raw.volcSecretKey || '').trim(),
     volcKeysUpdateTime: raw.volcKeysUpdateTime || null,
-    jimengMaxConcurrency: saved,
-    jimengMaxConcurrencyEffective: envVal != null ? envVal : saved,
-    jimengMaxConcurrencyOverriddenByEnv: envVal != null,
+    portraitEngine,
+    portraitEngineLabel: getPortraitEngineLabel(portraitEngine),
+    portraitEngineOptions: PORTRAIT_ENGINE_OPTIONS,
+    arkApiKeyMasked: maskAccessKey(raw.arkApiKey),
+    arkApiKeyConfigured: !!String(raw.arkApiKey || '').trim(),
+    arkKeysUpdateTime: raw.arkKeysUpdateTime || null,
+    seedreamModelId: normalizeSeedreamModelId(raw.seedreamModelId),
+    seedreamSizeTier: normalizeSeedreamSizeTier(raw.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER),
+    seedreamOrientation: normalizeSeedreamOrientation(
+      raw.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+    ),
+    seedreamOutputSizeLabel: describeSeedreamOutputSize(
+      raw.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER,
+      raw.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+    ),
+    jimengMaxConcurrency: savedJimeng,
+    jimengMaxConcurrencyEffective: envJimeng != null ? envJimeng : savedJimeng,
+    jimengMaxConcurrencyOverriddenByEnv: envJimeng != null,
+    seedreamMaxConcurrency: savedSeedream,
+    seedreamMaxConcurrencyEffective: envSeedream != null ? envSeedream : savedSeedream,
+    seedreamMaxConcurrencyOverriddenByEnv: envSeedream != null,
     albumEntryMinTotal: album.albumEntryMinTotal,
     albumSelectMin: album.albumSelectMin,
     albumSelectMax: album.albumSelectMax,
@@ -875,19 +945,53 @@ async function updatePlatformSettings(payload) {
   }
 
   const existing = await readPlatformSettingsDoc()
+  const portraitEngine = normalizePortraitEngine(
+    payload.portraitEngine != null && payload.portraitEngine !== ''
+      ? payload.portraitEngine
+      : existing.portraitEngine
+  )
+  const nextArkApiKey = (payload.arkApiKey || '').trim() || String(existing.arkApiKey || '').trim()
+  if (portraitEngine === PORTRAIT_ENGINE_SEEDREAM && !nextArkApiKey) {
+    throw new Error('选择智绘引擎前，请先配置方舟 API Key')
+  }
+
   const data = {
     supportPhone: supportPhone || existing.supportPhone || '',
+    portraitEngine,
+    seedreamModelId: normalizeSeedreamModelId(
+      payload.seedreamModelId != null && payload.seedreamModelId !== ''
+        ? payload.seedreamModelId
+        : existing.seedreamModelId
+    ),
+    seedreamSizeTier: normalizeSeedreamSizeTier(
+      payload.seedreamSizeTier != null && payload.seedreamSizeTier !== ''
+        ? payload.seedreamSizeTier
+        : existing.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER
+    ),
+    seedreamOrientation: normalizeSeedreamOrientation(
+      payload.seedreamOrientation != null && payload.seedreamOrientation !== ''
+        ? payload.seedreamOrientation
+        : existing.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+    ),
     jimengMaxConcurrency: clampJimengMaxConcurrency(
       existing.jimengMaxConcurrency != null ? existing.jimengMaxConcurrency : 1
+    ),
+    seedreamMaxConcurrency: clampSeedreamMaxConcurrency(
+      existing.seedreamMaxConcurrency != null ? existing.seedreamMaxConcurrency : 10
     ),
     updateTime: new Date()
   }
   if (existing.volcAccessKey) data.volcAccessKey = existing.volcAccessKey
   if (existing.volcSecretKey) data.volcSecretKey = existing.volcSecretKey
   if (existing.volcKeysUpdateTime) data.volcKeysUpdateTime = existing.volcKeysUpdateTime
+  if (existing.arkApiKey) data.arkApiKey = existing.arkApiKey
+  if (existing.arkKeysUpdateTime) data.arkKeysUpdateTime = existing.arkKeysUpdateTime
 
   if (payload.jimengMaxConcurrency != null && payload.jimengMaxConcurrency !== '') {
     data.jimengMaxConcurrency = clampJimengMaxConcurrency(payload.jimengMaxConcurrency)
+  }
+  if (payload.seedreamMaxConcurrency != null && payload.seedreamMaxConcurrency !== '') {
+    data.seedreamMaxConcurrency = clampSeedreamMaxConcurrency(payload.seedreamMaxConcurrency)
   }
 
   const volcAccessKey = (payload.volcAccessKey || '').trim()
@@ -900,6 +1004,12 @@ async function updatePlatformSettings(payload) {
   if (volcSecretKey) {
     data.volcSecretKey = volcSecretKey
     data.volcKeysUpdateTime = new Date()
+  }
+
+  const arkApiKey = (payload.arkApiKey || '').trim()
+  if (arkApiKey) {
+    data.arkApiKey = arkApiKey
+    data.arkKeysUpdateTime = new Date()
   }
 
   const album = validateAlbumPlatformConfigPayload({

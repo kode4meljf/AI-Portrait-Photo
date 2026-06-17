@@ -5,6 +5,7 @@ const {
   chargeStoreForPortraitBatch,
   INSUFFICIENT_BALANCE_MSG
 } = require('./lib/balance');
+const { getPortraitEngine, assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -63,6 +64,8 @@ async function main(event) {
   try {
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
     await assertCanSubmitPortraitBatch(storeId, normalized.length);
+    await assertCurrentPortraitEngineReady();
+    const portraitEngine = await getPortraitEngine();
 
     const styleMap = {};
     for (const row of normalized) {
@@ -83,7 +86,7 @@ async function main(event) {
           batchId: batchId || null,
           batchIndex: row.batchIndex,
           status: 'pending',
-          engine: 'jimeng',
+          engine: portraitEngine,
           prompt: style.prompt,
           resolution: style.resolution,
           jimengTaskId: null,

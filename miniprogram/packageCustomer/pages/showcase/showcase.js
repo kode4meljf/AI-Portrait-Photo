@@ -73,7 +73,7 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const db = wx.cloud.database()
-      const raw = await fetchStyleTemplates(db, { limit: 20 })
+      const raw = await fetchStyleTemplates(db)
       const templates = enrichTemplates(raw, !!this._isStore)
       this.setData({
         templates,

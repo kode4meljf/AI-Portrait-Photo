@@ -195,6 +195,7 @@ Page({
       const db = wx.cloud.database();
       const res = await db.collection('customers').doc(customerId).get();
       const customer = res.data;
+      app.globalData.selectedCustomer = customer;
       this.setData({
         selectedCustomer: customer,
         pickerSelectedId: customer._id || '',

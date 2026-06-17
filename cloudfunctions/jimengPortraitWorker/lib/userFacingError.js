@@ -13,6 +13,12 @@ function toUserFacingError(err) {
   if (/生成超时|TIMEOUT|timeout/i.test(msg)) {
     return TIMEOUT_FAIL;
   }
+  if (/ModelNotOpen|未开通模型|模型广场/.test(msg)) {
+    return '智绘引擎模型未开通，请联系平台在火山方舟开通';
+  }
+  if (/方舟 API Key|InvalidApiKey/i.test(msg)) {
+    return SERVICE_UNAVAILABLE;
+  }
   if (
     /VOLC|ACCESS_KEY|SECRET|credential|鉴权|签名|Unauthorized|InvalidAccessKey|SecretKey/i.test(
       msg

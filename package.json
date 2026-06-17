@@ -11,6 +11,19 @@
     "seed:styles": "node scripts/seed-styles.js",
     "process:style-samples": "node scripts/process-style-sample-images.js",
     "print:style-sample-prompts": "node scripts/print-style-sample-prompts.js",
-    "upload:style-samples": "node scripts/upload-style-samples.js"
+    "upload:style-samples": "node scripts/upload-style-samples.js",
+    "backup:styles": "node scripts/backup-style-templates.js",
+    "backup:styles:check": "node scripts/backup-style-templates.js --check-login",
+    "bench:ark-seedream": "node scripts/benchmark-ark-seedream.js",
+    "bench:ark-seedream-concurrency": "node scripts/bench-ark-seedream-concurrency.js",
+    "import:styles": "node scripts/import-style-templates.js",
+    "import:styles:placeholder": "node scripts/import-style-templates.js --placeholder-only",
+    "import:styles:retry": "node scripts/import-style-templates.js --placeholder-only --retry-failed",
+    "import:styles:generate": "node scripts/import-style-templates.js --generate-samples",
+    "import:styles:update": "node scripts/import-style-templates.js --update-samples-only",
+    "import:styles:watch": "node scripts/import-orchestrator.js",
+    "import:styles:generate-landscape": "node scripts/import-style-templates.js --generate-landscape --i2i-fallback --resolution 1536:1152",
+    "import:styles:watch-landscape": "node scripts/import-landscape-queue.js",
+    "upload:experience": "bash scripts/upload-miniprogram-experience.sh"
   }
 }

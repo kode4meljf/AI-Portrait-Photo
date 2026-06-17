@@ -1,14 +1,14 @@
 const {
   fetchStyleTemplates,
-  pickStyles
+  pickStylesForShoot
 } = require('../../../../config/styles.js')
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js')
 const { getCustomerDisplayName, compactDisplayName } = require('../../../../utils/customerDisplay')
 const { GENDER_MALE, GENDER_FEMALE } = require('../../../../utils/customerGender')
 const {
-  filterStylesByGender,
   styleGenderFromCustomer
 } = require('../../../../utils/styleGender')
+const { fetchCustomerUsedStyleIds } = require('../../../../utils/customerStyleHistory')
 
 const db = wx.cloud.database()
 const { buildShootQuery, setPendingShoot, getShootCustomerId } = require('../../../../utils/shootContext.js')
@@ -38,11 +38,14 @@ Page({
   onLoad(options) {
     const originalUrl = decodeURIComponent(options.originalUrl || '')
     const count = Number(options.count || 3) === 9 ? 9 : 3
+    this._usedStyleIds = []
+    this._historyCustomerId = ''
+    this._loadedGenderLabel = ''
     this.syncSubmitState({ originalUrl, count })
     this.loadStyles(count)
   },
 
-  onShow() {
+  async onShow() {
     const changedUrl = wx.getStorageSync('changedOriginalUrl')
     const changedCount = Number(wx.getStorageSync('changedStyleCount') || 0)
     const nextData = {}
@@ -64,8 +67,29 @@ Page({
       this.syncSubmitState(nextData)
     }
 
+    const filterState = this.resolveGenderFilter()
+    const customerId = getShootCustomerId(getApp())
+    const genderChanged =
+      !!this._loadedGenderLabel && filterState.genderLabel !== this._loadedGenderLabel
+    const customerChanged = customerId !== this._historyCustomerId
+
+    if (genderChanged) {
+      await this.loadStyles(this.data.count)
+      return
+    }
+
+    if (customerChanged) {
+      await this.refreshUsedStyleIds()
+      if (this.data.stylePool.length) {
+        this.applyStylePool(this.data.count, this.data.stylePool)
+      } else {
+        this.updateNavTitle(this.data.currentStyleName)
+      }
+      return
+    }
+
     if (this.data.stylePool.length) {
-      this.applyGenderFilter(this.data.count, this.data.stylePool)
+      this.applyStylePool(this.data.count, this.data.stylePool)
     } else {
       this.updateNavTitle(this.data.currentStyleName)
     }
@@ -91,23 +115,41 @@ Page({
     }
   },
 
-  getFilteredPool(pool) {
-    const { genderLabel } = this.resolveGenderFilter()
-    return filterStylesByGender(pool, genderLabel)
+  async refreshUsedStyleIds() {
+    const app = getApp()
+    const customerId = getShootCustomerId(app)
+    const storeId = app.globalData.storeId
+    this._historyCustomerId = customerId || ''
+
+    if (!customerId || !storeId) {
+      this._usedStyleIds = []
+      return
+    }
+
+    try {
+      this._usedStyleIds = await fetchCustomerUsedStyleIds(db, storeId, customerId)
+    } catch (err) {
+      console.warn('[style-selector] 读取客户风格历史失败', err)
+      this._usedStyleIds = []
+    }
   },
 
-  applyGenderFilter(count, pool) {
+  pickStylesFromFiltered(filtered, count, filterState) {
+    const n = count === 9 ? 9 : 3
+    const usedStyleIds = this._usedStyleIds || []
+    const preferRandom = !filterState.hasLinkedCustomer || usedStyleIds.length === 0
+    return pickStylesForShoot(filtered, n, { usedStyleIds, preferRandom })
+  },
+
+  applyStylePool(count, pool) {
     const filterState = this.resolveGenderFilter()
-    const filtered = filterStylesByGender(pool, filterState.genderLabel)
-    const styles = pickStyles(filtered, count)
+    const styles = this.pickStylesFromFiltered(pool, count, filterState)
     let nextIndex = this.data.currentIndex
     if (nextIndex >= styles.length) nextIndex = 0
     const currentStyleName = styles[nextIndex]?.name || ''
 
     let stylesError = ''
     if (!pool.length) {
-      stylesError = '暂无可用风格，请联系管理员配置'
-    } else if (!filtered.length) {
       stylesError = filterState.hasLinkedCustomer
         ? '该客户性别暂无可用风格'
         : '该性别暂无可用风格'
@@ -146,21 +188,27 @@ Page({
   },
 
   async loadStyles(count) {
+    const filterState = this.resolveGenderFilter()
     this.syncSubmitState({ loadingStyles: true, stylesError: '' })
     try {
-      const pool = await fetchStyleTemplates(db, {
-        collection: STYLE_TEMPLATES_COLLECTION,
-        limit: 20,
-        onlyEnabled: true
-      })
+      const [pool] = await Promise.all([
+        fetchStyleTemplates(db, {
+          collection: STYLE_TEMPLATES_COLLECTION,
+          onlyEnabled: true,
+          gender: filterState.genderLabel
+        }),
+        this.refreshUsedStyleIds()
+      ])
+      this._loadedGenderLabel = filterState.genderLabel
       if (!pool.length) {
-        this.applyGenderFilter(count, [])
+        this.applyStylePool(count, [])
         wx.showToast({ title: '暂无可用风格', icon: 'none' })
         return
       }
-      this.applyGenderFilter(count, pool)
+      this.applyStylePool(count, pool)
     } catch (err) {
       console.error('[style-selector] 加载风格失败', err)
+      this._loadedGenderLabel = ''
       this.syncSubmitState({
         stylePool: [],
         styles: [],
@@ -184,9 +232,9 @@ Page({
   switchCount(e) {
     const count = Number(e.currentTarget.dataset.count || 3)
     if (count === this.data.count) return
-    this.setData({ count })
+    this.setData({ count, currentIndex: 0 })
     if (this.data.stylePool.length) {
-      this.applyGenderFilter(count, this.data.stylePool)
+      this.applyStylePool(count, this.data.stylePool)
     } else {
       this.loadStyles(count)
     }
@@ -195,10 +243,9 @@ Page({
   onGenderFilterTap(e) {
     const gender = e.currentTarget.dataset.gender
     if (!gender || gender === this.data.manualGender) return
-    this.setData({ manualGender: gender, currentIndex: 0 })
-    if (this.data.stylePool.length) {
-      this.applyGenderFilter(this.data.count, this.data.stylePool)
-    }
+    this.setData({ manualGender: gender, currentIndex: 0 }, () => {
+      this.loadStyles(this.data.count)
+    })
   },
 
   onThumbTap(e) {
@@ -239,21 +286,15 @@ Page({
       return
     }
     if (!this.data.canSubmit) return
-    const pool = this.data.stylePool
-    if (!pool.length) {
-      wx.showToast({ title: '风格未加载完成', icon: 'none' })
+    const styles = this.data.styles || []
+    if (!styles.length) {
+      wx.showToast({ title: '该性别暂无可用风格', icon: 'none' })
       return
     }
     const count = this.data.count === 9 ? 9 : 3
     try {
       await assertPortraitBalance(count)
     } catch (e) {
-      return
-    }
-    const filtered = this.getFilteredPool(pool)
-    const styles = pickStyles(filtered, count)
-    if (!styles.length) {
-      wx.showToast({ title: '该性别暂无可用风格', icon: 'none' })
       return
     }
     setPendingShoot({

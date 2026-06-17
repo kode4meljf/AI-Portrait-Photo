@@ -7,6 +7,11 @@ export const STYLE_GENDER_OPTIONS = [
   { label: '女', value: STYLE_GENDER_FEMALE }
 ]
 
+export const STYLE_GENDER_FILTER_OPTIONS = [
+  { label: '全部', value: '' },
+  ...STYLE_GENDER_OPTIONS
+]
+
 export function normalizeStyleGender(value) {
   const s = String(value || '').trim()
   if (s === STYLE_GENDER_FEMALE || s === 'female' || s === '女') return STYLE_GENDER_FEMALE

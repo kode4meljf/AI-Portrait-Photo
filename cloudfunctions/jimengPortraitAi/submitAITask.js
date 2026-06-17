@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStoreMember');
 const { assertCanSubmitPortrait, INSUFFICIENT_BALANCE_MSG } = require('./lib/balance');
+const { getPortraitEngine, assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -26,13 +27,15 @@ async function main(event) {
 
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
     await assertCanSubmitPortrait(storeId);
+    await assertCurrentPortraitEngineReady();
+    const portraitEngine = await getPortraitEngine();
 
     const task = {
       photoId,
       styleId,
       storeId,
       status: 'pending',
-      engine: 'jimeng',
+      engine: portraitEngine,
       prompt,
       resolution,
       jimengTaskId: null,
@@ -66,7 +69,9 @@ async function main(event) {
     return {
       success: true,
       taskId: addRes._id,
-      message: '任务已提交（即梦），请稍后刷新查看'
+      message: portraitEngine === 'seedream'
+        ? '任务已提交（智绘引擎），请稍后刷新查看'
+        : '任务已提交（经典引擎），请稍后刷新查看'
     };
   } catch (err) {
     console.error('[jimengPortraitAi/submit] 失败:', err);

@@ -76,7 +76,7 @@ async function submitAllPortraitTasks(jobs, batchId) {
       styleId: job.styleId
     }))
   });
-  kickPortraitWorker({ batchId: batchId || '' });
+  await kickPortraitWorker({ batchId: batchId || '' });
 }
 
 /**

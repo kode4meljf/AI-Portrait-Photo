@@ -1,7 +1,9 @@
 const app = getApp();
-const { fetchStylesByIds, pickStyles } = require('../../../../config/styles.js');
+const { fetchStyleTemplates, fetchStylesByIds, pickStylesForShoot } = require('../../../../config/styles.js');
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
-const { consumePendingShoot } = require('../../../../utils/shootContext.js');
+const { consumePendingShoot, getShootCustomerId } = require('../../../../utils/shootContext.js');
+const { filterStylesByGender, styleGenderFromCustomer } = require('../../../../utils/styleGender');
+const { fetchCustomerUsedStyleIds } = require('../../../../utils/customerStyleHistory');
 const { isCloudFileId } = require('../../../utils/cloudPhoto.js');
 const { runShootPortraitGeneration } = require('../../../utils/shootGenerate.js');
 const {
@@ -21,6 +23,7 @@ const {
 } = require('../../../../utils/portraitBilling.js');
 const { setBatchFavorite, loadBatchFavorite } = require('../../../../utils/batchFavorite.js');
 const { resolveLinkedCustomerId } = require('../../../utils/albumCustomer.js');
+const { fetchPhotosByBatchId } = require('../../../../utils/batchPhotos.js');
 const { countCustomerAiPhotos } = require('../../../utils/albumPhotos.js');
 const { fetchAlbumPlatformConfig } = require('../../../../utils/platformSettings.js');
 const { isValidStoreId } = require('../../../../utils/storeSession.js');
@@ -119,7 +122,7 @@ Page({
     const styleIds = `${options.styleIds || ''}`.split(',').filter(Boolean);
     this._styles = [];
     this.setData({ originalUrl, navTitle: '生成中' });
-    this.resolveStyles({ pending, styleIds, count })
+    this.resolveStyles({ pending, styleIds, count, options })
       .then((styles) => {
         this._styles = styles;
         this.runGeneration();
@@ -132,7 +135,7 @@ Page({
       });
   },
 
-  async resolveStyles({ pending, styleIds, count }) {
+  async resolveStyles({ pending, styleIds, count, options = {} }) {
     const n = count === 9 ? 9 : 3;
     const pendingStyles = pending && Array.isArray(pending.styles) ? pending.styles : [];
     if (pendingStyles.length) {
@@ -141,19 +144,42 @@ Page({
     if (styleIds.length) {
       return fetchStylesByIds(db, styleIds, {
         collection: STYLE_TEMPLATES_COLLECTION,
-        limit: 20,
         onlyEnabled: true
       });
     }
-    const pool = await fetchStylesByIds(db, [], {
+
+    const pool = await fetchStyleTemplates(db, {
       collection: STYLE_TEMPLATES_COLLECTION,
-      limit: 20,
       onlyEnabled: true
     });
     if (!pool.length) {
       throw new Error('未获取到风格模板');
     }
-    return pickStyles(pool, n);
+
+    const customerId =
+      getShootCustomerId(app) || String(options.customerId || '').trim();
+    const customer = app.globalData.selectedCustomer;
+    const hasLinkedCustomer = !!(customerId && customer && customer._id === customerId);
+    const filtered = hasLinkedCustomer
+      ? filterStylesByGender(pool, styleGenderFromCustomer(customer.gender))
+      : pool;
+
+    if (!filtered.length) {
+      throw new Error('该性别暂无可用风格');
+    }
+
+    let usedStyleIds = [];
+    const storeId = app.globalData.storeId;
+    if (hasLinkedCustomer && storeId) {
+      try {
+        usedStyleIds = await fetchCustomerUsedStyleIds(db, storeId, customerId);
+      } catch (e) {
+        console.warn('[portrait-viewer] 读取客户风格历史失败', e);
+      }
+    }
+
+    const preferRandom = !hasLinkedCustomer || usedStyleIds.length === 0;
+    return pickStylesForShoot(filtered, n, { usedStyleIds, preferRandom });
   },
 
   async loadBatchFavoriteState() {
@@ -175,13 +201,7 @@ Page({
     }
 
     try {
-      const res = await db
-        .collection('photos')
-        .where({ batchId: this.data.batchId })
-        .orderBy('createTime', 'asc')
-        .get();
-
-      const photos = res.data || [];
+      const photos = await fetchPhotosByBatchId(db, this.data.batchId);
       if (!photos.length) {
         wx.showToast({ title: '暂无照片', icon: 'none' });
         return;

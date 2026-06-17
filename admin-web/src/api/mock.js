@@ -13,6 +13,22 @@ function assertMockUniqueName(list, name, excludeId, resourceLabel) {
   }
 }
 
+function assertMockStyleNameUnique(list, name, gender, excludeId) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) throw new Error('请填写风格名称')
+  const g = normalizeMockStyleGender(gender)
+  const hit = list.find(
+    (row) =>
+      (row.name || '').trim() === trimmed &&
+      normalizeMockStyleGender(row.gender) === g &&
+      row._id !== excludeId
+  )
+  if (hit) {
+    const code = hit.id ? `编号 ${hit.id}` : '已有记录'
+    throw new Error(`该性别下风格名称「${trimmed}」已存在（${code}）`)
+  }
+}
+
 const mockStores = [
   {
     _id: 'store_demo0001',
@@ -134,7 +150,21 @@ let mockPlatformSettings = {
   volcAccessKeyMasked: '',
   volcSecretKeyConfigured: false,
   volcKeysUpdateTime: null,
+  portraitEngine: 'jimeng',
+  portraitEngineLabel: '经典引擎',
+  portraitEngineOptions: [
+    { value: 'jimeng', label: '经典引擎', engineId: 'i2i_portrait_photo', description: '即梦人像写真，稳定人像保真' },
+    { value: 'seedream', label: '智绘引擎', description: '豆包 Seedream 5.0，新一代多模态生图' }
+  ],
+  arkApiKeyMasked: '',
+  arkApiKeyConfigured: false,
+  arkKeysUpdateTime: null,
+  seedreamModelId: 'doubao-seedream-5-0-260128',
+  seedreamSizeTier: '2k',
+  seedreamOrientation: 'portrait',
+  seedreamOutputSizeLabel: '1728 × 2304',
   jimengMaxConcurrency: 1,
+  seedreamMaxConcurrency: 10,
   albumEntryMinTotal: 40,
   albumSelectMin: 30,
   albumSelectMax: 40,
@@ -356,11 +386,15 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return { date: query.date, yesterdayCount: 8, todayCount: 7, todayUnchecked: 3 }
     case 'styles.list': {
       const keyword = (query.keyword || payload.keyword || '').trim().toLowerCase()
+      const genderFilter = String(query.gender || payload.gender || '').trim()
       let rows = mockStyles.slice().sort((a, b) => {
         const na = Number(String(a.id).replace(/^S/i, '')) || 999
         const nb = Number(String(b.id).replace(/^S/i, '')) || 999
         return na - nb
       })
+      if (genderFilter === '男' || genderFilter === '女') {
+        rows = rows.filter((s) => normalizeMockStyleGender(s.gender) === genderFilter)
+      }
       if (keyword) {
         rows = rows.filter(
           (s) => s.name.toLowerCase().includes(keyword) || s.id.toLowerCase().includes(keyword)
@@ -369,7 +403,7 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return {
         list: rows.map(withStyleSampleUrl),
         total: rows.length,
-        enabledCount: mockStyles.filter((s) => s.enabled !== false).length,
+        enabledCount: rows.filter((s) => s.enabled !== false).length,
         page: 1,
         pageSize: 20
       }
@@ -379,10 +413,14 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return withStyleSampleUrl(row)
     }
     case 'styles.create': {
-      assertMockUniqueName(mockStyles, payload.name, null, '风格')
+      const gender = normalizeMockStyleGender(payload.gender)
+      assertMockStyleNameUnique(mockStyles, payload.name, gender, null)
+      const id =
+        (payload.id && String(payload.id).trim().toUpperCase()) ||
+        allocateStyleIdFromList(mockStyles, gender)
       const row = withStyleSampleUrl({
         _id: `t${Date.now()}`,
-        id: allocateStyleIdFromList(mockStyles),
+        id,
         name: (payload.name || '').trim(),
         prompt: payload.prompt || '',
         resolution: payload.resolution || '1536:1152',
@@ -403,7 +441,12 @@ export async function mockRequest(action, payload = {}, query = {}) {
       const idx = mockStyles.findIndex((s) => s._id === payload._id)
       if (idx < 0) throw new Error('风格不存在')
       if (payload.name !== undefined) {
-        assertMockUniqueName(mockStyles, payload.name, payload._id, '风格')
+        const row = mockStyles[idx]
+        const gender =
+          payload.gender !== undefined
+            ? normalizeMockStyleGender(payload.gender)
+            : normalizeMockStyleGender(row.gender)
+        assertMockStyleNameUnique(mockStyles, payload.name, gender, payload._id)
         payload.name = (payload.name || '').trim()
       }
       mockStyles[idx] = { ...mockStyles[idx], ...payload }
@@ -480,20 +523,34 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return { deleted: true }
     }
     case 'platformSettings.get': {
-      const saved = mockPlatformSettings.jimengMaxConcurrency ?? 1
+      const savedJimeng = mockPlatformSettings.jimengMaxConcurrency ?? 1
+      const savedSeedream = mockPlatformSettings.seedreamMaxConcurrency ?? 10
       return {
         ...mockPlatformSettings,
-        jimengMaxConcurrency: saved,
-        jimengMaxConcurrencyEffective: saved,
-        jimengMaxConcurrencyOverriddenByEnv: false
+        jimengMaxConcurrency: savedJimeng,
+        jimengMaxConcurrencyEffective: savedJimeng,
+        jimengMaxConcurrencyOverriddenByEnv: false,
+        seedreamMaxConcurrency: savedSeedream,
+        seedreamMaxConcurrencyEffective: savedSeedream,
+        seedreamMaxConcurrencyOverriddenByEnv: false
       }
     }
     case 'platformSettings.update': {
       const volcAccessKey = (payload.volcAccessKey || '').trim()
       const volcSecretKey = (payload.volcSecretKey || '').trim()
-      const saved = Math.min(
+      const arkApiKey = (payload.arkApiKey || '').trim()
+      const portraitEngine = (payload.portraitEngine || 'jimeng').trim() === 'seedream' ? 'seedream' : 'jimeng'
+      const nextArkConfigured = !!arkApiKey || mockPlatformSettings.arkApiKeyConfigured
+      if (portraitEngine === 'seedream' && !nextArkConfigured) {
+        throw new Error('选择智绘引擎前，请先配置方舟 API Key')
+      }
+      const savedJimeng = Math.min(
         10,
         Math.max(1, Math.floor(Number(payload.jimengMaxConcurrency) || 1))
+      )
+      const savedSeedream = Math.min(
+        50,
+        Math.max(1, Math.floor(Number(payload.seedreamMaxConcurrency) || 10))
       )
       const albumSelectMin = Math.min(
         200,
@@ -514,7 +571,18 @@ export async function mockRequest(action, payload = {}, query = {}) {
       mockPlatformSettings = {
         ...mockPlatformSettings,
         supportPhone: (payload.supportPhone || '').trim(),
-        jimengMaxConcurrency: saved,
+        portraitEngine,
+        portraitEngineLabel: portraitEngine === 'seedream' ? '智绘引擎' : '经典引擎',
+        seedreamModelId: (payload.seedreamModelId || 'doubao-seedream-5-0-260128').trim(),
+        seedreamSizeTier: (payload.seedreamSizeTier || '2k').trim() === '4k' ? '4k' : '2k',
+        seedreamOrientation: (() => {
+          const o = String(payload.seedreamOrientation || 'portrait').trim().toLowerCase()
+          if (o === 'landscape' || o === '横图') return 'landscape'
+          if (o === 'auto' || o === '自动') return 'auto'
+          return 'portrait'
+        })(),
+        jimengMaxConcurrency: savedJimeng,
+        seedreamMaxConcurrency: savedSeedream,
         albumSelectMin,
         albumSelectMax,
         albumEntryMinTotal,
@@ -531,10 +599,20 @@ export async function mockRequest(action, payload = {}, query = {}) {
         mockPlatformSettings.volcSecretKeyConfigured = true
         mockPlatformSettings.volcKeysUpdateTime = new Date().toISOString()
       }
+      if (arkApiKey) {
+        mockPlatformSettings.arkApiKeyMasked =
+          arkApiKey.length <= 8
+            ? '****'
+            : `${arkApiKey.slice(0, 4)}****${arkApiKey.slice(-4)}`
+        mockPlatformSettings.arkApiKeyConfigured = true
+        mockPlatformSettings.arkKeysUpdateTime = new Date().toISOString()
+      }
       return {
         ...mockPlatformSettings,
         jimengMaxConcurrencyEffective: mockPlatformSettings.jimengMaxConcurrency,
-        jimengMaxConcurrencyOverriddenByEnv: false
+        jimengMaxConcurrencyOverriddenByEnv: false,
+        seedreamMaxConcurrencyEffective: mockPlatformSettings.seedreamMaxConcurrency,
+        seedreamMaxConcurrencyOverriddenByEnv: false
       }
     }
     case 'feedbacks.list': {

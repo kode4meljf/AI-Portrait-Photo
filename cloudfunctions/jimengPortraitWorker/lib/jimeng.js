@@ -209,7 +209,7 @@ async function submitJimengTask(imageUrl, prompt, options = {}) {
   }));
 }
 
-async function queryJimengTask(taskId) {
+async function queryJimengTask(taskId, reqKey = 'i2i_portrait_photo') {
   return withJimengRateLimit('query', async () => withVolcCredentials(async ({ accessKey, secretKey }) => {
 
     const queryParams = {
@@ -223,7 +223,7 @@ async function queryJimengTask(taskId) {
     });
 
     const payload = {
-      req_key: 'i2i_portrait_photo',
+      req_key: reqKey,
       task_id: taskId,
       req_json: reqJson
     };
@@ -303,6 +303,7 @@ async function pollJimengTask(taskId, options = {}) {
   const budgetMs = options.budgetMs || DEFAULT_POLL_BUDGET_MS;
   const intervalMs = options.intervalMs || POLL_INTERVAL_MS;
   const skipInitialDelay = options.skipInitialDelay || false;
+  const reqKey = options.reqKey || 'i2i_portrait_photo';
   const deadline = Date.now() + budgetMs;
 
   let first = skipInitialDelay;
@@ -315,7 +316,7 @@ async function pollJimengTask(taskId, options = {}) {
 
     if (Date.now() >= deadline) break;
 
-    const result = await queryJimengTask(taskId);
+    const result = await queryJimengTask(taskId, reqKey);
     console.log('[jimengPortraitAi/jimeng] 轮询:', JSON.stringify(result).substring(0, 300));
 
     const parsed = parseQueryResult(result);
@@ -328,10 +329,114 @@ async function pollJimengTask(taskId, options = {}) {
   return { status: 'pending' };
 }
 
+const T2I_REQ_KEY = process.env.JIMENG_T2I_REQ_KEY || 'high_aes_general_v30';
+const T2I_MODEL_VERSION = process.env.JIMENG_T2I_MODEL_VERSION || '';
+
+function resolveT2iModelVersion(reqKey, explicit) {
+  if (explicit) return explicit;
+  if (T2I_MODEL_VERSION) return T2I_MODEL_VERSION;
+  if (reqKey === 'high_aes_general_v30') return 'general_v3.0';
+  if (reqKey === 'high_aes_general_v20' || reqKey === 'high_aes_general_v20_L') return 'general_v2.0';
+  if (reqKey === 'high_aes_general_v14') return 'general_v1.4';
+  return '';
+}
+
+/** 即梦 / 智能绘图文生图（无参考图），用于风格样图等 */
+async function submitText2ImageTask(prompt, options = {}) {
+  const reqKey = options.reqKey || T2I_REQ_KEY;
+  const modelVersion = resolveT2iModelVersion(reqKey, options.modelVersion);
+  return withJimengRateLimit('submit-t2i', async () => withVolcCredentials(async ({ accessKey, secretKey }) => {
+    const queryParams = {
+      Action: 'CVSync2AsyncSubmitTask',
+      Version: JIMENG_VERSION
+    };
+
+    const payload = {
+      req_key: reqKey,
+      prompt: prompt || '',
+      width: options.width || 1152,
+      height: options.height || 1536
+    };
+    if (modelVersion) payload.model_version = modelVersion;
+
+    const sig = signRequest(
+      accessKey,
+      secretKey,
+      'POST',
+      JIMENG_ENDPOINT,
+      JIMENG_SERVICE,
+      JIMENG_REGION,
+      queryParams,
+      payload
+    );
+    const url = `https://${JIMENG_ENDPOINT}/?${sig.queryString}`;
+
+    console.log('[jimeng/t2i] 提交文生图任务', reqKey, modelVersion || '');
+
+    let response;
+    try {
+      response = await axios({
+        method: 'POST',
+        url,
+        headers: sig.headers,
+        data: sig.body,
+        timeout: 25000
+      });
+    } catch (err) {
+      if (err.response) {
+        console.error(
+          '[jimeng/t2i] 提交错误:',
+          err.response.status,
+          JSON.stringify(err.response.data).substring(0, 500)
+        );
+      }
+      throw err;
+    }
+
+    const result = response.data;
+    if (result.code !== 10000) {
+      if (isJimengRateLimitCode(result.code)) {
+        const err = new Error(`即梦文生图限流: code=${result.code}, message=${result.message || ''}`);
+        err.rateLimited = true;
+        throw err;
+      }
+      throw new Error(`即梦文生图提交失败: code=${result.code}, message=${result.message || ''}`);
+    }
+
+    const taskId = result.data && result.data.task_id;
+    if (!taskId) throw new Error('即梦文生图未返回 task_id');
+    return { taskId, reqKey };
+  }));
+}
+
+async function generateText2Image(prompt, options = {}) {
+  const { taskId, reqKey } = await submitText2ImageTask(prompt, options);
+  const maxMs = options.maxWaitMs || 180000;
+  const intervalMs = options.intervalMs || POLL_INTERVAL_MS;
+  const start = Date.now();
+
+  while (Date.now() - start < maxMs) {
+    const r = await pollJimengTask(taskId, {
+      budgetMs: 20000,
+      intervalMs,
+      skipInitialDelay: true,
+      reqKey
+    });
+    if (r.status === 'done') return r.buffer;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error('即梦文生图超时');
+}
+
 module.exports = {
   submitJimengTask,
   queryJimengTask,
   pollJimengTask,
+  submitText2ImageTask,
+  generateText2Image,
+  T2I_REQ_KEY,
+  T2I_MODEL_VERSION,
+  resolveT2iModelVersion,
   POLL_INTERVAL_MS,
   DEFAULT_POLL_BUDGET_MS
 };

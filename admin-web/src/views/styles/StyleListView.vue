@@ -1,7 +1,7 @@
 <template>
   <div class="page-card">
     <el-alert
-      title="编号 S01 起自动分配；样图为效果参考；成片分辨率默认 1536:1152（4:3 横图）"
+      title="女性 F01–F30、男性 M01–M30（编号与性别对应）；样图为效果参考；成片分辨率默认 1536:1152（4:3 横图）"
       type="info"
       show-icon
       :closable="false"
@@ -9,6 +9,21 @@
     />
 
     <div class="page-toolbar">
+      <div class="gender-row-ctrl gender-row-ctrl--toolbar">
+        <span class="toolbar-label">性别</span>
+        <div class="gender-filter">
+          <button
+            v-for="opt in genderFilterOptions"
+            :key="opt.value || 'all'"
+            type="button"
+            class="gender-filter-btn"
+            :class="{ active: genderFilter === opt.value }"
+            @click="setGenderFilter(opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
       <el-input
         v-model="keyword"
         placeholder="搜索名称 / ID"
@@ -41,7 +56,19 @@
         </template>
       </el-table-column>
       <el-table-column prop="resolution" label="分辨率" width="112" show-overflow-tooltip />
-      <el-table-column prop="prompt" label="提示词" min-width="200" show-overflow-tooltip />
+      <el-table-column label="提示词" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span
+            v-if="row.prompt"
+            class="prompt-copy"
+            title="点击复制提示词"
+            @click="copyPrompt(row.prompt)"
+          >
+            {{ row.prompt }}
+          </span>
+          <span v-else class="text-muted">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="sort" label="排序" width="72" />
       <el-table-column label="启用" width="80">
         <template #default="{ row }">
@@ -76,8 +103,8 @@
     >
       <el-form :model="editForm" label-width="90px">
         <el-form-item v-if="isCreate" label="编号">
-          <span class="id-preview">{{ nextStyleId || 'S01–S12 已满' }}</span>
-          <p class="id-hint">保存时自动分配，无需填写</p>
+          <span class="id-preview">{{ nextStyleId || `${styleIdRangeLabel(editForm.gender)} 已满` }}</span>
+          <p class="id-hint">保存时按适用性别自动分配（{{ styleIdFullRangeLabel() }}）</p>
         </el-form-item>
         <el-form-item v-else label="编号">
           <el-input v-model="editForm.id" disabled />
@@ -146,7 +173,7 @@
           />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="editForm.sort" :min="0" :max="999" />
+          <el-input-number v-model="editForm.sort" :min="0" />
         </el-form-item>
         <el-form-item label="启用">
           <el-switch v-model="editForm.enabled" />
@@ -161,10 +188,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api/admin'
-import { previewNextStyleId } from '@/utils/styleId'
+import { previewNextStyleId, styleIdRangeLabel, styleIdFullRangeLabel } from '@/utils/styleId'
 import StyleSampleUpload from '@/components/StyleSampleUpload.vue'
 import ClickImagePreview from '@/components/ClickImagePreview.vue'
 import {
@@ -178,16 +205,19 @@ import {
 } from '@/utils/styleResolution'
 import {
   DEFAULT_STYLE_GENDER,
+  STYLE_GENDER_FILTER_OPTIONS,
   STYLE_GENDER_OPTIONS,
   normalizeStyleGender
 } from '@/utils/styleGender'
 
 const resolutionHint = STYLE_RESOLUTION_HINT
 const genderOptions = STYLE_GENDER_OPTIONS
+const genderFilterOptions = STYLE_GENDER_FILTER_OPTIONS
 
 const list = ref([])
 const loading = ref(false)
 const keyword = ref('')
+const genderFilter = ref('')
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -204,7 +234,8 @@ async function loadList() {
     const res = await api.listStyles({
       page: page.value,
       pageSize: pageSize.value,
-      keyword: keyword.value
+      keyword: keyword.value,
+      gender: genderFilter.value
     })
     list.value = res.list || []
     total.value = res.total || 0
@@ -221,6 +252,13 @@ function search() {
   loadList()
 }
 
+function setGenderFilter(value) {
+  if (genderFilter.value === value) return
+  genderFilter.value = value
+  page.value = 1
+  loadList()
+}
+
 function onPageChange(p) {
   page.value = p
   loadList()
@@ -228,7 +266,6 @@ function onPageChange(p) {
 
 function openCreate() {
   isCreate.value = true
-  nextStyleId.value = previewNextStyleId(list.value) || ''
   editForm.value = {
     name: '',
     gender: DEFAULT_STYLE_GENDER,
@@ -240,8 +277,18 @@ function openCreate() {
     sort: (list.value.length + 1) * 10,
     enabled: true
   }
+  nextStyleId.value = previewNextStyleId(list.value, editForm.value.gender) || ''
   dialogVisible.value = true
 }
+
+watch(
+  () => editForm.value.gender,
+  (gender) => {
+    if (isCreate.value) {
+      nextStyleId.value = previewNextStyleId(list.value, gender) || ''
+    }
+  }
+)
 
 function openEdit(row) {
   isCreate.value = false
@@ -312,6 +359,29 @@ async function saveStyle() {
   }
 }
 
+async function copyPrompt(text) {
+  const value = String(text || '').trim()
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
+    ElMessage.success('提示词已复制')
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = value
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      ElMessage.success('提示词已复制')
+    } catch {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
 async function onDelete(row) {
   try {
     await ElMessageBox.confirm(`确定删除风格「${row.name}」？`, '提示', { type: 'warning' })
@@ -346,6 +416,13 @@ onMounted(loadList)
 }
 .text-muted {
   color: #c0c4cc;
+}
+.prompt-copy {
+  cursor: pointer;
+  color: var(--el-color-primary);
+}
+.prompt-copy:hover {
+  text-decoration: underline;
 }
 .id-preview {
   font-weight: 600;
@@ -411,6 +488,29 @@ onMounted(loadList)
   font-size: 14px;
   line-height: 32px;
   user-select: none;
+}
+
+.gender-row-ctrl--toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gender-row-ctrl--toolbar .gender-filter {
+  width: 168px;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+}
+
+.gender-row-ctrl--toolbar .gender-filter-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
 }
 
 .gender-row-ctrl--form {

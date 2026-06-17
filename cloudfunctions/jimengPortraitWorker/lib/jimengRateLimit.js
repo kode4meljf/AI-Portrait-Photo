@@ -28,6 +28,15 @@ function isJimengRateLimitError(err) {
   return /50429|50430|限流|QPS|rate limit|too many/i.test(msg);
 }
 
+/** 即梦网关偶发 5xx，间隔后重试通常可恢复 */
+function isTransientJimengError(err) {
+  if (!err) return false;
+  const status = err.response && err.response.status;
+  if (status === 500 || status === 502 || status === 503 || status === 504) return true;
+  const msg = String(err.message || '');
+  return /status code 50[0-4]|ECONNRESET|ETIMEDOUT|socket hang up/i.test(msg);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -52,7 +61,7 @@ async function throttleJimengApi(label) {
  * @param {() => Promise<any>} fn
  */
 async function withJimengRateLimit(label, fn, options = {}) {
-  const defaultRetries = label === 'submit' ? 5 : 3;
+  const defaultRetries = label === 'submit' ? 5 : 5;
   const maxRetries = options.maxRetries != null ? options.maxRetries : defaultRetries;
   const minInterval = getMinIntervalMs();
 
@@ -62,10 +71,12 @@ async function withJimengRateLimit(label, fn, options = {}) {
       return await fn();
     } catch (err) {
       const isLast = attempt >= maxRetries;
-      if (!isJimengRateLimitError(err) || isLast) throw err;
-      const backoff = minInterval * (attempt + 1);
+      const retryable = isJimengRateLimitError(err) || isTransientJimengError(err);
+      if (!retryable || isLast) throw err;
+      const backoff = minInterval * (attempt + 1) * 2;
+      const reason = isJimengRateLimitError(err) ? '限流' : '瞬态错误';
       console.warn(
-        `[jimengPortraitAi/rateLimit] ${label} 触发限流，${backoff}ms 后重试 (${attempt + 1}/${maxRetries})`
+        `[jimengPortraitAi/rateLimit] ${label} ${reason}，${backoff}ms 后重试 (${attempt + 1}/${maxRetries})`
       );
       await sleep(backoff);
     }
@@ -77,6 +88,7 @@ module.exports = {
   getMinIntervalMs,
   isJimengRateLimitCode,
   isJimengRateLimitError,
+  isTransientJimengError,
   throttleJimengApi,
   withJimengRateLimit
 };

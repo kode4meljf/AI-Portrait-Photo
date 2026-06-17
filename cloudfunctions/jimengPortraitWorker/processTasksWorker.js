@@ -1,21 +1,34 @@
 const cloud = require('wx-server-sdk');
 const { submitJimengTask, pollJimengTask } = require('./lib/jimeng');
+const { generateSeedreamPortrait } = require('./lib/arkSeedream');
 const { deleteReplacedCloudFile } = require('./lib/cloudFile');
 const { chargeStoreForPortrait } = require('./lib/balance');
 const { toUserFacingError, TIMEOUT_FAIL } = require('./lib/userFacingError');
 const { isJimengRateLimitError } = require('./lib/jimengRateLimit');
-const { getJimengMaxConcurrency } = require('./lib/platformJimengConfig');
+const { getPortraitConcurrencyLimits } = require('./lib/platformJimengConfig');
+const { getSeedreamConfig } = require('./lib/platformPortraitConfig');
+const {
+  PORTRAIT_ENGINE_JIMENG,
+  PORTRAIT_ENGINE_SEEDREAM,
+  normalizePortraitEngine
+} = require('./lib/portraitEngineConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+const _ = db.command;
 const STYLE_TEMPLATES_COLLECTION = 'style_templates';
 const STALE_TASK_MS = 30 * 60 * 1000;
 const MAX_SUBMIT_ATTEMPTS = 4;
 const MAX_POLL_ATTEMPTS = 20;
 const STUCK_PROCESSING_GRACE_MS = 8000;
+/** 微信云函数平台上限 60s（见 config.json），不可调高 */
+const CLOUD_FUNCTION_TIMEOUT_MS = 60000;
+const CLOUD_FUNCTION_TAIL_MS = 5000;
+/** Seedream 同步生图若被平台强杀，略大于 60s 后允许重新认领 */
+const STUCK_SEEDREAM_GENERATING_MS = CLOUD_FUNCTION_TIMEOUT_MS + 10 * 1000;
 
-/** 微信云函数最长 60s，留 ~5s 缓冲给平台收尾 */
-const WORKER_BUDGET_MS = 55000;
+/** 单轮 Worker 执行预算，留 tail 给平台收尾 */
+const WORKER_BUDGET_MS = CLOUD_FUNCTION_TIMEOUT_MS - CLOUD_FUNCTION_TAIL_MS;
 const POLL_BUDGET_MS = 10000;
 /** 多任务并行时单次 poll 切片，避免占满整轮 budget */
 const POLL_SLICE_MS = 6000;
@@ -84,6 +97,18 @@ function taskTimestamp(task) {
   return Number.isNaN(ts) ? 0 : ts;
 }
 
+function isStuckSeedreamGenerating(task) {
+  if (normalizePortraitEngine(task.engine) !== PORTRAIT_ENGINE_SEEDREAM) return false;
+  if (task.phase !== 'generating') return false;
+  return Date.now() - taskTimestamp(task) >= STUCK_SEEDREAM_GENERATING_MS;
+}
+
+function buildTaskScopeWhere(base, priorityBatchId) {
+  const batchId = String(priorityBatchId || '').trim();
+  if (!batchId) return base;
+  return { ...base, batchId };
+}
+
 function pickByBatchFirst(list, priorityBatchId) {
   if (!list.length) return null;
   const batchId = String(priorityBatchId || '').trim();
@@ -142,6 +167,10 @@ function logHttpError(prefix, err) {
 async function claimTaskForSubmit(task) {
   const jimengTaskId = (task.jimengTaskId || '').trim();
   if (jimengTaskId) return false;
+  if (task.phase === 'generating') {
+    if (!isStuckSeedreamGenerating(task)) return false;
+    console.warn('[jimengPortraitWorker] 重新认领卡住的 Seedream 任务', task._id);
+  }
 
   if (task.status === 'pending') {
     const res = await db
@@ -286,26 +315,85 @@ async function completeTask(task, resultBuffer, previousAiUrl) {
   return { processed: 1, completed: true, taskId: task._id };
 }
 
-async function pickTaskForSubmit(priorityBatchId) {
+function sortTasksForPick(list, priorityBatchId) {
+  const batchId = String(priorityBatchId || '').trim();
+  if (!batchId) return list;
+  return list.slice().sort((a, b) => {
+    const aHit = String(a.batchId || '') === batchId ? 0 : 1;
+    const bHit = String(b.batchId || '') === batchId ? 0 : 1;
+    if (aHit !== bHit) return aHit - bHit;
+    return taskTimestamp(a) - taskTimestamp(b);
+  });
+}
+
+async function loadPendingTasks(priorityBatchId, engine) {
   const pendingRes = await db
     .collection('ai_tasks')
-    .where({ status: 'pending', engine: 'jimeng' })
+    .where(
+      buildTaskScopeWhere(
+        {
+          status: 'pending',
+          engine
+        },
+        priorityBatchId
+      )
+    )
     .orderBy('createTime', 'asc')
-    .limit(30)
+    .limit(40)
     .get();
-  let pending = await purgeStaleTasks(pendingRes.data || []);
-  const pendingHit = pickByBatchFirst(pending, priorityBatchId);
-  if (pendingHit) return pendingHit;
+  return purgeStaleTasks(pendingRes.data || []);
+}
 
+async function loadStuckSubmitTasks(priorityBatchId, engine) {
   const procRes = await db
     .collection('ai_tasks')
-    .where({ status: 'processing', engine: 'jimeng' })
+    .where(
+      buildTaskScopeWhere(
+        {
+          status: 'processing',
+          engine
+        },
+        priorityBatchId
+      )
+    )
     .orderBy('updateTime', 'asc')
     .limit(20)
     .get();
-  let stuck = (procRes.data || []).filter((t) => !(t.jimengTaskId || '').trim());
-  stuck = await purgeStaleTasks(stuck);
-  return pickByBatchFirst(stuck, priorityBatchId);
+  let stuck = (procRes.data || []).filter((t) => {
+    if ((t.jimengTaskId || '').trim()) return false;
+    if (engine === PORTRAIT_ENGINE_SEEDREAM) {
+      return t.phase === 'generating' && isStuckSeedreamGenerating(t);
+    }
+    return t.phase !== 'generating';
+  });
+  return purgeStaleTasks(stuck);
+}
+
+async function pickTasksForEngine(priorityBatchId, engine, limit) {
+  const maxPick = Math.max(1, Math.floor(Number(limit) || 1));
+  const pending = sortTasksForPick(await loadPendingTasks(priorityBatchId, engine), priorityBatchId);
+  const stuck = sortTasksForPick(
+    await loadStuckSubmitTasks(priorityBatchId, engine),
+    priorityBatchId
+  );
+  const merged = [];
+  const seen = new Set();
+  for (const task of [...pending, ...stuck]) {
+    if (!task || !task._id || seen.has(task._id)) continue;
+    seen.add(task._id);
+    merged.push(task);
+    if (merged.length >= maxPick) break;
+  }
+  return merged;
+}
+
+async function pickJimengTaskForSubmit(priorityBatchId) {
+  const list = await pickTasksForEngine(priorityBatchId, PORTRAIT_ENGINE_JIMENG, 1);
+  return list[0] || null;
+}
+
+async function pickSeedreamTasksForSubmit(priorityBatchId, limit) {
+  return pickTasksForEngine(priorityBatchId, PORTRAIT_ENGINE_SEEDREAM, limit);
 }
 
 async function pickTaskForPoll(priorityBatchId) {
@@ -322,14 +410,48 @@ async function pickTaskForPoll(priorityBatchId) {
   return pickByBatchFirst(list, priorityBatchId);
 }
 
-/** 已 submit 到即梦、仍在生成中的任务数（全账号，与火山并发配额对齐） */
-async function countInFlightTasks() {
+/** 各引擎在途任务数（与火山配额 / 方舟 IPM 对齐，分开计数） */
+async function countInFlightByEngine() {
   const res = await db
     .collection('ai_tasks')
-    .where({ status: 'processing', engine: 'jimeng' })
-    .limit(50)
+    .where({
+      status: 'processing',
+      engine: _.in([PORTRAIT_ENGINE_JIMENG, PORTRAIT_ENGINE_SEEDREAM])
+    })
+    .limit(100)
     .get();
-  return (res.data || []).filter((t) => (t.jimengTaskId || '').trim()).length;
+  let jimeng = 0;
+  let seedream = 0;
+  for (const t of res.data || []) {
+    const engine = normalizePortraitEngine(t.engine);
+    if (engine === PORTRAIT_ENGINE_SEEDREAM) {
+      if (isStuckSeedreamGenerating(t)) continue;
+      seedream += 1;
+      continue;
+    }
+    if ((t.jimengTaskId || '').trim() || t.phase === 'submit') {
+      jimeng += 1;
+    }
+  }
+  return { jimeng, seedream, total: jimeng + seedream };
+}
+
+async function runSeedreamSubmitPhase(task, photo) {
+  const prompt = await resolvePrompt(task);
+  const imageUrl = await getImageUrl(photo.originalUrl);
+  const seedreamConfig = await getSeedreamConfig();
+
+  await db.collection('ai_tasks').doc(task._id).update({
+    data: {
+      phase: 'generating',
+      updateTime: new Date()
+    }
+  });
+
+  const sizeLabel = seedreamConfig.outputSize || 'auto';
+  console.log('[jimengPortraitWorker] 提交 Seedream', task._id, task.styleId || '', sizeLabel);
+  const resultBuffer = await generateSeedreamPortrait(imageUrl, prompt, seedreamConfig);
+  return completeTask(task, resultBuffer, photo.aiUrl || '');
 }
 
 /** 阶段 A：扣费 → submit 即梦 → 写 jimengTaskId（同次调用不 poll） */
@@ -370,6 +492,10 @@ async function runSubmitPhase(task) {
     const { width, height } = parseResolution(task.resolution);
     const imageUrl = await getImageUrl(photo.originalUrl);
 
+    if (normalizePortraitEngine(task.engine) === PORTRAIT_ENGINE_SEEDREAM) {
+      return runSeedreamSubmitPhase(task, photo);
+    }
+
     console.log('[jimengPortraitWorker] 提交即梦', task._id, task.styleId || '');
     const jimengTaskId = await submitJimengTask(imageUrl, prompt, { width, height });
 
@@ -397,6 +523,10 @@ async function runSubmitPhase(task) {
 
 /** 阶段 B：短预算 poll，未完成则下轮定时器续查 */
 async function runPollPhase(task, budgetMs) {
+  if (normalizePortraitEngine(task.engine) === PORTRAIT_ENGINE_SEEDREAM) {
+    return { processed: 0, skipped: true };
+  }
+
   if (isTaskStale(task)) {
     console.warn('[jimengPortraitWorker] 任务超时', task._id);
     await markTaskFailed(task, TIMEOUT_FAIL, 'task stale timeout');
@@ -438,14 +568,53 @@ async function runPollPhase(task, budgetMs) {
   }
 }
 
+async function logWorkerIdleReason(priorityBatchId, inFlight, limits) {
+  const batchId = String(priorityBatchId || '').trim();
+  const pendingWhere = buildTaskScopeWhere(
+    { status: 'pending', engine: _.in([PORTRAIT_ENGINE_JIMENG, PORTRAIT_ENGINE_SEEDREAM]) },
+    priorityBatchId
+  );
+  const processingWhere = buildTaskScopeWhere(
+    { status: 'processing', engine: _.in([PORTRAIT_ENGINE_JIMENG, PORTRAIT_ENGINE_SEEDREAM]) },
+    priorityBatchId
+  );
+  const [pendingRes, processingRes] = await Promise.all([
+    db.collection('ai_tasks').where(pendingWhere).count(),
+    db.collection('ai_tasks').where(processingWhere).count()
+  ]);
+  console.log(
+    '[jimengPortraitWorker] 本轮无进展',
+    JSON.stringify({
+      priorityBatchId: batchId || null,
+      inFlightJimeng: inFlight.jimeng,
+      inFlightSeedream: inFlight.seedream,
+      maxJimeng: limits.jimeng,
+      maxSeedream: limits.seedream,
+      pendingCount: pendingRes.total || 0,
+      processingCount: processingRes.total || 0
+    })
+  );
+}
+
+function summarizeBatchResults(results) {
+  let submitted = 0;
+  let completed = 0;
+  let lastResult = { processed: 0 };
+  for (const result of results) {
+    lastResult = result;
+    if (result.submitted) submitted += 1;
+    if (result.completed) completed += 1;
+  }
+  return { submitted, completed, lastResult };
+}
+
 /**
- * 在 budget 内尽量填满即梦并发槽位，并轮询在途任务。
- * 有 pending 且 inFlight < maxConcurrency 时优先 submit，否则 poll。
+ * Seedream：有空闲槽位时并行 submit；即梦：submit / poll 串行，分开 inFlight 上限。
  */
 async function workerLoop(event, deadline) {
   const priorityBatchId = String(event.priorityBatchId || '').trim();
-  const maxConcurrency = await getJimengMaxConcurrency();
-  let lastResult = { processed: 0, maxConcurrency };
+  const limits = await getPortraitConcurrencyLimits();
+  let lastResult = { processed: 0, limits };
   let submittedCount = 0;
   let completedCount = 0;
 
@@ -453,14 +622,33 @@ async function workerLoop(event, deadline) {
     const remaining = deadline - Date.now();
     if (remaining < 2000) break;
 
-    const inFlight = await countInFlightTasks();
+    const inFlight = await countInFlightByEngine();
     let didWork = false;
 
-    if (inFlight < maxConcurrency) {
-      const pendingTask = await pickTaskForSubmit(priorityBatchId);
-      if (pendingTask) {
-        const result = await runSubmitPhase(pendingTask);
-        lastResult = { ...result, maxConcurrency, inFlightBefore: inFlight };
+    const seedreamSlots = Math.max(0, limits.seedream - inFlight.seedream);
+    if (seedreamSlots > 0) {
+      const seedreamTasks = await pickSeedreamTasksForSubmit(priorityBatchId, seedreamSlots);
+      if (seedreamTasks.length) {
+        const results = await Promise.all(seedreamTasks.map((task) => runSubmitPhase(task)));
+        const batch = summarizeBatchResults(results);
+        submittedCount += batch.submitted;
+        completedCount += batch.completed;
+        lastResult = {
+          ...batch.lastResult,
+          limits,
+          inFlightBefore: inFlight,
+          seedreamParallel: seedreamTasks.length
+        };
+        didWork = true;
+        continue;
+      }
+    }
+
+    if (inFlight.jimeng < limits.jimeng) {
+      const jimengTask = await pickJimengTaskForSubmit(priorityBatchId);
+      if (jimengTask) {
+        const result = await runSubmitPhase(jimengTask);
+        lastResult = { ...result, limits, inFlightBefore: inFlight };
         didWork = true;
         if (result.submitted) {
           submittedCount += 1;
@@ -480,7 +668,7 @@ async function workerLoop(event, deadline) {
       const budget = Math.min(POLL_SLICE_MS, POLL_BUDGET_MS, remaining - 1500);
       if (budget >= 3000) {
         const result = await runPollPhase(pollTask, budget);
-        lastResult = { ...result, maxConcurrency, inFlightBefore: inFlight };
+        lastResult = { ...result, limits, inFlightBefore: inFlight };
         didWork = true;
         if (result.completed) {
           completedCount += 1;
@@ -496,12 +684,15 @@ async function workerLoop(event, deadline) {
   }
 
   const processed = submittedCount + completedCount;
+  if (processed === 0 && submittedCount === 0 && completedCount === 0) {
+    await logWorkerIdleReason(priorityBatchId, await countInFlightByEngine(), limits);
+  }
   return {
     ...lastResult,
     processed: processed > 0 ? processed : lastResult.processed || 0,
     submittedCount,
     completedCount,
-    maxConcurrency
+    limits
   };
 }
 
