@@ -35,7 +35,13 @@ backup/
 scripts/.env.backup
 
 # Custom
-.cursor/
+.cursor/*
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
+!.cursor/rules/
+!.cursor/rules/**
+.cursor/admin-web-deploy.*
 .npm-cache/
 docs/
 memory/

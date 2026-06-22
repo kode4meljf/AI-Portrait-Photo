@@ -28,6 +28,7 @@ Page({
     submitShowCost: true,
     submitCost: 10,
     submitPlainText: '立即生成',
+    countHint: '',
     hasLinkedCustomer: false,
     showGenderToggle: false,
     filterCompactName: '',
@@ -172,19 +173,36 @@ Page({
 
   syncSubmitState(extra = {}) {
     const merged = { ...this.data, ...extra }
-    const { loadingStyles, styles, originalUrl, count } = merged
-    const canSubmit = !!originalUrl && !loadingStyles && styles.length > 0
-    const styleCount = count === 9 ? 9 : 3
+    const { loadingStyles, styles, originalUrl, count, stylePool } = merged
+    const actualCount = (styles || []).length
+    const wantNine = count === 9
+    const poolSize = (stylePool || []).length
+    const countShortfall = wantNine && actualCount > 0 && actualCount < 9
+    const canSubmit =
+      !!originalUrl && !loadingStyles && actualCount > 0 && !countShortfall
     let submitShowCost = true
     let submitPlainText = '立即生成'
-    let submitCost = portraitCostForCount(styleCount)
+    let submitCost = portraitCostForCount(actualCount || (wantNine ? 9 : 3))
+    let countHint = ''
+    if (wantNine && poolSize > 0 && poolSize < 9) {
+      countHint = `当前性别仅 ${poolSize} 种风格，无法生成 9 张，请选 3 张或补充风格`
+    } else if (countShortfall) {
+      countHint = `仅匹配到 ${actualCount} 种风格，无法按 9 张套系提交`
+    }
     if (loadingStyles) {
       submitShowCost = false
       submitPlainText = styles.length ? '风格切换中' : '加载风格中'
     } else if (!styles.length) {
       submitCost = portraitCostForCount(3)
     }
-    this.setData({ canSubmit, submitShowCost, submitPlainText, submitCost, ...extra })
+    this.setData({
+      canSubmit,
+      submitShowCost,
+      submitPlainText,
+      submitCost,
+      countHint,
+      ...extra
+    })
   },
 
   async loadStyles(count) {
@@ -232,6 +250,14 @@ Page({
   switchCount(e) {
     const count = Number(e.currentTarget.dataset.count || 3)
     if (count === this.data.count) return
+    if (count === 9 && this.data.stylePool.length > 0 && this.data.stylePool.length < 9) {
+      wx.showToast({
+        title: `当前仅 ${this.data.stylePool.length} 种风格，无法选 9 张`,
+        icon: 'none',
+        duration: 2600
+      })
+      return
+    }
     this.setData({ count, currentIndex: 0 })
     if (this.data.stylePool.length) {
       this.applyStylePool(count, this.data.stylePool)
@@ -291,19 +317,27 @@ Page({
       wx.showToast({ title: '该性别暂无可用风格', icon: 'none' })
       return
     }
-    const count = this.data.count === 9 ? 9 : 3
+    if (this.data.count === 9 && styles.length < 9) {
+      wx.showToast({
+        title: `仅 ${styles.length} 种风格，无法生成 9 张`,
+        icon: 'none',
+        duration: 2800
+      })
+      return
+    }
     try {
-      await assertPortraitBalance(count)
+      await assertPortraitBalance(styles.length)
     } catch (e) {
       return
     }
     setPendingShoot({
-      count,
+      count: styles.length,
+      requestedCount: this.data.count === 9 ? 9 : 3,
       styles,
       originalUrl: this.data.originalUrl
     })
     const qs = buildShootQuery({
-      count,
+      count: this.data.count,
       originalUrl: this.data.originalUrl
     })
     wx.navigateTo({

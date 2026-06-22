@@ -6,7 +6,7 @@ const {
   ALBUM_PHOTO_PAGE_SIZE
 } = require('../../utils/albumConstants')
 
-const DB_BATCH = 100
+const MP_PAGE_SIZE = 20
 
 function isAiPhotoSuccess(photo) {
   if (!photo) return false
@@ -36,7 +36,7 @@ async function fetchPhotoBatch(db, storeId, customerId, skip) {
     .where({ storeId, customerId })
     .orderBy('createTime', 'desc')
     .skip(skip)
-    .limit(DB_BATCH)
+    .limit(MP_PAGE_SIZE)
     .get()
 }
 
@@ -55,7 +55,7 @@ async function countCustomerAiPhotos(db, storeId, customerId, entryMinTotal) {
     total += rows.filter(isAiPhotoSuccess).length
     if (total >= threshold) return total
     skip += rows.length
-    if (rows.length < DB_BATCH) break
+    if (rows.length < MP_PAGE_SIZE) break
   }
   return total
 }
@@ -81,7 +81,7 @@ async function loadCustomerAiPhotoPage(db, storeId, customerId, cursor = {}) {
         items.push(mapAlbumPhotoRow(row))
       }
     })
-    if (rows.length < DB_BATCH) {
+    if (rows.length < MP_PAGE_SIZE) {
       hasMore = false
       break
     }

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-card" v-loading="loading">
+  <div class="page-card platform-settings-page" v-loading="loading">
     <h2 class="page-heading">平台配置</h2>
     <p class="page-desc">
       门店小程序订单详情中「联系平台」将展示此处配置的电话；写真生成引擎、密钥与并发由 Worker 云函数自动读取并缓存；制作影集规则见下方独立配置。
@@ -24,7 +24,7 @@
       </el-form-item>
 
       <h3 class="section-title">写真生成引擎</h3>
-      <p class="section-desc">切换下方分段控件决定全平台门店成片使用的引擎；仅展示当前选中引擎的凭证配置。</p>
+      <p class="section-desc">切换下方分段控件将立即写入数据库并生效（智绘引擎须先配置 API Key）；其它项修改后点底部「保存」。</p>
 
       <el-alert
         v-if="engineStatusWarning"
@@ -57,7 +57,9 @@
         <el-segmented
           v-model="form.portraitEngine"
           :options="portraitSegmentOptions"
+          :disabled="saving"
           class="engine-segmented"
+          @change="onPortraitEngineChange"
         />
         <div class="form-tip segment-hint">
           左：稳定人像保真 · 右：豆包 Seedream 5.0 多模态生图
@@ -288,19 +290,20 @@
       <el-form-item v-if="form.volcKeysUpdateTime" label="密钥更新">
         <span class="muted">{{ formatTime(form.volcKeysUpdateTime) }}</span>
       </el-form-item>
-      <el-form-item>
-        <el-button
-          type="primary"
-          :loading="saving"
-          :disabled="!canSave"
-          @click="save"
-        >
-          保存
-        </el-button>
-        <el-button @click="load">刷新</el-button>
-        <div v-if="saveBlockedReason" class="form-tip save-blocked-tip">{{ saveBlockedReason }}</div>
-      </el-form-item>
     </el-form>
+
+    <div v-if="form" class="settings-actions-bar">
+      <el-button
+        type="primary"
+        :loading="saving"
+        :disabled="!canSave"
+        @click="save"
+      >
+        保存
+      </el-button>
+      <el-button :disabled="loading || saving" @click="load">刷新</el-button>
+      <span v-if="saveBlockedReason" class="save-blocked-tip">{{ saveBlockedReason }}</span>
+    </div>
   </div>
 </template>
 
@@ -342,6 +345,8 @@ const saving = ref(false)
 const form = ref(null)
 /** 服务端已保存的成片引擎（保存成功或初次加载后更新） */
 const savedPortraitEngine = ref(DEFAULT_PORTRAIT_ENGINE)
+/** 程序化回退引擎选项时，跳过 @change 自动保存 */
+const skipEngineAutoSave = ref(false)
 
 function collectAlbumConfigIssues(values) {
   if (!values) return []
@@ -535,23 +540,9 @@ async function load() {
   }
 }
 
-async function save() {
+function buildSavePayload() {
   const supportPhone = (form.value?.supportPhone || '').trim()
-  if (!supportPhone) {
-    ElMessage.error('无法保存：请填写平台客服电话')
-    return
-  }
-
   const issues = collectAlbumConfigIssues(form.value)
-  if (issues.length) {
-    ElMessage.error({
-      message: `无法保存：${issues[0]}`,
-      duration: 6000,
-      showClose: true
-    })
-    return
-  }
-
   const { albumSelectMin, albumSelectMax, albumEntryMinTotal, albumPointsPerPhoto } =
     form.value || {}
 
@@ -579,6 +570,44 @@ async function save() {
   const arkApiKey = (form.value?.arkApiKey || '').trim()
   if (arkApiKey) payload.arkApiKey = arkApiKey
 
+  return { payload, supportPhone, issues }
+}
+
+function revertPortraitEngineSelection() {
+  skipEngineAutoSave.value = true
+  form.value.portraitEngine = savedPortraitEngine.value
+  skipEngineAutoSave.value = false
+}
+
+async function persistSettings(options = {}) {
+  const { successMessage = '保存成功', showError = true } = options
+  const { payload, supportPhone, issues } = buildSavePayload()
+
+  if (!supportPhone) {
+    const msg = '无法保存：请填写平台客服电话'
+    if (showError) ElMessage.error(msg)
+    throw new Error(msg)
+  }
+  if (issues.length) {
+    const msg = `无法保存：${issues[0]}`
+    if (showError) {
+      ElMessage.error({
+        message: msg,
+        duration: 6000,
+        showClose: true
+      })
+    }
+    throw new Error(msg)
+  }
+  if (
+    payload.portraitEngine === PORTRAIT_ENGINE_SEEDREAM &&
+    !seedreamReady.value
+  ) {
+    const msg = '智绘引擎须先配置方舟 API Key'
+    if (showError) ElMessage.error(msg)
+    throw new Error(msg)
+  }
+
   saving.value = true
   try {
     const data = await api.updatePlatformSettings(payload)
@@ -586,15 +615,47 @@ async function save() {
     savedPortraitEngine.value = normalizePortraitEngine(
       data?.portraitEngine || DEFAULT_PORTRAIT_ENGINE
     )
-    ElMessage.success('保存成功')
+    if (successMessage) ElMessage.success(successMessage)
+    return data
   } catch (e) {
-    ElMessage.error({
-      message: `保存失败：${e.message || '请稍后重试'}`,
-      duration: 6000,
-      showClose: true
-    })
+    if (showError) {
+      ElMessage.error({
+        message: `保存失败：${e.message || '请稍后重试'}`,
+        duration: 6000,
+        showClose: true
+      })
+    }
+    throw e
   } finally {
     saving.value = false
+  }
+}
+
+async function save() {
+  try {
+    await persistSettings()
+  } catch {
+    /* 已在 persistSettings 中提示 */
+  }
+}
+
+async function onPortraitEngineChange(newEngine) {
+  if (skipEngineAutoSave.value || !form.value || saving.value) return
+
+  const normalized = normalizePortraitEngine(newEngine)
+  if (normalized === savedPortraitEngine.value) return
+
+  if (normalized === PORTRAIT_ENGINE_SEEDREAM && !seedreamReady.value) {
+    ElMessage.warning('请先配置方舟 API Key；配置后再次切换将自动保存并生效')
+    return
+  }
+
+  try {
+    await persistSettings({
+      successMessage: `引擎已切换为${getPortraitEngineLabel(normalized)}`
+    })
+  } catch {
+    revertPortraitEngineSelection()
   }
 }
 
@@ -812,9 +873,41 @@ onMounted(load)
   line-height: 1.6;
 }
 
+.platform-settings-page {
+  padding-bottom: 4px;
+}
+
+.settings-actions-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+
 .save-blocked-tip {
-  margin-top: 10px;
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
   color: #f56c6c;
+}
+
+@media (min-width: 640px) {
+  .save-blocked-tip {
+    flex: 1 1 auto;
+    margin-left: 4px;
+  }
 }
 
 .engine-req-key {

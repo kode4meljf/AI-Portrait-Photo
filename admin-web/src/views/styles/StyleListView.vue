@@ -1,7 +1,7 @@
 <template>
   <div class="page-card">
     <el-alert
-      title="女性 F01–F30、男性 M01–M30（编号与性别对应）；样图为效果参考；成片分辨率默认 1536:1152（4:3 横图）"
+      :title="pageAlertTitle"
       type="info"
       show-icon
       :closable="false"
@@ -55,7 +55,13 @@
           {{ row.gender || '男' }}
         </template>
       </el-table-column>
-      <el-table-column prop="resolution" label="分辨率" width="112" show-overflow-tooltip />
+      <el-table-column
+        v-if="isJimengEngine"
+        prop="resolution"
+        label="分辨率"
+        width="112"
+        show-overflow-tooltip
+      />
       <el-table-column label="提示词" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <span
@@ -136,7 +142,12 @@
             placeholder="传给第三方 AI 的英文或中文提示词"
           />
         </el-form-item>
-        <el-form-item label="分辨率" required class="form-item-resolution">
+        <el-form-item
+          v-if="isJimengEngine"
+          label="分辨率"
+          required
+          class="form-item-resolution"
+        >
           <div class="resolution-editor">
             <div class="resolution-inputs">
               <div class="resolution-field">
@@ -188,12 +199,17 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api/admin'
 import { previewNextStyleId, styleIdRangeLabel, styleIdFullRangeLabel } from '@/utils/styleId'
 import StyleSampleUpload from '@/components/StyleSampleUpload.vue'
 import ClickImagePreview from '@/components/ClickImagePreview.vue'
+import {
+  DEFAULT_PORTRAIT_ENGINE,
+  PORTRAIT_ENGINE_JIMENG,
+  normalizePortraitEngine
+} from '@/utils/portraitEngine'
 import {
   DEFAULT_RESOLUTION_HEIGHT,
   DEFAULT_RESOLUTION_WIDTH,
@@ -214,6 +230,17 @@ const resolutionHint = STYLE_RESOLUTION_HINT
 const genderOptions = STYLE_GENDER_OPTIONS
 const genderFilterOptions = STYLE_GENDER_FILTER_OPTIONS
 
+const portraitEngine = ref(DEFAULT_PORTRAIT_ENGINE)
+const isJimengEngine = computed(() => portraitEngine.value === PORTRAIT_ENGINE_JIMENG)
+
+const pageAlertTitle = computed(() => {
+  const base = '女性 F01–F30、男性 M01–M30（编号与性别对应）；样图为 3:4 竖图效果参考'
+  if (isJimengEngine.value) {
+    return `${base}；经典引擎成片在编辑中配置分辨率（默认 1152×1536）`
+  }
+  return `${base}；当前为智绘引擎，成片尺寸见平台配置（2K/4K）`
+})
+
 const list = ref([])
 const loading = ref(false)
 const keyword = ref('')
@@ -227,6 +254,16 @@ const saving = ref(false)
 const isCreate = ref(false)
 const editForm = ref({})
 const nextStyleId = ref('')
+
+async function loadPlatformEngine() {
+  try {
+    const data = await api.getPlatformSettings()
+    portraitEngine.value = normalizePortraitEngine(data?.portraitEngine || DEFAULT_PORTRAIT_ENGINE)
+  } catch (e) {
+    console.warn('[StyleList] loadPlatformEngine', e)
+    portraitEngine.value = DEFAULT_PORTRAIT_ENGINE
+  }
+}
 
 async function loadList() {
   loading.value = true
@@ -315,38 +352,36 @@ async function saveStyle() {
     return
   }
   let resolution
-  try {
-    resolution = buildStyleResolution(
-      editForm.value.resolutionWidth,
-      editForm.value.resolutionHeight
-    )
-  } catch (e) {
-    ElMessage.warning(e.message || '分辨率不正确')
-    return
+  if (isJimengEngine.value) {
+    try {
+      resolution = buildStyleResolution(
+        editForm.value.resolutionWidth,
+        editForm.value.resolutionHeight
+      )
+    } catch (e) {
+      ElMessage.warning(e.message || '分辨率不正确')
+      return
+    }
   }
   saving.value = true
   try {
+    const basePayload = {
+      name: editForm.value.name,
+      gender: editForm.value.gender,
+      prompt: editForm.value.prompt,
+      sampleFileId: editForm.value.sampleFileId,
+      sort: editForm.value.sort,
+      enabled: editForm.value.enabled
+    }
+    if (resolution) basePayload.resolution = resolution
+
     if (isCreate.value) {
-      await api.createStyle({
-        name: editForm.value.name,
-        gender: editForm.value.gender,
-        prompt: editForm.value.prompt,
-        resolution,
-        sampleFileId: editForm.value.sampleFileId,
-        sort: editForm.value.sort,
-        enabled: editForm.value.enabled
-      })
+      await api.createStyle(basePayload)
       ElMessage.success('已创建')
     } else {
       await api.updateStyle({
         _id: editForm.value._id,
-        name: editForm.value.name,
-        gender: editForm.value.gender,
-        prompt: editForm.value.prompt,
-        resolution,
-        sampleFileId: editForm.value.sampleFileId,
-        sort: editForm.value.sort,
-        enabled: editForm.value.enabled
+        ...basePayload
       })
       ElMessage.success('已保存')
     }
@@ -393,7 +428,10 @@ async function onDelete(row) {
   }
 }
 
-onMounted(loadList)
+onMounted(() => {
+  loadPlatformEngine()
+  loadList()
+})
 </script>
 
 <style scoped>

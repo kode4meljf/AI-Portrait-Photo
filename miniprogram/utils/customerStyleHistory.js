@@ -3,7 +3,7 @@
  */
 const { isAiPhotoSuccess } = require('../packageStore/utils/albumPhotos')
 
-const DB_BATCH = 100
+const MP_PAGE_SIZE = 20
 
 async function fetchCustomerUsedStyleIds(db, storeId, customerId) {
   const sid = String(storeId || '').trim()
@@ -19,7 +19,7 @@ async function fetchCustomerUsedStyleIds(db, storeId, customerId) {
       .where({ storeId: sid, customerId: cid })
       .orderBy('createTime', 'desc')
       .skip(skip)
-      .limit(DB_BATCH)
+      .limit(MP_PAGE_SIZE)
       .get()
     const rows = res.data || []
     if (!rows.length) break
@@ -31,7 +31,7 @@ async function fetchCustomerUsedStyleIds(db, storeId, customerId) {
     })
 
     skip += rows.length
-    if (rows.length < DB_BATCH) break
+    if (rows.length < MP_PAGE_SIZE) break
   }
 
   return [...used]

@@ -60,7 +60,8 @@ async function createPhotosForStyles(cloudOriginalUrl, styles) {
   await db.collection('batches').doc(batchId).update({
     data: {
       status: 'generating',
-      photoIds: photoFileIds
+      photoIds: photoFileIds,
+      requestedStyleCount: styles.length
     }
   });
 

@@ -24,6 +24,23 @@ function pickAvatarColor(key) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
+function hexToRgbParts(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return [99, 102, 241];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16)
+  ];
+}
+
+/** 方案 C：透明底 + 彩色首字 + 细环 */
+function buildAvatarPlaceholderStyle(key) {
+  const color = pickAvatarColor(key);
+  const [r, g, b] = hexToRgbParts(color);
+  return `color:${color};border:2rpx solid rgba(${r},${g},${b},0.34);background:transparent;`;
+}
+
 function formatDate(date, pattern = 'yyyy-MM-dd') {
   if (!date) return '';
   const d = new Date(date);
@@ -78,14 +95,19 @@ function buildTimeLabel(createTime) {
   return formatDate(d, 'MM-dd HH:mm');
 }
 
-function buildSummaryText(photos, generatedCount, photoCount, batchIsFavorite) {
+function buildSummaryText(photos, generatedCount, photoCount, batchIsFavorite, requestedStyleCount) {
   const styles = [...new Set(photos.map((p) => (p.styleName || '').trim()).filter(Boolean))];
   let stylePart = '';
   if (styles.length === 1) stylePart = styles[0];
   else if (styles.length > 1) stylePart = `${styles.slice(0, 2).join(' · ')} 等`;
   const parts = [];
   if (stylePart) parts.push(stylePart);
-  parts.push(`共 ${photoCount} 张`);
+  const requested = Number(requestedStyleCount) || 0;
+  if (requested > photoCount) {
+    parts.push(`共 ${photoCount} 张（计划 ${requested} 张）`);
+  } else {
+    parts.push(`共 ${photoCount} 张`);
+  }
   if (generatedCount < photoCount) parts.push(`已出 ${generatedCount} 张`);
   if (batchIsFavorite) parts.push('已收藏');
   return parts.join(' · ');
@@ -312,7 +334,7 @@ Page({
         customerAvatarUrl,
         hasValidCustomer,
         customerLinkLabel: hasValidCustomer ? '更换客户' : '关联客户',
-        avatarColor: pickAvatarColor(customer._id)
+        avatarPlaceholderStyle: buildAvatarPlaceholderStyle(customer._id)
       };
     });
   },
@@ -367,9 +389,15 @@ Page({
         customerAvatarUrl,
         hasValidCustomer,
         customerLinkLabel,
-        avatarColor: pickAvatarColor(batch.customerId || batch._id),
+        avatarPlaceholderStyle: buildAvatarPlaceholderStyle(batch.customerId || batch._id),
         timeLabel: buildTimeLabel(batch.createTime),
-        summaryText: buildSummaryText(sorted, generatedCount, photoCount, batchIsFavorite)
+        summaryText: buildSummaryText(
+          sorted,
+          generatedCount,
+          photoCount,
+          batchIsFavorite,
+          batch.requestedStyleCount
+        )
       };
     });
   },

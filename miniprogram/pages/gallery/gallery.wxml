@@ -109,8 +109,8 @@
       </view>
       <view
         wx:else
-        class="card-avatar"
-        style="background: {{batch.avatarColor}}"
+        class="card-avatar card-avatar--placeholder"
+        style="{{batch.avatarPlaceholderStyle}}"
       >{{batch.customerInitial}}</view>
       <view class="card-meta">
         <view class="card-row1">

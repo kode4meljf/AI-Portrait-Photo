@@ -59,9 +59,14 @@
       <text class="count-label">数量选择</text>
       <view class="count-btn-group">
         <view class="count-btn {{count === 3 ? 'active' : ''}}" data-count="3" bindtap="switchCount">3</view>
-        <view class="count-btn {{count === 9 ? 'active' : ''}}" data-count="9" bindtap="switchCount">9</view>
+        <view
+          class="count-btn {{count === 9 ? 'active' : ''}} {{stylePool.length > 0 && stylePool.length < 9 ? 'count-btn--disabled' : ''}}"
+          data-count="9"
+          bindtap="switchCount"
+        >9</view>
       </view>
     </view>
+    <view wx:if="{{countHint}}" class="count-hint">{{countHint}}</view>
   </view>
   </view>
 

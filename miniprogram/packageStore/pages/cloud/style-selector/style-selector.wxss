@@ -235,6 +235,17 @@
   color: #fff;
 }
 
+.count-btn--disabled {
+  opacity: 0.35;
+}
+
+.count-hint {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: #c2410c;
+}
+
 .submit-wrap {
   width: 100%;
   margin-top: 56rpx;
