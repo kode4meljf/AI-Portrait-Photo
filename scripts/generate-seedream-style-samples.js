@@ -56,6 +56,7 @@ function parseArgs(argv) {
     skipExisting: false,
     retryFailed: false,
     upload: false,
+    uploadOnly: false,
     help: false
   }
   for (let i = 0; i < argv.length; i += 1) {
@@ -73,6 +74,10 @@ function parseArgs(argv) {
     else if (arg === '--skip-existing') opts.skipExisting = true
     else if (arg === '--retry-failed') opts.retryFailed = true
     else if (arg === '--upload') opts.upload = true
+    else if (arg === '--upload-only') {
+      opts.upload = true
+      opts.uploadOnly = true
+    }
     else if (arg === '--help' || arg === '-h') opts.help = true
   }
   return opts
@@ -345,7 +350,12 @@ async function runUploadPhase(creds, styles, manifest, outDir, { onlyIds } = {})
   const byId = new Map(styles.map((s) => [String(s.id || '').toUpperCase(), s]))
   const workDir = path.join(outDir, '.upload-work')
   fs.mkdirSync(workDir, { recursive: true })
-  let okRows = (manifest.results || []).filter((r) => r.status === 'ok' && r.localPath)
+  let okRows = (manifest.results || []).filter(
+    (r) =>
+      r.localPath &&
+      fs.existsSync(r.localPath) &&
+      (r.status === 'ok' || r.status === 'skipped')
+  )
 
   if (onlyIds && onlyIds.size) {
     okRows = okRows.filter((r) => onlyIds.has(String(r.id || '').toUpperCase()))
@@ -402,7 +412,8 @@ function printHelp() {
   --image <url>        可选：图生图参考图（默认文生图，不传 image）
   --skip-existing      本地已有 JPG 则跳过
   --retry-failed       只重跑 manifest 中 status=failed 的项
-  --upload             生成完成后上传（或仅上传 manifest 中 ok 项）
+  --upload             生成完成后上传 manifest 中成功项
+  --upload-only        仅上传本地已有 JPG（不调用 Seedream）
   --dry-run            只列出待处理风格
 `)
 }
@@ -459,6 +470,12 @@ async function main() {
       console.log(`  ${s.id} [${s.gender || '-'}] ${s.name}`)
       console.log(`    prompt: ${buildStyleSamplePrompt(s).slice(0, 100)}...`)
     })
+    return
+  }
+
+  if (opts.uploadOnly || (opts.upload && opts.skipExisting && !opts.only.length)) {
+    const allStyles = await fetchAllStyles(creds.api, token)
+    await runUploadPhase(creds, allStyles, manifest, outDir)
     return
   }
 
