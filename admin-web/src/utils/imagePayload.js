@@ -1,6 +1,6 @@
 /**
- * 经 HTTP 调用云函数时，整包 body 有大小上限（CloudBase 约 1MB）。
- * 控制 JPEG 二进制体积，避免 base64 后触发 EXCEED_MAX_PAYLOAD_SIZE。
+ * 经 HTTP 调用云函数时，JSON 文本 body 上限约 100KB（CloudBase EXCEED_MAX_PAYLOAD_SIZE）。
+ * 缩略图直传 COS；base64 仅作兼容兜底。
  */
 export const HTTP_SAFE_JPEG_MAX_BYTES = 320 * 1024
 

@@ -31,6 +31,7 @@ export const api = {
   updateStyle: (data) => adminRequest('styles.update', data),
   deleteStyle: (data) => adminRequest('styles.delete', data),
   uploadStyleSample: (data) => adminRequest('styles.uploadSample', data),
+  prepareStyleSampleUpload: (data) => adminRequest('styles.prepareSampleUpload', data),
   fetchStyleSampleImage: (data) => adminRequest('styles.fetchSampleImage', data),
 
   listFrames: (params) => adminRequest('frames.list', {}, params),

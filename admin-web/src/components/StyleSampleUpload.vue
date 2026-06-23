@@ -90,6 +90,7 @@ import {
   STYLE_SAMPLE_TIP,
   processStyleSampleFileWithCrop,
   cropThumbnailFromImage,
+  cropThumbnailToBlob,
   getDefaultCropView,
   clampCropView,
   getSourceCropSize,
@@ -97,6 +98,7 @@ import {
   getHdDisplayInfo,
   getCropUiDisplayScale
 } from '@/utils/styleSample'
+import { uploadStyleSamplePair } from '@/utils/styleSampleDirectUpload'
 
 const CROP_AREA_WIDTH = 270
 const CROP_AREA_HEIGHT = 360
@@ -388,9 +390,16 @@ async function uploadCroppedThumbnail() {
   uploading.value = true
   try {
     const result = cropThumbnailFromImage(img.value, offsetX.value, offsetY.value, zoom.value)
-    const res = await api.uploadStyleSample({
-      base64: result.base64,
-      mimeType: 'image/jpeg'
+    const thumbBlob = await cropThumbnailToBlob(
+      img.value,
+      offsetX.value,
+      offsetY.value,
+      zoom.value
+    )
+    const res = await uploadStyleSamplePair({
+      thumbBody: thumbBlob,
+      mimeType: 'image/jpeg',
+      thumbFilename: 'thumb.jpg'
     })
     emit('update:modelValue', res.sampleFileId)
     emit('update:displayUrl', res.sampleUrl || result.previewUrl)
@@ -435,19 +444,25 @@ async function onBeforeUpload(file) {
     cropReady.value = true
     useCoverPreview.value = false
 
-    const thumbRes = await api.uploadStyleSample({
-      base64: processed.thumbnailBase64,
-      mimeType: 'image/jpeg'
+    const thumbBlob = await cropThumbnailToBlob(
+      processed.img,
+      processed.offsetX,
+      processed.offsetY,
+      processed.zoom
+    )
+    const baseName = String(file.name || 'sample').replace(/\.[^.]+$/, '')
+    const res = await uploadStyleSamplePair({
+      thumbBody: thumbBlob,
+      hdBody: file,
+      mimeType: file.type || 'image/jpeg',
+      thumbFilename: `${baseName}-thumb.jpg`,
+      hdFilename: file.name || 'sample.jpg'
     })
-    const hdRes = await api.uploadStyleSample({
-      hdBase64: processed.hdBase64,
-      mimeType: 'image/jpeg'
-    })
-    emit('update:modelValue', thumbRes.sampleFileId)
-    emit('update:displayUrl', thumbRes.sampleUrl || processed.thumbnailPreviewUrl)
-    emit('update:hdModelValue', hdRes.sampleHdFileId || '')
-    emit('update:hdDisplayUrl', hdRes.sampleHdUrl || processed.hdPreviewUrl)
-    loadedHdFileId.value = hdRes.sampleHdFileId || ''
+    emit('update:modelValue', res.sampleFileId)
+    emit('update:displayUrl', res.sampleUrl || processed.thumbnailPreviewUrl)
+    emit('update:hdModelValue', res.sampleHdFileId || '')
+    emit('update:hdDisplayUrl', res.sampleHdUrl || processed.hdPreviewUrl)
+    loadedHdFileId.value = res.sampleHdFileId || ''
     cropDirty.value = false
     ElMessage.success('风格样图已上传')
   } catch (e) {

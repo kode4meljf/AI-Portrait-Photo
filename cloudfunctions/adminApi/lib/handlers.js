@@ -5,7 +5,10 @@ const {
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
   uploadStyleHdSampleFromBase64,
+  prepareStyleSampleDirectUpload,
+  assertValidStyleSampleFileId,
   downloadCloudFileAsBase64,
+  getDisplayUrl,
   attachStyleSampleUrls,
   attachCustomerAvatarUrls,
   uploadCustomerAvatarFromBase64
@@ -754,27 +757,46 @@ async function uploadFrameCover(payload) {
 
 async function uploadStyleSample(payload) {
   const mimeType = payload.mimeType || 'image/jpeg'
-  const hasThumb = !!(payload.base64 && String(payload.base64).trim())
-  const hasHd = !!(payload.hdBase64 && String(payload.hdBase64).trim())
-  if (!hasThumb && !hasHd) throw new Error('缺少图片数据')
+  const hasThumbB64 = !!(payload.base64 && String(payload.base64).trim())
+  const hasHdB64 = !!(payload.hdBase64 && String(payload.hdBase64).trim())
+  const hasThumbId = !!(payload.sampleFileId && String(payload.sampleFileId).trim())
+  const hasHdId = !!(payload.sampleHdFileId && String(payload.sampleHdFileId).trim())
+  if (!hasThumbB64 && !hasHdB64 && !hasThumbId && !hasHdId) {
+    throw new Error('缺少图片数据')
+  }
 
   let sampleFileId = ''
   let sampleUrl = ''
-  if (hasThumb) {
+  if (hasThumbB64) {
     const sampleRes = await uploadStyleSampleFromBase64(payload.base64, mimeType)
     sampleFileId = sampleRes.sampleFileId
     sampleUrl = sampleRes.sampleUrl
+  } else if (hasThumbId) {
+    sampleFileId = assertValidStyleSampleFileId(payload.sampleFileId, 'thumb')
+    sampleUrl = await getDisplayUrl(sampleFileId)
   }
 
   let sampleHdFileId = ''
   let sampleHdUrl = ''
-  if (hasHd) {
+  if (hasHdB64) {
     const hdRes = await uploadStyleHdSampleFromBase64(payload.hdBase64, mimeType)
     sampleHdFileId = hdRes.sampleHdFileId
     sampleHdUrl = hdRes.sampleHdUrl
+  } else if (hasHdId) {
+    sampleHdFileId = assertValidStyleSampleFileId(payload.sampleHdFileId, 'hd')
+    sampleHdUrl = await getDisplayUrl(sampleHdFileId)
   }
 
   return { sampleFileId, sampleUrl, sampleHdFileId, sampleHdUrl }
+}
+
+async function prepareStyleSampleUpload(payload) {
+  const kind = String(payload.kind || 'thumb').trim().toLowerCase()
+  if (kind !== 'thumb' && kind !== 'hd') throw new Error('kind 须为 thumb 或 hd')
+  return prepareStyleSampleDirectUpload({
+    kind,
+    mimeType: payload.mimeType || 'image/jpeg'
+  })
 }
 
 async function fetchStyleSampleImage(payload) {
@@ -1259,6 +1281,8 @@ async function dispatch(action, payload, query) {
       return deleteStyle(payload)
     case 'styles.uploadSample':
       return uploadStyleSample(payload)
+    case 'styles.prepareSampleUpload':
+      return prepareStyleSampleUpload(payload)
     case 'styles.fetchSampleImage':
       return fetchStyleSampleImage(payload)
     case 'styles.seedDefaults':

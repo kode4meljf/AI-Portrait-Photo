@@ -1,6 +1,6 @@
 import { compressCanvasToJpegPayload } from './imagePayload'
 
-/** 单次 HTTP 请求内高清图体积上限（CloudBase body 约 1MB，缩略图另发一次） */
+/** 单次 HTTP 请求内高清图体积上限（直传 COS 前 canvas 压缩参考值；真 2K 走直传） */
 export const HTTP_HD_JPEG_MAX_BYTES = 900 * 1024
 
 /** 风格样图：竖版人像 3:4 */
@@ -258,6 +258,33 @@ export function cropThumbnailFromImage(img, offsetX, offsetY, zoom = 1) {
     cropped,
     ...view
   }
+}
+
+/** 导出 540×720 缩略 JPEG Blob（直传 COS，不经过 base64） */
+export function cropThumbnailToBlob(img, offsetX, offsetY, zoom = 1, quality = 0.85) {
+  const view = clampCropView(img, offsetX, offsetY, zoom, STYLE_SAMPLE_RATIO)
+  const canvas = document.createElement('canvas')
+  canvas.width = STYLE_SAMPLE_WIDTH
+  canvas.height = STYLE_SAMPLE_HEIGHT
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(
+    img,
+    view.offsetX,
+    view.offsetY,
+    view.sourceCropWidth,
+    view.sourceCropHeight,
+    0,
+    0,
+    STYLE_SAMPLE_WIDTH,
+    STYLE_SAMPLE_HEIGHT
+  )
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('导出缩略图失败'))),
+      'image/jpeg',
+      quality
+    )
+  })
 }
 
 export async function prepareHdSampleFromImage(img) {

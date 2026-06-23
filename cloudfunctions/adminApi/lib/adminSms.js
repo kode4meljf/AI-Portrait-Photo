@@ -32,12 +32,7 @@ function generateCode() {
 }
 
 async function sendTencentSms(phone, code) {
-  let SmsClient
-  try {
-    SmsClient = require('tencentcloud-sdk-nodejs').sms.v20210111.Client
-  } catch {
-    throw new Error('未安装短信 SDK，请在 adminApi 目录执行 npm install 后重新部署')
-  }
+  const { postJson } = require('./tc3Request')
 
   const secretId = process.env.TENCENT_SECRET_ID
   const secretKey = process.env.TENCENT_SECRET_KEY
@@ -51,18 +46,21 @@ async function sendTencentSms(phone, code) {
     )
   }
 
-  const client = new SmsClient({
-    credential: { secretId, secretKey },
+  const res = await postJson({
+    host: 'sms.tencentcloudapi.com',
+    service: 'sms',
+    action: 'SendSms',
+    version: '2021-01-11',
     region: process.env.SMS_REGION || 'ap-guangzhou',
-    profile: { httpProfile: { endpoint: 'sms.tencentcloudapi.com' } }
-  })
-
-  const res = await client.SendSms({
-    PhoneNumberSet: [`+86${phone}`],
-    SmsSdkAppId: sdkAppId,
-    SignName: signName,
-    TemplateId: templateId,
-    TemplateParamSet: [code]
+    secretId,
+    secretKey,
+    payload: {
+      PhoneNumberSet: [`+86${phone}`],
+      SmsSdkAppId: sdkAppId,
+      SignName: signName,
+      TemplateId: templateId,
+      TemplateParamSet: [code]
+    }
   })
 
   const status = res.SendStatusSet && res.SendStatusSet[0]

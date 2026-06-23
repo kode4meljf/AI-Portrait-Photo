@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "AI写真馆后台管理 API（HTTP / callFunction）",
   "main": "index.js",
+  "scripts": {
+    "postinstall": "node scripts/prune-deps.js"
+  },
   "dependencies": {
-    "tencentcloud-sdk-nodejs": "^4.0.990",
     "wx-server-sdk": "^2.6.3"
   }
 }

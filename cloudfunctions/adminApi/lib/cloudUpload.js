@@ -3,6 +3,73 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 
+let _tcbApp = null
+let _tcbSdk = null
+
+function loadTcbSdk() {
+  if (_tcbSdk) return _tcbSdk
+  try {
+    _tcbSdk = require('@cloudbase/node-sdk')
+  } catch {
+    const wxRoot = path.dirname(require.resolve('wx-server-sdk'))
+    _tcbSdk = require(path.join(wxRoot, 'node_modules', '@cloudbase/node-sdk'))
+  }
+  return _tcbSdk
+}
+
+function getTcbApp() {
+  if (!_tcbApp) {
+    const tcb = loadTcbSdk()
+    _tcbApp = tcb.init({ env: tcb.SYMBOL_CURRENT_ENV })
+  }
+  return _tcbApp
+}
+
+function buildStyleSampleCloudPath(kind, mimeType = 'image/jpeg') {
+  const ext = String(mimeType).includes('png') ? 'png' : 'jpg'
+  const ts = Date.now()
+  const rand = Math.random().toString(36).slice(2, 8)
+  if (kind === 'hd') {
+    return `admin/style-templates/hd/${ts}_${rand}.${ext}`
+  }
+  return `admin/style-templates/${ts}_${rand}.${ext}`
+}
+
+function assertValidStyleSampleFileId(fileId, kind) {
+  const id = String(fileId || '').trim()
+  if (!id.startsWith('cloud://')) throw new Error('无效的云文件 ID')
+  if (kind === 'hd') {
+    if (!id.includes('/admin/style-templates/hd/')) throw new Error('高清样图路径无效')
+  } else if (!id.includes('/admin/style-templates/') || id.includes('/admin/style-templates/hd/')) {
+    throw new Error('缩略样图路径无效')
+  }
+  return id
+}
+
+/** 签发风格样图 COS 直传凭证（客户端 PUT/POST 二进制，不经 JSON base64） */
+async function prepareStyleSampleDirectUpload({ kind = 'thumb', mimeType = 'image/jpeg' } = {}) {
+  const normalizedKind = kind === 'hd' ? 'hd' : 'thumb'
+  const cloudPath = buildStyleSampleCloudPath(normalizedKind, mimeType)
+  const res = await getTcbApp().getUploadMetadata({ cloudPath })
+  if (res.code) {
+    throw new Error(res.message || res.code || '获取上传凭证失败')
+  }
+  const data = res.data || {}
+  const { url, token, authorization, fileId, cosFileId } = data
+  if (!url || !fileId || !authorization || !token || !cosFileId) {
+    throw new Error('上传凭证不完整')
+  }
+  return {
+    kind: normalizedKind,
+    cloudPath,
+    uploadUrl: url,
+    authorization,
+    token,
+    cosFileId,
+    fileId
+  }
+}
+
 async function uploadBuffer(buffer, cloudPath) {
   try {
     const res = await cloud.uploadFile({ cloudPath, fileContent: buffer })
@@ -284,6 +351,8 @@ module.exports = {
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
   uploadStyleHdSampleFromBase64,
+  prepareStyleSampleDirectUpload,
+  assertValidStyleSampleFileId,
   attachStyleSampleUrls,
   attachCustomerAvatarUrls,
   uploadCustomerAvatarFromBase64,

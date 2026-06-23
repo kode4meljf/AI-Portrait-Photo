@@ -13,17 +13,15 @@
  */
 const fs = require('fs')
 const path = require('path')
-const { execSync } = require('child_process')
 const { resolveCredentials, loadEnvFile } = require('./adminApiCredentials')
-const { cropSampleToJpeg, readJpegBase64 } = require('./lib/styleSampleLocal')
+const { cropSampleToJpeg } = require('./lib/styleSampleLocal')
+const { uploadStyleSampleDirect } = require('./lib/styleSampleDirectUpload')
 const { ensureStyleAssetsDirs } = require('./styleAssetsDir')
 const { resolveSeedreamOutputSize } = require('../cloudfunctions/lib/seedreamOutputSize')
 
 const ARK_IMAGES_URL = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
 const DEFAULT_MODEL = 'doubao-seedream-5-0-260128'
 const MANIFEST_NAME = 'seedream-manifest.json'
-const COMPRESS_PY = path.join(__dirname, 'compress-jpeg-max.py')
-const HTTP_HD_JPEG_MAX_BYTES = 70 * 1024
 const GENERATION_TIMEOUT_MS = 120000
 const DOWNLOAD_TIMEOUT_MS = 60000
 
@@ -297,51 +295,34 @@ async function generateOneStyle(style, ctx) {
 async function uploadOneSample(api, token, style, localPath, workDir) {
   const styleId = String(style.id || '').toUpperCase()
   const thumbPath = path.join(workDir, `${styleId}-thumb.jpg`)
-  const hdPath = path.join(workDir, `${styleId}-hd.jpg`)
 
   cropSampleToJpeg(localPath, thumbPath)
-  execSync(
-    `python3 "${COMPRESS_PY}" "${localPath}" "${hdPath}" ${HTTP_HD_JPEG_MAX_BYTES}`,
-    { stdio: 'pipe' }
-  )
+  const thumbBody = fs.readFileSync(thumbPath)
+  const hdBody = fs.readFileSync(localPath)
 
-  const thumbUpload = await postAdmin(
-    api,
-    { action: 'styles.uploadSample', base64: readJpegBase64(thumbPath), mimeType: 'image/jpeg' },
-    token
-  )
-
-  let sampleHdFileId = thumbUpload.sampleFileId
-  let sampleHdUrl = thumbUpload.sampleUrl
-  try {
-    const hdUpload = await postAdmin(
-      api,
-      { action: 'styles.uploadSample', hdBase64: readJpegBase64(hdPath), mimeType: 'image/jpeg' },
-      token
-    )
-    if (hdUpload.sampleHdFileId) {
-      sampleHdFileId = hdUpload.sampleHdFileId
-      sampleHdUrl = hdUpload.sampleHdUrl
-    }
-  } catch (err) {
-    console.warn(`  ⚠ HD 单独上传未成功，预览暂用缩略图: ${err.message}`)
-  }
+  const uploaded = await uploadStyleSampleDirect(postAdmin, api, token, {
+    thumbBody,
+    hdBody,
+    mimeType: 'image/jpeg',
+    thumbFilename: `${styleId}-thumb.jpg`,
+    hdFilename: `${styleId}.jpg`
+  })
 
   await postAdmin(
     api,
     {
       action: 'styles.update',
       _id: style._id,
-      sampleFileId: thumbUpload.sampleFileId,
-      sampleHdFileId
+      sampleFileId: uploaded.sampleFileId,
+      sampleHdFileId: uploaded.sampleHdFileId
     },
     token
   )
   return {
-    sampleFileId: thumbUpload.sampleFileId,
-    sampleHdFileId,
-    sampleUrl: thumbUpload.sampleUrl,
-    sampleHdUrl
+    sampleFileId: uploaded.sampleFileId,
+    sampleHdFileId: uploaded.sampleHdFileId,
+    sampleUrl: uploaded.sampleUrl,
+    sampleHdUrl: uploaded.sampleHdUrl
   }
 }
 

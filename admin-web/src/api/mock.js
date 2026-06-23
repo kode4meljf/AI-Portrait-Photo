@@ -439,16 +439,41 @@ export async function mockRequest(action, payload = {}, query = {}) {
       mockStyles.push(row)
       return row
     }
+    case 'styles.prepareSampleUpload': {
+      const kind = String(payload.kind || 'thumb').toLowerCase()
+      const ts = Date.now()
+      const cloudPath =
+        kind === 'hd'
+          ? `admin/style-templates/hd/mock-${ts}.jpg`
+          : `admin/style-templates/mock-${ts}.jpg`
+      const fileId =
+        kind === 'hd' ? `mock-style-hd-${ts}` : `mock-style-${ts}`
+      return {
+        kind,
+        cloudPath,
+        uploadUrl: 'https://mock-upload.local/put',
+        authorization: 'mock-signature',
+        token: 'mock-token',
+        cosFileId: 'mock-cos-file-id',
+        fileId
+      }
+    }
     case 'styles.uploadSample': {
       const ts = Date.now()
       const out = { sampleFileId: '', sampleUrl: '', sampleHdFileId: '', sampleHdUrl: '' }
       if (payload.base64 && String(payload.base64).trim()) {
         out.sampleFileId = `mock-style-${ts}`
         out.sampleUrl = `data:image/jpeg;base64,${payload.base64}`
+      } else if (payload.sampleFileId) {
+        out.sampleFileId = payload.sampleFileId
+        out.sampleUrl = `https://mock.local/${payload.sampleFileId}`
       }
       if (payload.hdBase64 && String(payload.hdBase64).trim()) {
         out.sampleHdFileId = `mock-style-hd-${ts}`
         out.sampleHdUrl = `data:image/jpeg;base64,${payload.hdBase64}`
+      } else if (payload.sampleHdFileId) {
+        out.sampleHdFileId = payload.sampleHdFileId
+        out.sampleHdUrl = `https://mock.local/${payload.sampleHdFileId}`
       }
       if (!out.sampleFileId && !out.sampleHdFileId) throw new Error('缺少图片数据')
       return out

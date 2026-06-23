@@ -32,6 +32,7 @@
         @keyup.enter="search"
       />
       <el-button type="primary" @click="search">搜索</el-button>
+      <el-button type="primary" :loading="loading" @click="refreshAll">刷新</el-button>
       <el-button type="primary" plain @click="openCreate">新增风格</el-button>
       <span v-if="enabledCount !== null" class="enabled-tip">已启用 {{ enabledCount }} 个</span>
     </div>
@@ -266,6 +267,11 @@ async function loadPlatformEngine() {
     console.warn('[StyleList] loadPlatformEngine', e)
     portraitEngine.value = DEFAULT_PORTRAIT_ENGINE
   }
+}
+
+async function refreshAll() {
+  await loadPlatformEngine()
+  await loadList()
 }
 
 async function loadList() {
