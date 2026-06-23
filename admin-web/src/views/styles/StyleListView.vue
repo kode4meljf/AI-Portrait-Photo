@@ -42,6 +42,7 @@
           <ClickImagePreview
             v-if="row.sampleUrl"
             :src="row.sampleUrl"
+            :preview-src="row.sampleHdUrl || row.sampleUrl"
             :alt="row.name"
             thumb-class="sample-preview"
           />
@@ -181,6 +182,8 @@
           <StyleSampleUpload
             v-model="editForm.sampleFileId"
             v-model:display-url="editForm.sampleUrl"
+            v-model:hd-model-value="editForm.sampleHdFileId"
+            v-model:hd-display-url="editForm.sampleHdUrl"
           />
         </el-form-item>
         <el-form-item label="排序">
@@ -311,6 +314,8 @@ function openCreate() {
     resolutionHeight: DEFAULT_RESOLUTION_HEIGHT,
     sampleFileId: '',
     sampleUrl: '',
+    sampleHdFileId: '',
+    sampleHdUrl: '',
     sort: (list.value.length + 1) * 10,
     enabled: true
   }
@@ -340,6 +345,8 @@ function openEdit(row) {
     resolutionHeight: height,
     sampleFileId: row.sampleFileId || '',
     sampleUrl: row.sampleUrl || '',
+    sampleHdFileId: row.sampleHdFileId || '',
+    sampleHdUrl: row.sampleHdUrl || '',
     sort: row.sort != null ? row.sort : 0,
     enabled: row.enabled !== false
   }
@@ -370,6 +377,7 @@ async function saveStyle() {
       gender: editForm.value.gender,
       prompt: editForm.value.prompt,
       sampleFileId: editForm.value.sampleFileId,
+      sampleHdFileId: editForm.value.sampleHdFileId,
       sort: editForm.value.sort,
       enabled: editForm.value.enabled
     }

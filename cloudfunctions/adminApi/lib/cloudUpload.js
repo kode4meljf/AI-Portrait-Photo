@@ -79,45 +79,72 @@ async function attachFrameCoverUrls(rows) {
 
 async function attachStyleSampleUrls(rows) {
   const list = rows || []
-  const cloudIds = list
-    .map((row) => row.sampleFileId)
-    .filter((id) => id && String(id).startsWith('cloud://'))
+  const cloudIds = []
+  list.forEach((row) => {
+    if (row.sampleFileId && String(row.sampleFileId).startsWith('cloud://')) {
+      cloudIds.push(row.sampleFileId)
+    }
+    if (row.sampleHdFileId && String(row.sampleHdFileId).startsWith('cloud://')) {
+      cloudIds.push(row.sampleHdFileId)
+    }
+  })
   if (!cloudIds.length) {
     return list.map((row) => {
       const sampleFileId = row.sampleFileId || ''
+      const sampleHdFileId = row.sampleHdFileId || ''
       return {
         ...row,
         sampleFileId,
         sampleUrl:
-          sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : ''
+          sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : '',
+        sampleHdFileId,
+        sampleHdUrl:
+          sampleHdFileId && !String(sampleHdFileId).startsWith('cloud://') ? sampleHdFileId : ''
       }
     })
   }
   try {
-    const res = await cloud.getTempFileURL({ fileList: [...new Set(cloudIds)] })
+    const unique = [...new Set(cloudIds)]
     const map = {}
-    ;(res.fileList || []).forEach((item) => {
-      if (item.fileID && item.tempFileURL) map[item.fileID] = item.tempFileURL
-    })
+    const CHUNK = 50
+    for (let i = 0; i < unique.length; i += CHUNK) {
+      const chunk = unique.slice(i, i + CHUNK)
+      const res = await cloud.getTempFileURL({ fileList: chunk })
+      ;(res.fileList || []).forEach((item) => {
+        if (item.fileID && item.tempFileURL) map[item.fileID] = item.tempFileURL
+      })
+    }
     return list.map((row) => {
       const sampleFileId = row.sampleFileId || ''
+      const sampleHdFileId = row.sampleHdFileId || ''
       return {
         ...row,
         sampleFileId,
         sampleUrl:
           map[sampleFileId] ||
-          (sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : '')
+          (sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : ''),
+        sampleHdFileId,
+        sampleHdUrl:
+          map[sampleHdFileId] ||
+          (sampleHdFileId && !String(sampleHdFileId).startsWith('cloud://') ? sampleHdFileId : '')
       }
     })
   } catch (e) {
     return list.map((row) => {
       const sampleFileId = row.sampleFileId || ''
-      return { ...row, sampleFileId, sampleUrl: sampleFileId || '' }
+      const sampleHdFileId = row.sampleHdFileId || ''
+      return {
+        ...row,
+        sampleFileId,
+        sampleUrl: sampleFileId || '',
+        sampleHdFileId,
+        sampleHdUrl: sampleHdFileId || ''
+      }
     })
   }
 }
 
-const HTTP_UPLOAD_MAX_BYTES = 400 * 1024
+const HTTP_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
 
 async function uploadStyleSampleFromBase64(base64, mimeType = 'image/jpeg') {
   const raw = String(base64 || '').replace(/^data:image\/\w+;base64,/, '').trim()
@@ -134,6 +161,23 @@ async function uploadStyleSampleFromBase64(base64, mimeType = 'image/jpeg') {
   const sampleFileId = await uploadBuffer(buffer, cloudPath)
   const sampleUrl = await getDisplayUrl(sampleFileId)
   return { sampleFileId, sampleUrl }
+}
+
+async function uploadStyleHdSampleFromBase64(base64, mimeType = 'image/jpeg') {
+  const raw = String(base64 || '').replace(/^data:image\/\w+;base64,/, '').trim()
+  if (!raw) throw new Error('缺少高清图片数据')
+
+  const buffer = Buffer.from(raw, 'base64')
+  if (!buffer.length) throw new Error('高清图片数据无效')
+  if (buffer.length > HTTP_UPLOAD_MAX_BYTES) {
+    throw new Error('高清图片仍过大，请刷新页面后重试（前端将自动更强压缩）')
+  }
+
+  const ext = mimeType.includes('png') ? 'png' : 'jpg'
+  const cloudPath = `admin/style-templates/hd/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const sampleHdFileId = await uploadBuffer(buffer, cloudPath)
+  const sampleHdUrl = await getDisplayUrl(sampleHdFileId)
+  return { sampleHdFileId, sampleHdUrl }
 }
 
 async function uploadFrameCoverFromBase64(base64, mimeType = 'image/jpeg') {
@@ -214,12 +258,35 @@ async function uploadCustomerAvatarFromBase64(customerId, base64, mimeType = 'im
   return { avatarUrl, avatarDisplayUrl }
 }
 
+const CLOUD_SAMPLE_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
+/** 云函数内下载 cloud:// 样图，供后台裁剪（绕过浏览器 CORS） */
+async function downloadCloudFileAsBase64(fileID) {
+  const id = String(fileID || '').trim()
+  if (!id.startsWith('cloud://')) throw new Error('无效的云文件 ID')
+  const res = await cloud.downloadFile({ fileID: id })
+  const buffer = res.fileContent
+  if (!buffer || !buffer.length) throw new Error('云文件为空或无法读取')
+  if (buffer.length > CLOUD_SAMPLE_IMAGE_MAX_BYTES) {
+    throw new Error('图片过大，请使用压缩后的样图')
+  }
+  const lower = id.toLowerCase()
+  const mimeType = lower.endsWith('.png') ? 'image/png' : 'image/jpeg'
+  return {
+    base64: buffer.toString('base64'),
+    mimeType,
+    byteSize: buffer.length
+  }
+}
+
 module.exports = {
   uploadFrameCoverFromBase64,
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
+  uploadStyleHdSampleFromBase64,
   attachStyleSampleUrls,
   attachCustomerAvatarUrls,
   uploadCustomerAvatarFromBase64,
-  getDisplayUrl
+  getDisplayUrl,
+  downloadCloudFileAsBase64
 }

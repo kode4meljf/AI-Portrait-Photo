@@ -11,7 +11,7 @@
     "seed:styles": "node scripts/seed-styles.js",
     "process:style-samples": "node scripts/process-style-sample-images.js",
     "print:style-sample-prompts": "node scripts/print-style-sample-prompts.js",
-    "upload:style-samples": "node scripts/upload-style-samples.js",
+    "generate:seedream-samples": "node scripts/generate-seedream-style-samples.js",
     "backup:styles": "node scripts/backup-style-templates.js",
     "backup:styles:check": "node scripts/backup-style-templates.js --check-login",
     "bench:ark-seedream": "node scripts/benchmark-ark-seedream.js",

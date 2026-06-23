@@ -106,7 +106,7 @@ Page({
   onPreviewSample(e) {
     const index = e.detail && e.detail.index != null ? e.detail.index : e.currentTarget.dataset.index
     const urls = this.data.templates
-      .map((t) => t.sampleDisplayUrl || t.sampleFileId)
+      .map((t) => t.sampleHdDisplayUrl || t.sampleHdFileId || t.sampleDisplayUrl || t.sampleFileId)
       .filter(Boolean)
     if (!urls.length) return
     wx.previewImage({ urls, current: urls[index] || urls[0] })

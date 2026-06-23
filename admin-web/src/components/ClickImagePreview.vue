@@ -17,7 +17,7 @@
         @click.self="closePreview"
       >
         <img
-          :src="src"
+          :src="previewSrc || src"
           :alt="alt"
           class="click-preview-large"
           @click.stop="closePreview"
@@ -33,6 +33,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps({
   src: { type: String, default: '' },
+  previewSrc: { type: String, default: '' },
   alt: { type: String, default: '预览' },
   thumbClass: { type: String, default: '' }
 })

@@ -4,6 +4,8 @@ const {
   uploadFrameCoverFromBase64,
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
+  uploadStyleHdSampleFromBase64,
+  downloadCloudFileAsBase64,
   attachStyleSampleUrls,
   attachCustomerAvatarUrls,
   uploadCustomerAvatarFromBase64
@@ -493,6 +495,7 @@ async function createStyle(payload) {
   const name = (payload.name || '').trim()
   const prompt = (payload.prompt || '').trim()
   const sampleFileId = (payload.sampleFileId || '').trim()
+  const sampleHdFileId = (payload.sampleHdFileId || '').trim()
   if (!name) throw new Error('请填写风格名称')
   if (!sampleFileId) throw new Error('请上传风格样图')
   const gender = normalizeStyleGender(payload.gender)
@@ -522,6 +525,7 @@ async function createStyle(payload) {
     name,
     prompt,
     sampleFileId,
+    sampleHdFileId,
     resolution,
     gender,
     sort: Number(payload.sort) || 0,
@@ -550,7 +554,7 @@ async function updateStyle(payload) {
     }
   }
 
-  const allowed = ['name', 'prompt', 'sampleFileId', 'resolution', 'gender', 'sort', 'enabled']
+  const allowed = ['name', 'prompt', 'sampleFileId', 'sampleHdFileId', 'resolution', 'gender', 'sort', 'enabled']
   const data = { updateTime: new Date() }
   if (payload.name !== undefined) {
     const name = (payload.name || '').trim()
@@ -584,6 +588,10 @@ async function updateStyle(payload) {
       data.sampleFileId = sampleFileId
       return
     }
+    if (key === 'sampleHdFileId') {
+      data.sampleHdFileId = (payload.sampleHdFileId || '').trim()
+      return
+    }
     if (key === 'resolution') {
       data.resolution = normalizeStyleResolution(payload.resolution)
       return
@@ -596,6 +604,9 @@ async function updateStyle(payload) {
   if (data.sampleFileId !== undefined) {
     await deleteReplacedCloudFile(current.sampleFileId, data.sampleFileId)
   }
+  if (data.sampleHdFileId !== undefined) {
+    await deleteReplacedCloudFile(current.sampleHdFileId, data.sampleHdFileId)
+  }
   if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
   await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).update({ data })
   return getStyle({ _id: docId })
@@ -606,8 +617,10 @@ async function deleteStyle(payload) {
   if (!docId) throw new Error('缺少 _id')
   const currentRes = await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).get()
   const sampleFileId = currentRes.data && currentRes.data.sampleFileId
+  const sampleHdFileId = currentRes.data && currentRes.data.sampleHdFileId
   await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).remove()
   if (sampleFileId) await deleteCloudFileSafe(sampleFileId)
+  if (sampleHdFileId) await deleteCloudFileSafe(sampleHdFileId)
   return { deleted: true }
 }
 
@@ -740,7 +753,39 @@ async function uploadFrameCover(payload) {
 }
 
 async function uploadStyleSample(payload) {
-  return uploadStyleSampleFromBase64(payload.base64, payload.mimeType || 'image/jpeg')
+  const mimeType = payload.mimeType || 'image/jpeg'
+  const hasThumb = !!(payload.base64 && String(payload.base64).trim())
+  const hasHd = !!(payload.hdBase64 && String(payload.hdBase64).trim())
+  if (!hasThumb && !hasHd) throw new Error('缺少图片数据')
+
+  let sampleFileId = ''
+  let sampleUrl = ''
+  if (hasThumb) {
+    const sampleRes = await uploadStyleSampleFromBase64(payload.base64, mimeType)
+    sampleFileId = sampleRes.sampleFileId
+    sampleUrl = sampleRes.sampleUrl
+  }
+
+  let sampleHdFileId = ''
+  let sampleHdUrl = ''
+  if (hasHd) {
+    const hdRes = await uploadStyleHdSampleFromBase64(payload.hdBase64, mimeType)
+    sampleHdFileId = hdRes.sampleHdFileId
+    sampleHdUrl = hdRes.sampleHdUrl
+  }
+
+  return { sampleFileId, sampleUrl, sampleHdFileId, sampleHdUrl }
+}
+
+async function fetchStyleSampleImage(payload) {
+  const fileId = (
+    payload.fileId ||
+    payload.sampleHdFileId ||
+    payload.sampleFileId ||
+    ''
+  ).trim()
+  if (!fileId) throw new Error('缺少样图 fileId')
+  return downloadCloudFileAsBase64(fileId)
 }
 
 async function getFrame(payload) {
@@ -1214,6 +1259,8 @@ async function dispatch(action, payload, query) {
       return deleteStyle(payload)
     case 'styles.uploadSample':
       return uploadStyleSample(payload)
+    case 'styles.fetchSampleImage':
+      return fetchStyleSampleImage(payload)
     case 'styles.seedDefaults':
       return seedDefaultStyles(db)
     case 'frames.list':

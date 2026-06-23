@@ -366,13 +366,20 @@ Page({
   onPreviewTemplate(e) {
     const index =
       e.detail && e.detail.index != null ? e.detail.index : e.currentTarget.dataset.index;
-    const template = this.data.templates[index];
-    const url = template && (template.sampleDisplayUrl || template.sampleFileId);
-    if (url) {
-      wx.previewImage({ urls: [url], current: url });
-    } else {
+    const urls = this.data.templates
+      .map(
+        (t) =>
+          t.sampleHdDisplayUrl ||
+          t.sampleHdFileId ||
+          t.sampleDisplayUrl ||
+          t.sampleFileId
+      )
+      .filter(Boolean);
+    if (!urls.length) {
       wx.showToast({ title: '预览失败', icon: 'none' });
+      return;
     }
+    wx.previewImage({ urls, current: urls[index] || urls[0] });
   },
 
   onChooseAvatar(e) {

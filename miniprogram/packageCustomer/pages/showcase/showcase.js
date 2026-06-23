@@ -25,11 +25,21 @@ function blurbForTemplate(item, isStore) {
 }
 
 function enrichTemplates(list, isStore) {
-  return (list || []).map((item) => ({
-    ...item,
-    blurb: blurbForTemplate(item, isStore),
-    cover: item.sampleDisplayUrl || item.sampleFileId || ''
-  }))
+  return (list || []).map((item) => {
+    const cover = item.sampleDisplayUrl || item.sampleFileId || ''
+    const heroCover =
+      item.sampleHdDisplayUrl ||
+      item.sampleHdFileId ||
+      item.sampleDisplayUrl ||
+      item.sampleFileId ||
+      ''
+    return {
+      ...item,
+      blurb: blurbForTemplate(item, isStore),
+      cover,
+      heroCover
+    }
+  })
 }
 
 function calcHeroHeightPx() {
@@ -113,7 +123,9 @@ Page({
       e.currentTarget.dataset.index != null
         ? Number(e.currentTarget.dataset.index)
         : this.data.currentIndex
-    const urls = this.data.templates.map((t) => t.cover).filter(Boolean)
+    const urls = this.data.templates
+      .map((t) => t.sampleHdDisplayUrl || t.sampleHdFileId || t.cover)
+      .filter(Boolean)
     if (!urls.length) return
     wx.previewImage({
       urls,

@@ -28,6 +28,10 @@ function normalizeStyle(row) {
   const sampleThumbFileId = String(
     row.sampleThumbFileId || row.sampleThumbUrl || row.thumbFileId || ''
   ).trim()
+  /** 高清大图（可选，用于大图预览） */
+  const sampleHdFileId = String(
+    row.sampleHdFileId || row.sampleHdUrl || row.hdFileId || row.hdUrl || ''
+  ).trim()
   return {
     _id: row._id || '',
     id: row.id || '',
@@ -35,6 +39,7 @@ function normalizeStyle(row) {
     prompt: row.prompt || '',
     sampleFileId,
     sampleThumbFileId,
+    sampleHdFileId,
     sort: row.sort != null ? row.sort : 0,
     enabled: row.enabled !== false,
     gender: normalizeStyleGender(row.gender)
@@ -61,7 +66,7 @@ async function attachSampleDisplayUrls(styles) {
   const cloudIds = [
     ...new Set(
       styles
-        .flatMap((s) => [s.sampleFileId, s.sampleThumbFileId])
+        .flatMap((s) => [s.sampleFileId, s.sampleThumbFileId, s.sampleHdFileId])
         .filter((id) => id && String(id).startsWith('cloud://'))
     )
   ]
@@ -69,7 +74,8 @@ async function attachSampleDisplayUrls(styles) {
     return styles.map((s) => ({
       ...s,
       sampleDisplayUrl: s.sampleFileId || '',
-      sampleThumbDisplayUrl: s.sampleThumbFileId || ''
+      sampleThumbDisplayUrl: s.sampleThumbFileId || '',
+      sampleHdDisplayUrl: s.sampleHdFileId || ''
     }))
   }
   try {
@@ -83,14 +89,16 @@ async function attachSampleDisplayUrls(styles) {
     return styles.map((s) => ({
       ...s,
       sampleDisplayUrl: map[s.sampleFileId] || s.sampleFileId || '',
-      sampleThumbDisplayUrl: map[s.sampleThumbFileId] || s.sampleThumbFileId || ''
+      sampleThumbDisplayUrl: map[s.sampleThumbFileId] || s.sampleThumbFileId || '',
+      sampleHdDisplayUrl: map[s.sampleHdFileId] || s.sampleHdFileId || ''
     }))
   } catch (e) {
     console.warn('[styles] getTempFileURL 失败', e)
     return styles.map((s) => ({
       ...s,
       sampleDisplayUrl: s.sampleFileId || '',
-      sampleThumbDisplayUrl: s.sampleThumbFileId || ''
+      sampleThumbDisplayUrl: s.sampleThumbFileId || '',
+      sampleHdDisplayUrl: s.sampleHdFileId || ''
     }))
   }
 }

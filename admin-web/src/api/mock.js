@@ -117,12 +117,18 @@ function normalizeMockStyleGender(value) {
 
 function withStyleSampleUrl(row) {
   const sampleFileId = row.sampleFileId || ''
+  const sampleHdFileId = row.sampleHdFileId || ''
   return {
     ...row,
     resolution: row.resolution || '1536:1152',
     gender: normalizeMockStyleGender(row.gender),
     sampleFileId,
-    sampleUrl: sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : row.sampleUrl || ''
+    sampleUrl: sampleFileId && !String(sampleFileId).startsWith('cloud://') ? sampleFileId : row.sampleUrl || '',
+    sampleHdFileId,
+    sampleHdUrl:
+      sampleHdFileId && !String(sampleHdFileId).startsWith('cloud://')
+        ? sampleHdFileId
+        : row.sampleHdUrl || ''
   }
 }
 
@@ -426,6 +432,7 @@ export async function mockRequest(action, payload = {}, query = {}) {
         resolution: payload.resolution || '1536:1152',
         gender: normalizeMockStyleGender(payload.gender),
         sampleFileId: payload.sampleFileId || '',
+        sampleHdFileId: payload.sampleHdFileId || '',
         sort: payload.sort || 0,
         enabled: payload.enabled !== false
       })
@@ -433,9 +440,31 @@ export async function mockRequest(action, payload = {}, query = {}) {
       return row
     }
     case 'styles.uploadSample': {
-      const dataUrl = `data:image/jpeg;base64,${payload.base64 || ''}`
-      const sampleFileId = `mock-style-${Date.now()}`
-      return { sampleFileId, sampleUrl: dataUrl }
+      const ts = Date.now()
+      const out = { sampleFileId: '', sampleUrl: '', sampleHdFileId: '', sampleHdUrl: '' }
+      if (payload.base64 && String(payload.base64).trim()) {
+        out.sampleFileId = `mock-style-${ts}`
+        out.sampleUrl = `data:image/jpeg;base64,${payload.base64}`
+      }
+      if (payload.hdBase64 && String(payload.hdBase64).trim()) {
+        out.sampleHdFileId = `mock-style-hd-${ts}`
+        out.sampleHdUrl = `data:image/jpeg;base64,${payload.hdBase64}`
+      }
+      if (!out.sampleFileId && !out.sampleHdFileId) throw new Error('缺少图片数据')
+      return out
+    }
+    case 'styles.fetchSampleImage': {
+      const fileId = String(payload.fileId || payload.sampleHdFileId || '').trim()
+      const row = mockStyles.find(
+        (s) => s.sampleHdFileId === fileId || s.sampleFileId === fileId
+      )
+      const url = row && (row.sampleHdUrl || row.sampleUrl)
+      if (!url || !String(url).startsWith('data:')) {
+        throw new Error('mock 无可用样图')
+      }
+      const m = url.match(/^data:([^;]+);base64,(.+)$/)
+      if (!m) throw new Error('mock 样图格式无效')
+      return { mimeType: m[1], base64: m[2], byteSize: m[2].length }
     }
     case 'styles.update': {
       const idx = mockStyles.findIndex((s) => s._id === payload._id)
