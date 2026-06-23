@@ -1,4 +1,4 @@
-const { resolveFrameOrderCustomerId } = require('../../utils/frameOrderCustomer')
+const { resolveFrameOrderCustomerId } = require('./frameOrderCustomer')
 
 /** 制作影集：必须已关联客户（批次 / 云相册筛选 / 首页拍摄） */
 function resolveLinkedCustomerId(app, extra = {}) {

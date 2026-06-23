@@ -8,9 +8,22 @@ function normalizeStyleGender(value) {
   return STYLE_GENDER_MALE
 }
 
+function styleGenderFromStyleId(id) {
+  const m = String(id || '').trim().match(/^([FM])(\d{2})$/i)
+  if (!m) return null
+  return m[1].toUpperCase() === 'F' ? STYLE_GENDER_FEMALE : STYLE_GENDER_MALE
+}
+
+function resolveStyleGender(row) {
+  if (!row) return DEFAULT_STYLE_GENDER
+  const fromId = styleGenderFromStyleId(row.id)
+  if (fromId) return fromId
+  return normalizeStyleGender(row.gender)
+}
+
 function formatStyleGenderRow(row) {
   if (!row || typeof row !== 'object') return row
-  const gender = normalizeStyleGender(row.gender)
+  const gender = resolveStyleGender(row)
   return { ...row, gender }
 }
 
@@ -19,5 +32,7 @@ module.exports = {
   STYLE_GENDER_FEMALE,
   DEFAULT_STYLE_GENDER,
   normalizeStyleGender,
+  styleGenderFromStyleId,
+  resolveStyleGender,
   formatStyleGenderRow
 }

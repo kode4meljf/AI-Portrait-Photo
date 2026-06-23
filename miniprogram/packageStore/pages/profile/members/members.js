@@ -1,7 +1,7 @@
 const app = getApp()
 const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession')
 const { isStoreOwner } = require('../../../../utils/storeRole')
-const { copyTextToClipboard } = require('../../../../utils/clipboard')
+const { copyTextToClipboard } = require('../../../utils/clipboard')
 
 function decorateMember(row, isOwner) {
   const name = (row.nickName || '').trim() || '微信用户'

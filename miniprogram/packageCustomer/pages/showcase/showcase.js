@@ -1,5 +1,6 @@
 const { ensureStyleShowcasePage } = require('../../utils/styleShowcaseGuard')
-const { fetchStyleTemplates } = require('../../../config/styles')
+const { fetchShowcaseStyleTemplates } = require('../../../config/styles')
+const { resolveStyleGender } = require('../../../utils/styleGender')
 
 /** 无后台 desc 时的氛围副标题（可按风格名扩展） */
 const STYLE_BLURBS = {
@@ -33,8 +34,11 @@ function enrichTemplates(list, isStore) {
       item.sampleDisplayUrl ||
       item.sampleFileId ||
       ''
+    const gender = resolveStyleGender(item)
     return {
       ...item,
+      gender,
+      genderLabel: gender,
       blurb: blurbForTemplate(item, isStore),
       cover,
       heroCover
@@ -83,7 +87,7 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const db = wx.cloud.database()
-      const raw = await fetchStyleTemplates(db)
+      const raw = await fetchShowcaseStyleTemplates(db)
       const templates = enrichTemplates(raw, !!this._isStore)
       this.setData({
         templates,

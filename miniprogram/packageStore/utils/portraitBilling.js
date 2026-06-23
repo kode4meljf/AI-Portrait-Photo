@@ -1,7 +1,7 @@
 const app = getApp();
 const db = wx.cloud.database();
-const { getProfileCollection } = require('./account.js');
-const { isValidStoreId } = require('./storeSession.js');
+const { getProfileCollection } = require('../../utils/account.js');
+const { isValidStoreId } = require('../../utils/storeSession.js');
 const {
   PORTRAIT_POINTS_SINGLE,
   PORTRAIT_POINTS_3,
@@ -9,7 +9,7 @@ const {
   FRAME_POINTS,
   INSUFFICIENT_POINTS_MSG,
   portraitPointsForStyleCount
-} = require('./storePoints.js');
+} = require('../../utils/storePoints.js');
 
 const RECHARGE_URL = '/packageStore/pages/profile/recharge/recharge';
 

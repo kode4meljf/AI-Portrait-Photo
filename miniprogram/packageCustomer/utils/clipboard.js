@@ -1,4 +1,4 @@
-const { ensurePrivacyAuthorized } = require('./privacy')
+const { ensurePrivacyAuthorized } = require('../../utils/privacy')
 
 /**
  * 复制文本到剪贴板（先走微信隐私授权）

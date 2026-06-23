@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "云相册",
+  "component": true,
   "usingComponents": {
     "points-cost": "/packageStore/components/points-cost/points-cost"
   }

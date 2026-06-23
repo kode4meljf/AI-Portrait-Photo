@@ -3,7 +3,7 @@ const { fetchStyleTemplates, fetchStylesByIds, pickStylesForShoot } = require('.
 const { STYLE_TEMPLATES_COLLECTION } = require('../../../../config/constants.js');
 const { consumePendingShoot, getShootCustomerId } = require('../../../../utils/shootContext.js');
 const { filterStylesByGender, styleGenderFromCustomer } = require('../../../../utils/styleGender');
-const { fetchCustomerUsedStyleIds } = require('../../../../utils/customerStyleHistory');
+const { fetchCustomerUsedStyleIds } = require('../../../utils/customerStyleHistory');
 const { isCloudFileId } = require('../../../utils/cloudPhoto.js');
 const { runShootPortraitGeneration } = require('../../../utils/shootGenerate.js');
 const {
@@ -12,7 +12,7 @@ const {
   pollPortraitPhoto,
   kickPortraitWorker
 } = require('../../../../utils/jimengPortraitAi.js');
-const { normalizePhotos } = require('../../../../utils/portraitViewer/normalizeItems.js');
+const { normalizePhotos } = require('../../../utils/portraitViewer/normalizeItems.js');
 const {
   PORTRAIT_POINTS_SINGLE,
   fetchStoreBalance,
@@ -20,7 +20,7 @@ const {
   isInsufficientBalanceError,
   promptInsufficientBalance,
   toastPortraitError
-} = require('../../../../utils/portraitBilling.js');
+} = require('../../../utils/portraitBilling.js');
 const { setBatchFavorite, loadBatchFavorite } = require('../../../../utils/batchFavorite.js');
 const { resolveLinkedCustomerId } = require('../../../utils/albumCustomer.js');
 const { fetchPhotosByBatchId } = require('../../../../utils/batchPhotos.js');

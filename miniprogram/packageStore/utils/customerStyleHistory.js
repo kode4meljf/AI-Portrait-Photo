@@ -1,7 +1,7 @@
 /**
  * 客户已成功生成过的风格 ID（photos.styleId，仅成功成片）
  */
-const { isAiPhotoSuccess } = require('../packageStore/utils/albumPhotos')
+const { isAiPhotoSuccess } = require('./albumPhotos')
 
 const MP_PAGE_SIZE = 20
 

@@ -1,4 +1,4 @@
-const { fetchStoreBalance } = require('../../../../utils/portraitBilling');
+const { fetchStoreBalance } = require('../../../utils/portraitBilling');
 const { safeNavigateBack } = require('../../../../utils/navigation');
 const {
   fetchPayStatus,

@@ -1,4 +1,4 @@
-const { isPortraitGenerating } = require('../jimengPortraitAi.js');
+const { isPortraitGenerating } = require('../../../utils/jimengPortraitAi.js');
 const { portraitFailPresentation } = require('../portraitBilling.js');
 
 function mapGenerateStatus(photo) {

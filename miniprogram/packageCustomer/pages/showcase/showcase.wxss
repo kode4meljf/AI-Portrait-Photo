@@ -61,12 +61,27 @@
   box-sizing: border-box;
 }
 
+.hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .hero-name {
-  display: block;
   font-size: 40rpx;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.02em;
+}
+
+.hero-gender {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 22rpx;
+  line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .hero-sub {

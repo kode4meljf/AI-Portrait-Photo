@@ -8,11 +8,11 @@ const { GENDER_MALE, GENDER_FEMALE } = require('../../../../utils/customerGender
 const {
   styleGenderFromCustomer
 } = require('../../../../utils/styleGender')
-const { fetchCustomerUsedStyleIds } = require('../../../../utils/customerStyleHistory')
+const { fetchCustomerUsedStyleIds } = require('../../../utils/customerStyleHistory')
 
 const db = wx.cloud.database()
 const { buildShootQuery, setPendingShoot, getShootCustomerId } = require('../../../../utils/shootContext.js')
-const { portraitCostForCount, assertPortraitBalance } = require('../../../../utils/portraitBilling.js')
+const { portraitCostForCount, assertPortraitBalance } = require('../../../utils/portraitBilling.js')
 
 Page({
   data: {

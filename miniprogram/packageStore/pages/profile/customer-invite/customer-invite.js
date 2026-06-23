@@ -1,6 +1,6 @@
 const { callStoreMember } = require('../../../../utils/storeSession')
 const { getInviteEnvVersion } = require('../../../utils/inviteEnv')
-const { copyTextToClipboard } = require('../../../../utils/clipboard')
+const { copyTextToClipboard } = require('../../../utils/clipboard')
 
 function formatExpire(ts) {
   if (!ts) return ''

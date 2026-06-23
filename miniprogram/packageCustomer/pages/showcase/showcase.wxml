@@ -21,7 +21,10 @@
           />
           <view wx:else class="hero-img hero-img--empty">暂无样图</view>
           <view class="hero-cap">
-            <text class="hero-name">{{item.name}}</text>
+            <view class="hero-title-row">
+              <text class="hero-name">{{item.name}}</text>
+              <text class="hero-gender">{{item.genderLabel}}</text>
+            </view>
             <text class="hero-sub">{{item.blurb}}</text>
           </view>
         </view>

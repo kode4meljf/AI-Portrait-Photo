@@ -6,7 +6,7 @@ const db = wx.cloud.database();
 const { createShootBatch, uploadShootOriginalToCloud, isWechatLocalPath } = require('../../utils/media.js');
 const { isValidStoreId } = require('../../utils/storeSession.js');
 const { submitPortraitBatch, kickPortraitWorker, isPortraitGenerating } = require('../../utils/jimengPortraitAi.js');
-const { portraitFailPresentation } = require('../../utils/portraitBilling.js');
+const { portraitFailPresentation } = require('./portraitBilling.js');
 
 async function ensureCloudOriginalUrl(originalUrl) {
   const src = String(originalUrl || '').trim();

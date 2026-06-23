@@ -2,7 +2,7 @@
  * @file 风格模板：云库读取与展示字段归一化
  */
 
-const { normalizeStyleGender, buildStyleGenderDbWhere } = require('../utils/styleGender')
+const { resolveStyleGender, buildStyleGenderDbWhere } = require('../utils/styleGender')
 
 function parseStyleCode(id) {
   const text = String(id || '').trim()
@@ -42,7 +42,7 @@ function normalizeStyle(row) {
     sampleHdFileId,
     sort: row.sort != null ? row.sort : 0,
     enabled: row.enabled !== false,
-    gender: normalizeStyleGender(row.gender)
+    gender: resolveStyleGender(row)
   }
 }
 
@@ -152,6 +152,38 @@ async function fetchStyleTemplates(db, options = {}) {
 }
 
 /**
+ * 展示页用：男女风格交错排列（F1,M1,F2,M2…），避免首页只看到女性样板
+ */
+function mixShowcaseStyles(list) {
+  const female = []
+  const male = []
+  for (const item of list || []) {
+    if (resolveStyleGender(item) === '女') {
+      female.push(item)
+    } else {
+      male.push(item)
+    }
+  }
+  const mixed = []
+  let fi = 0
+  let mi = 0
+  const total = female.length + male.length
+  while (mixed.length < total) {
+    if (fi < female.length) mixed.push(female[fi++])
+    if (mi < male.length) mixed.push(male[mi++])
+  }
+  return mixed
+}
+
+/**
+ * 首页 / 风格展示页：拉取启用风格并按男女交错排序
+ */
+async function fetchShowcaseStyleTemplates(db, options = {}) {
+  const list = await fetchStyleTemplates(db, options)
+  return mixShowcaseStyles(list)
+}
+
+/**
  * 按 id 列表顺序返回风格（用于生成结果页）
  */
 async function fetchStylesByIds(db, styleIds, options = {}) {
@@ -235,6 +267,8 @@ function pickStylesForShoot(pool, count, options = {}) {
 module.exports = {
   STYLE_FETCH_LIMIT,
   fetchStyleTemplates,
+  fetchShowcaseStyleTemplates,
+  mixShowcaseStyles,
   fetchStylesByIds,
   pickStyles,
   pickStylesForShoot

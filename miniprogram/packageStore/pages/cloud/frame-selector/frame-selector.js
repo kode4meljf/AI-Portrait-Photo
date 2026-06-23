@@ -11,8 +11,8 @@ const {
   promptInsufficientBalance,
   fetchStoreBalance,
   FRAME_POINTS
-} = require('../../../../utils/portraitBilling.js');
-const { resolveFrameOrderCustomerId } = require('../../../../utils/frameOrderCustomer.js');
+} = require('../../../utils/portraitBilling.js');
+const { resolveFrameOrderCustomerId } = require('../../../utils/frameOrderCustomer.js');
 const db = wx.cloud.database();
 
 const MOCK_STORE = {
@@ -161,7 +161,7 @@ Page({
       return;
     }
     const frameIndex = this.data.frames.findIndex((f) => f.id === frame.id);
-    const previewFrameTheme = (frameIndex >= 0 ? frameIndex : 0) % 3 + 1;
+    const previewFrameTheme = (frameIndex >= 0 ? frameIndex : 0) % 4 + 1;
     this.setData({
       showPreview: true,
       previewImageReady: false,

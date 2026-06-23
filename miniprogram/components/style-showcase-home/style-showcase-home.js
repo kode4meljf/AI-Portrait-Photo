@@ -3,11 +3,18 @@ function coverUrl(item) {
   return item.sampleDisplayUrl || item.sampleFileId || ''
 }
 
+const { resolveStyleGender } = require('../../utils/styleGender')
+
+function genderLabel(item) {
+  return resolveStyleGender(item)
+}
+
 function normalizeList(templates) {
   return (templates || []).map((item, index) => ({
     ...item,
     index,
-    cover: coverUrl(item)
+    cover: coverUrl(item),
+    genderLabel: genderLabel(item)
   }))
 }
 

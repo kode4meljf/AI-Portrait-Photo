@@ -1,6 +1,6 @@
 {
   "navigationBarTitleText": "相框选择",
   "usingComponents": {
-    "points-cost": "/components/points-cost/points-cost"
+    "points-cost": "/packageStore/components/points-cost/points-cost"
   }
 }

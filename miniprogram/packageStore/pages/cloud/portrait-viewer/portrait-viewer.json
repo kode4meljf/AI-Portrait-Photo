@@ -8,7 +8,7 @@
   "enablePullDownRefresh": false,
   "disableScroll": true,
   "usingComponents": {
-    "portrait-retry-dialog": "/components/portrait-retry-dialog/portrait-retry-dialog",
-    "portrait-result-viewer": "/components/portrait-result-viewer/portrait-result-viewer"
+    "portrait-retry-dialog": "/packageStore/components/portrait-retry-dialog/portrait-retry-dialog",
+    "portrait-result-viewer": "/packageStore/components/portrait-result-viewer/portrait-result-viewer"
   }
 }

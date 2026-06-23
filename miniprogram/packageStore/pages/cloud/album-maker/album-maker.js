@@ -9,7 +9,7 @@ const {
   fetchStoreBalance,
   isInsufficientBalanceError,
   promptInsufficientBalance
-} = require('../../../../utils/portraitBilling')
+} = require('../../../utils/portraitBilling')
 
 const db = wx.cloud.database()
 

@@ -5,9 +5,9 @@
 const app = getApp();
 const { callOrderApi } = require('../../../../utils/orderApi');
 const { fetchPlatformSupportPhone } = require('../../../../utils/platformSettings');
-const { copyTextToClipboard } = require('../../../../utils/clipboard');
+const { copyTextToClipboard } = require('../../../utils/clipboard');
 const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../../utils/frameOrderDetailView');
-const { buildAlbumOrderView } = require('../../../../utils/albumOrderDetailView');
+const { buildAlbumOrderView } = require('../../../utils/albumOrderDetailView');
 const { resolveOrderType } = require('../../../../utils/orderCardThumb');
 
 function normalizeOrderType(value) {

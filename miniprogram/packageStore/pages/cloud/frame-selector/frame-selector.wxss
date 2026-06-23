@@ -191,42 +191,68 @@
   background: #e5e7eb;
 }
 
+/* F01 原木色：浅木、偏暖黄 */
 .preview-frame-1 {
-  padding: 28rpx;
-  background: linear-gradient(145deg, #e8d4b8 0%, #c9a66b 48%, #b8894f 100%);
-  border-radius: 8rpx;
+  padding: 30rpx;
+  background: linear-gradient(160deg, #e8cfa8 0%, #d4b483 42%, #c4a06a 100%);
+  border-radius: 6rpx;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2rpx 4rpx rgba(120, 86, 40, 0.25);
 }
 
 .preview-frame-1 .preview-frame-mat {
-  border-radius: 4rpx;
-  padding: 12rpx;
-  background: #faf6ef;
-  box-shadow: inset 0 0 0 2rpx rgba(139, 99, 54, 0.2);
+  padding: 22rpx;
+  background: #faf8f4;
+  box-shadow: inset 0 0 0 2rpx rgba(180, 150, 100, 0.18);
 }
 
+/* F02 黑胡桃色：深灰褐木 */
 .preview-frame-2 {
-  padding: 22rpx;
-  background: linear-gradient(160deg, #3d3d3d 0%, #111 100%);
+  padding: 30rpx;
+  background: linear-gradient(165deg, #6a5f56 0%, #4f4740 48%, #3d3832 100%);
   border-radius: 6rpx;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2rpx 4rpx rgba(0, 0, 0, 0.35);
 }
 
 .preview-frame-2 .preview-frame-mat {
-  border-radius: 2rpx;
-  padding: 8rpx;
-  background: #1a1a1a;
+  padding: 22rpx;
+  background: #f7f5f2;
+  box-shadow: inset 0 0 0 2rpx rgba(60, 54, 48, 0.2);
 }
 
+/* F03 红木色：深红褐木 */
 .preview-frame-3 {
-  padding: 14rpx;
-  background: #fff;
-  border: 2rpx solid #e5e7eb;
-  border-radius: 4rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  padding: 30rpx;
+  background: linear-gradient(160deg, #8b4a3c 0%, #6b3428 45%, #5a2a20 100%);
+  border-radius: 6rpx;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.15),
+    inset 0 -2rpx 4rpx rgba(40, 12, 8, 0.4);
 }
 
 .preview-frame-3 .preview-frame-mat {
-  padding: 20rpx;
-  background: #fff;
+  padding: 22rpx;
+  background: #faf7f4;
+  box-shadow: inset 0 0 0 2rpx rgba(100, 40, 30, 0.22);
+}
+
+/* F04 胡桃木色：中深暖褐 */
+.preview-frame-4 {
+  padding: 30rpx;
+  background: linear-gradient(160deg, #a8845c 0%, #8b6a42 46%, #755635 100%);
+  border-radius: 6rpx;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2rpx 4rpx rgba(70, 45, 20, 0.3);
+}
+
+.preview-frame-4 .preview-frame-mat {
+  padding: 22rpx;
+  background: #faf8f5;
+  box-shadow: inset 0 0 0 2rpx rgba(110, 80, 45, 0.2);
 }
 
 .preview-meta {

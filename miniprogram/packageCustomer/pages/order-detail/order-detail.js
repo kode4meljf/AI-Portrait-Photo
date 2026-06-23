@@ -2,7 +2,7 @@ const app = getApp()
 const { ensureCustomerPage } = require('../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
 const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require('../../utils/frameOrderDetailView')
-const { copyTextToClipboard } = require('../../../utils/clipboard')
+const { copyTextToClipboard } = require('../../utils/clipboard')
 
 Page({
   behaviors: [require('../../behaviors/customerPageNav')],

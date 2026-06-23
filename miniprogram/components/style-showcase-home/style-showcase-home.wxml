@@ -16,6 +16,7 @@
       >
         <image wx:if="{{item.cover}}" class="grid-img" src="{{item.cover}}" mode="aspectFill" />
         <view wx:else class="grid-img grid-img--empty" />
+        <text class="c-grad-gender">{{item.genderLabel}}</text>
         <text class="c-grad-name">{{item.name}}</text>
       </view>
     </view>

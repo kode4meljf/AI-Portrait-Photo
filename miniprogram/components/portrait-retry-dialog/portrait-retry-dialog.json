@@ -1,6 +1,0 @@
-{
-  "component": true,
-  "usingComponents": {
-    "points-cost": "/components/points-cost/points-cost"
-  }
-}

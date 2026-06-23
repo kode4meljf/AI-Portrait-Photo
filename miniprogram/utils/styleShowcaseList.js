@@ -1,6 +1,6 @@
 /** 首页风格样板：双列分页展示（每页 6 个） */
 
-const { fetchStyleTemplates } = require('../config/styles')
+const { fetchShowcaseStyleTemplates } = require('../config/styles')
 
 const PAGE_SIZE = 6
 const FETCH_MAX = 100
@@ -22,7 +22,7 @@ async function initShowcaseTemplates(page, db, options = {}) {
   page._showcaseReady = false
   page.setData({ templatesLoading: true })
   try {
-    const pool = await fetchStyleTemplates(db, {
+    const pool = await fetchShowcaseStyleTemplates(db, {
       ...options,
       limit: options.limit || FETCH_MAX
     })

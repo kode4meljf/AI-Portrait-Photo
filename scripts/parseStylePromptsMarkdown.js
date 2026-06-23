@@ -41,7 +41,7 @@ function parseStylePromptsMarkdown(content) {
       throw new Error(`${externalId} ${name} 缺少提示词段落`)
     }
 
-    const gender = genderCode === 'F' || section === 'female' ? '女' : '男'
+    const gender = genderCode === 'F' ? '女' : '男'
     styles.push({
       externalId,
       genderCode,

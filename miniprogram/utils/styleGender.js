@@ -8,6 +8,21 @@ function normalizeStyleGender(value) {
   return STYLE_GENDER_MALE
 }
 
+/** F01–F30 / M01–M30 编号前缀 → 适用性别（优先于云库 gender 字段） */
+function styleGenderFromStyleId(id) {
+  const m = String(id || '').trim().match(/^([FM])(\d{2})$/i)
+  if (!m) return null
+  return m[1].toUpperCase() === 'F' ? STYLE_GENDER_FEMALE : STYLE_GENDER_MALE
+}
+
+/** 风格行：编号前缀优先，避免 M 系列误标为「女」导致首页只展示女性样板 */
+function resolveStyleGender(row) {
+  if (!row) return DEFAULT_STYLE_GENDER
+  const fromId = styleGenderFromStyleId(row.id)
+  if (fromId) return fromId
+  return normalizeStyleGender(row.gender)
+}
+
 /** 客户 gender (male/female) → 风格库 gender (男/女) */
 function styleGenderFromCustomer(customerGender) {
   const s = String(customerGender || '').trim()
@@ -17,7 +32,7 @@ function styleGenderFromCustomer(customerGender) {
 
 function filterStylesByGender(pool, genderLabel) {
   const g = normalizeStyleGender(genderLabel)
-  return (pool || []).filter((s) => normalizeStyleGender(s.gender) === g)
+  return (pool || []).filter((s) => resolveStyleGender(s) === g)
 }
 
 /** 云数据库 where：按适用性别筛选（与 adminApi buildStyleListWhere 一致） */
@@ -27,9 +42,13 @@ function buildStyleGenderDbWhere(db, genderLabel) {
   const _ = db.command
   const g = normalizeStyleGender(genderRaw)
   if (g === STYLE_GENDER_FEMALE) {
-    return { gender: STYLE_GENDER_FEMALE }
+    return _.or([
+      { id: db.RegExp({ regexp: '^F\\d{2}$', options: 'i' }) },
+      { gender: STYLE_GENDER_FEMALE }
+    ])
   }
   return _.or([
+    { id: db.RegExp({ regexp: '^M\\d{2}$', options: 'i' }) },
     { gender: STYLE_GENDER_MALE },
     { gender: _.exists(false) },
     { gender: '' }
@@ -41,6 +60,8 @@ module.exports = {
   STYLE_GENDER_FEMALE,
   DEFAULT_STYLE_GENDER,
   normalizeStyleGender,
+  styleGenderFromStyleId,
+  resolveStyleGender,
   styleGenderFromCustomer,
   filterStylesByGender,
   buildStyleGenderDbWhere
