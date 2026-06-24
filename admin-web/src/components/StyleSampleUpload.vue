@@ -107,19 +107,27 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   displayUrl: { type: String, default: '' },
   hdModelValue: { type: String, default: '' },
-  hdDisplayUrl: { type: String, default: '' }
+  hdDisplayUrl: { type: String, default: '' },
+  prompt: { type: String, default: '' },
+  isCreate: { type: Boolean, default: false },
+  baselineSampleFileId: { type: String, default: '' },
+  baselineSampleHdFileId: { type: String, default: '' }
 })
 
 const emit = defineEmits([
   'update:modelValue',
   'update:displayUrl',
   'update:hdModelValue',
-  'update:hdDisplayUrl'
+  'update:hdDisplayUrl',
+  'toolbar-state'
 ])
 
 const preview = ref(props.displayUrl || '')
 const hdPreviewUrl = ref('')
 const uploading = ref(false)
+const generating = ref(false)
+const revertSnapshot = ref(null)
+const orphanFileIds = ref(new Set())
 const cropDirty = ref(false)
 const croppedHint = ref(false)
 const cropReady = ref(false)
@@ -142,6 +150,30 @@ const dragStartOffsetX = ref(0)
 const dragStartOffsetY = ref(0)
 
 const hasHdImage = computed(() => !!hdPreviewUrl.value)
+
+const hasSampleState = computed(
+  () =>
+  !!(props.modelValue || props.hdModelValue || preview.value || props.displayUrl)
+)
+
+const generateButtonLabel = computed(() => {
+  if (props.isCreate && !hasSampleState.value) return '生成样图'
+  if (!props.isCreate && hasSampleState.value) return '重新生成样图'
+  return '生成样图'
+})
+
+const canRevert = computed(() => !!revertSnapshot.value)
+
+function emitToolbarState() {
+  emit('toolbar-state', {
+    generating: generating.value,
+    uploading: uploading.value,
+    canRevert: canRevert.value,
+    generateButtonLabel: generateButtonLabel.value
+  })
+}
+
+watch([generating, uploading, canRevert, generateButtonLabel], emitToolbarState, { immediate: true })
 
 const sourceCropWidth = computed(() => {
   if (!img.value) return 0
@@ -425,7 +457,164 @@ function updateThumbnail() {
   preview.value = result.previewUrl
 }
 
+function applySampleState(state) {
+  const next = {
+    sampleFileId: state.sampleFileId || '',
+    sampleUrl: state.sampleUrl || '',
+    sampleHdFileId: state.sampleHdFileId || '',
+    sampleHdUrl: state.sampleHdUrl || ''
+  }
+  emit('update:modelValue', next.sampleFileId)
+  emit('update:displayUrl', next.sampleUrl)
+  emit('update:hdModelValue', next.sampleHdFileId)
+  emit('update:hdDisplayUrl', next.sampleHdUrl)
+  preview.value = next.sampleUrl
+  cropDirty.value = false
+  croppedHint.value = false
+  if (next.sampleHdFileId) {
+    loadedHdFileId.value = next.sampleHdFileId
+    loadHdForEdit(next.sampleHdUrl, next.sampleUrl, next.sampleHdFileId)
+  } else {
+    loadedHdFileId.value = ''
+    hdPreviewUrl.value = ''
+    img.value = null
+    cropReady.value = false
+    useCoverPreview.value = false
+  }
+}
+
+function isBaselineSampleFileId(fileId) {
+  const id = String(fileId || '').trim()
+  if (!id) return false
+  return id === String(props.baselineSampleFileId || '').trim()
+}
+
+function isBaselineSampleHdFileId(fileId) {
+  const id = String(fileId || '').trim()
+  if (!id) return false
+  return id === String(props.baselineSampleHdFileId || '').trim()
+}
+
+function trackOrphanSampleFiles(prevThumbId, prevHdId) {
+  for (const fileId of [prevThumbId, prevHdId]) {
+    const id = String(fileId || '').trim()
+    if (!id.startsWith('cloud://')) continue
+    if (isBaselineSampleFileId(id) || isBaselineSampleHdFileId(id)) continue
+    orphanFileIds.value.add(id)
+  }
+}
+
+async function flushOrphanSamples() {
+  const fileIds = [...orphanFileIds.value]
+  if (!fileIds.length) return
+  orphanFileIds.value = new Set()
+  try {
+    await api.discardStyleSamples({ fileIds })
+  } catch (e) {
+    console.warn('[StyleSampleUpload] discard orphans failed', e)
+  }
+}
+
+function captureSampleSnapshot() {
+  if (!hasSampleState.value) return null
+  return {
+    sampleFileId: props.modelValue || '',
+    sampleUrl: props.displayUrl || preview.value || '',
+    sampleHdFileId: props.hdModelValue || '',
+    sampleHdUrl: props.hdDisplayUrl || ''
+  }
+}
+
+function base64ToFile(base64, mimeType, filename) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new File([bytes], filename, { type: mimeType || 'image/jpeg' })
+}
+
+async function applyGeneratedFromCloud({ sampleHdFileId, sampleHdUrl }) {
+  const fetched = await api.fetchStyleSampleImage({ fileId: sampleHdFileId })
+  const file = base64ToFile(
+    fetched.base64,
+    fetched.mimeType || 'image/jpeg',
+    'seedream-sample.jpg'
+  )
+  const processed = await processStyleSampleFileWithCrop(file)
+  img.value = processed.img
+  syncZoomLimits()
+  applyCropView({
+    offsetX: processed.offsetX,
+    offsetY: processed.offsetY,
+    zoom: processed.zoom
+  })
+  preview.value = processed.thumbnailPreviewUrl
+  hdPreviewUrl.value = sampleHdUrl || processed.hdPreviewUrl
+  croppedHint.value = processed.cropped
+  cropReady.value = true
+  useCoverPreview.value = false
+
+  const thumbBlob = await cropThumbnailToBlob(
+    processed.img,
+    processed.offsetX,
+    processed.offsetY,
+    processed.zoom
+  )
+  const res = await uploadStyleSamplePair({
+    thumbBody: thumbBlob,
+    sampleHdFileId,
+    mimeType: 'image/jpeg',
+    thumbFilename: 'seedream-thumb.jpg'
+  })
+  emit('update:modelValue', res.sampleFileId)
+  emit('update:displayUrl', res.sampleUrl || processed.thumbnailPreviewUrl)
+  emit('update:hdModelValue', res.sampleHdFileId || sampleHdFileId)
+  emit('update:hdDisplayUrl', res.sampleHdUrl || sampleHdUrl || processed.hdPreviewUrl)
+  loadedHdFileId.value = res.sampleHdFileId || sampleHdFileId
+  cropDirty.value = false
+}
+
+async function onGenerate() {
+  const promptText = String(props.prompt || '').trim()
+  if (!promptText) {
+    ElMessage.warning('请先填写提示词')
+    return
+  }
+  if (generating.value || uploading.value) return
+
+  const snapshot = captureSampleSnapshot()
+  const prevThumb = props.modelValue
+  const prevHd = props.hdModelValue
+  generating.value = true
+  try {
+    const data = await api.generateStyleSample({ prompt: promptText })
+    if (!data.sampleHdFileId) throw new Error('未返回高清样图')
+    uploading.value = true
+    await applyGeneratedFromCloud(data)
+    trackOrphanSampleFiles(prevThumb, prevHd)
+    revertSnapshot.value = snapshot
+    ElMessage.success('样图已生成，满意后请保存')
+  } catch (e) {
+    ElMessage.error(e.message || '生成失败')
+  } finally {
+    uploading.value = false
+    generating.value = false
+  }
+}
+
+function onRevert() {
+  if (!revertSnapshot.value) return
+  trackOrphanSampleFiles(props.modelValue, props.hdModelValue)
+  applySampleState(revertSnapshot.value)
+  revertSnapshot.value = null
+  ElMessage.info('已恢复生成前的样图')
+}
+
 async function onBeforeUpload(file) {
+  revertSnapshot.value = null
+  const prevThumb = props.modelValue
+  const prevHd = props.hdModelValue
   uploading.value = true
   cropDirty.value = false
   croppedHint.value = false
@@ -458,6 +647,7 @@ async function onBeforeUpload(file) {
       thumbFilename: `${baseName}-thumb.jpg`,
       hdFilename: file.name || 'sample.jpg'
     })
+    trackOrphanSampleFiles(prevThumb, prevHd)
     emit('update:modelValue', res.sampleFileId)
     emit('update:displayUrl', res.sampleUrl || processed.thumbnailPreviewUrl)
     emit('update:hdModelValue', res.sampleHdFileId || '')
@@ -476,6 +666,16 @@ async function onBeforeUpload(file) {
 onBeforeUnmount(() => {
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('mouseup', onMouseUp)
+})
+
+defineExpose({
+  generateSample: onGenerate,
+  revertSample: onRevert,
+  flushOrphanSamples,
+  generating,
+  uploading,
+  canRevert,
+  generateButtonLabel
 })
 </script>
 

@@ -72,7 +72,7 @@ function resolveUrl() {
   return API_PREFIX
 }
 
-export async function adminRequest(action, payload = {}, query = {}) {
+export async function adminRequest(action, payload = {}, query = {}, options = {}) {
   if (USE_MOCK) {
     return mockRequest(action, payload, query)
   }
@@ -82,11 +82,15 @@ export async function adminRequest(action, payload = {}, query = {}) {
     throw new Error('请配置 VITE_API_BASE_URL 或开启 VITE_USE_MOCK=true')
   }
 
-  return http.post(base, {
-    action,
-    ...payload,
-    ...query
-  })
+  return http.post(
+    base,
+    {
+      action,
+      ...payload,
+      ...query
+    },
+    { timeout: options.timeout }
+  )
 }
 
 export function adminGet(action, query = {}) {

@@ -240,8 +240,13 @@ async function uploadStyleHdSampleFromBase64(base64, mimeType = 'image/jpeg') {
     throw new Error('高清图片仍过大，请刷新页面后重试（前端将自动更强压缩）')
   }
 
+  return uploadStyleHdBuffer(buffer, mimeType)
+}
+
+async function uploadStyleHdBuffer(buffer, mimeType = 'image/jpeg') {
+  if (!buffer || !buffer.length) throw new Error('高清图片数据无效')
   const ext = mimeType.includes('png') ? 'png' : 'jpg'
-  const cloudPath = `admin/style-templates/hd/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const cloudPath = buildStyleSampleCloudPath('hd', mimeType)
   const sampleHdFileId = await uploadBuffer(buffer, cloudPath)
   const sampleHdUrl = await getDisplayUrl(sampleHdFileId)
   return { sampleHdFileId, sampleHdUrl }
@@ -351,6 +356,7 @@ module.exports = {
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
   uploadStyleHdSampleFromBase64,
+  uploadStyleHdBuffer,
   prepareStyleSampleDirectUpload,
   assertValidStyleSampleFileId,
   attachStyleSampleUrls,

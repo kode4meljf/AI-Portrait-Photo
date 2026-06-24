@@ -20,7 +20,12 @@ export const api = {
   listOrders: (params) => adminRequest('orders.list', {}, params),
   getOrderStatusCounts: (params) => adminRequest('orders.statusCounts', {}, params),
   updateOrderStatus: (data) => adminRequest('orders.updateStatus', data),
+  updateOrderShipping: (data) => adminRequest('orders.updateShipping', data),
   deleteOrder: (data) => adminRequest('orders.delete', data),
+  batchDeleteOrders: (data) => adminRequest('orders.batchDelete', data),
+  exportOrders: (data) => adminRequest('orders.export', data, {}, { timeout: 120000 }),
+  fetchOrderExportImage: (data) =>
+    adminRequest('orders.exportImage', data, {}, { timeout: 60000 }),
 
   listCheckins: (params) => adminRequest('checkins.list', {}, params),
   getCheckinSummary: (params) => adminRequest('checkins.summary', params),
@@ -33,6 +38,9 @@ export const api = {
   uploadStyleSample: (data) => adminRequest('styles.uploadSample', data),
   prepareStyleSampleUpload: (data) => adminRequest('styles.prepareSampleUpload', data),
   fetchStyleSampleImage: (data) => adminRequest('styles.fetchSampleImage', data),
+  generateStyleSample: (data) =>
+    adminRequest('styles.generateSample', data, {}, { timeout: 120000 }),
+  discardStyleSamples: (data) => adminRequest('styles.discardSamples', data),
 
   listFrames: (params) => adminRequest('frames.list', {}, params),
   getFrame: (id) => adminRequest('frames.get', { id }),

@@ -106,8 +106,9 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isCreate ? '新增风格' : '编辑风格'"
-      width="560px"
+      width="600px"
       destroy-on-close
+      @closed="onStyleDialogClosed"
     >
       <el-form :model="editForm" label-width="90px">
         <el-form-item v-if="isCreate" label="编号">
@@ -120,7 +121,7 @@
         <el-form-item label="名称" required>
           <el-input v-model="editForm.name" placeholder="名称不可重复" />
         </el-form-item>
-        <el-form-item label="适用性别" required>
+        <el-form-item label="适用性别" required class="form-item-gender">
           <div class="gender-row-ctrl gender-row-ctrl--form">
             <div class="gender-filter">
               <button
@@ -143,6 +144,30 @@
             :rows="4"
             placeholder="传给第三方 AI 的英文或中文提示词"
           />
+        </el-form-item>
+        <el-form-item label="AI 样图" class="form-item-sample-generate">
+          <div class="sample-generate-panel">
+            <div class="sample-generate-actions">
+              <el-button
+                type="primary"
+                :loading="sampleToolbar.generating"
+                :disabled="sampleToolbar.generating || sampleToolbar.uploading"
+                @click="onGenerateSample"
+              >
+                {{ sampleToolbar.generateButtonLabel }}
+              </el-button>
+              <el-button
+                v-if="sampleToolbar.canRevert"
+                :disabled="sampleToolbar.generating || sampleToolbar.uploading"
+                @click="onRevertSample"
+              >
+                恢复原图
+              </el-button>
+            </div>
+            <p class="field-hint sample-generate-hint">
+              根据上方提示词调用 Seedream 生成 3:4 竖图样图，约需 20–40 秒；生成后可点「恢复原图」回到生成前的样图
+            </p>
+          </div>
         </el-form-item>
         <el-form-item
           v-if="isJimengEngine"
@@ -179,12 +204,18 @@
             <p class="field-hint">{{ resolutionHint }}</p>
           </div>
         </el-form-item>
-        <el-form-item label="风格样图" required>
+        <el-form-item label="风格样图" required class="form-item-style-sample">
           <StyleSampleUpload
+            ref="sampleUploadRef"
             v-model="editForm.sampleFileId"
             v-model:display-url="editForm.sampleUrl"
             v-model:hd-model-value="editForm.sampleHdFileId"
             v-model:hd-display-url="editForm.sampleHdUrl"
+            :prompt="editForm.prompt"
+            :is-create="isCreate"
+            :baseline-sample-file-id="sampleBaseline.sampleFileId"
+            :baseline-sample-hd-file-id="sampleBaseline.sampleHdFileId"
+            @toolbar-state="onSampleToolbarState"
           />
         </el-form-item>
         <el-form-item label="排序">
@@ -258,6 +289,30 @@ const saving = ref(false)
 const isCreate = ref(false)
 const editForm = ref({})
 const nextStyleId = ref('')
+const sampleUploadRef = ref(null)
+const sampleBaseline = ref({ sampleFileId: '', sampleHdFileId: '' })
+const sampleToolbar = ref({
+  generating: false,
+  uploading: false,
+  canRevert: false,
+  generateButtonLabel: '生成样图'
+})
+
+function onSampleToolbarState(state) {
+  sampleToolbar.value = { ...sampleToolbar.value, ...state }
+}
+
+function onGenerateSample() {
+  sampleUploadRef.value?.generateSample?.()
+}
+
+function onRevertSample() {
+  sampleUploadRef.value?.revertSample?.()
+}
+
+async function onStyleDialogClosed() {
+  await sampleUploadRef.value?.flushOrphanSamples?.()
+}
 
 async function loadPlatformEngine() {
   try {
@@ -312,6 +367,13 @@ function onPageChange(p) {
 
 function openCreate() {
   isCreate.value = true
+  sampleBaseline.value = { sampleFileId: '', sampleHdFileId: '' }
+  sampleToolbar.value = {
+    generating: false,
+    uploading: false,
+    canRevert: false,
+    generateButtonLabel: '生成样图'
+  }
   editForm.value = {
     name: '',
     gender: DEFAULT_STYLE_GENDER,
@@ -340,6 +402,16 @@ watch(
 
 function openEdit(row) {
   isCreate.value = false
+  sampleBaseline.value = {
+    sampleFileId: row.sampleFileId || '',
+    sampleHdFileId: row.sampleHdFileId || ''
+  }
+  sampleToolbar.value = {
+    generating: false,
+    uploading: false,
+    canRevert: false,
+    generateButtonLabel: '重新生成样图'
+  }
   const { width, height } = parseStyleResolution(row.resolution)
   editForm.value = {
     _id: row._id,
@@ -399,6 +471,7 @@ async function saveStyle() {
       })
       ElMessage.success('已保存')
     }
+    await sampleUploadRef.value?.flushOrphanSamples?.()
     dialogVisible.value = false
     loadList()
   } catch (e) {
@@ -491,8 +564,41 @@ onMounted(() => {
   color: #909399;
   line-height: 1.45;
 }
+.form-item-gender.el-form-item {
+  align-items: flex-start;
+}
+
+.form-item-gender :deep(.el-form-item__label) {
+  line-height: 32px;
+}
+
 .form-item-resolution.el-form-item {
   align-items: flex-start;
+}
+
+.form-item-sample-generate.el-form-item,
+.form-item-style-sample.el-form-item {
+  align-items: flex-start;
+}
+
+.form-item-sample-generate :deep(.el-form-item__label) {
+  padding-top: 10px;
+  line-height: 32px;
+}
+
+.sample-generate-panel {
+  width: 100%;
+}
+
+.sample-generate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.sample-generate-hint {
+  margin-top: 8px;
 }
 
 .form-item-resolution :deep(.el-form-item__label) {
@@ -567,10 +673,7 @@ onMounted(() => {
 
 .gender-row-ctrl--form {
   display: flex;
-  justify-content: flex-end;
-  flex: 0 0 140px;
-  width: 140px;
-  margin-left: auto;
+  align-items: center;
 }
 
 .gender-row-ctrl--form .gender-filter {

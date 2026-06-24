@@ -208,8 +208,66 @@ const mockFeedbacks = [
 ]
 
 const mockOrders = [
-  { _id: 'o1', storeId: 'store_demo0001', orderNo: 'OR20260516001', customerId: 'c1', customerName: '张小明', frameName: '经典木质相框', size: '10寸', material: '实木', price: 199, status: '制作中', createTimeText: '2026-05-16 10:20:00' },
-  { _id: 'o2', storeId: 'store_demo0001', orderNo: 'OR20260515002', customerId: 'c2', customerName: '李婷婷', frameName: '简约金属相框', size: '8寸', material: '铝合金', price: 129, status: '待处理', createTimeText: '2026-05-15 16:45:00' }
+  {
+    _id: 'o1',
+    storeId: 'store_demo0001',
+    orderNo: 'OR20260516001',
+    orderType: 'frame',
+    orderTypeLabel: '摆台',
+    customerId: 'c1',
+    customerName: '张小明',
+    customerPhone: '13800000001',
+    frameName: '经典木质相框',
+    frameCode: 'F01',
+    productName: '经典木质相框',
+    size: '20cm × 25cm',
+    material: '实木',
+    price: '-',
+    status: '制作中',
+    shippingNo: '',
+    createTimeText: '2026-05-16 10:20:00',
+    exportedAtText: ''
+  },
+  {
+    _id: 'o2',
+    storeId: 'store_demo0001',
+    orderNo: 'OR20260515002',
+    orderType: 'frame',
+    orderTypeLabel: '摆台',
+    customerId: 'c2',
+    customerName: '李婷婷',
+    customerPhone: '13800000002',
+    frameName: '简约金属相框',
+    frameCode: 'F02',
+    productName: '简约金属相框',
+    size: '20cm × 25cm',
+    material: '铝合金',
+    price: '-',
+    status: '待处理',
+    shippingNo: '',
+    createTimeText: '2026-05-15 16:45:00',
+    exportedAtText: ''
+  },
+  {
+    _id: 'o3',
+    storeId: 'store_demo0001',
+    orderNo: 'AL20260514001',
+    orderType: 'album',
+    orderTypeLabel: '影集',
+    customerId: 'c1',
+    customerName: '张小明',
+    customerPhone: '13800000001',
+    productName: '写真集',
+    frameName: '写真集',
+    size: '-',
+    material: '-',
+    photoCount: 9,
+    price: '207积分',
+    status: '待处理',
+    shippingNo: '',
+    createTimeText: '2026-05-14 11:00:00',
+    exportedAtText: ''
+  }
 ]
 
 const mockRechargePackages = [
@@ -259,6 +317,14 @@ const mockGalleryBatches = [
     styleSummary: '日系清新 · 复古胶片'
   }
 ]
+
+function maskExportPhone(phone) {
+  const p = String(phone || '').trim().replace(/\s/g, '')
+  if (!p) return '-'
+  if (p.length >= 11) return `${p.slice(0, 3)}****${p.slice(-4)}`
+  if (p.length >= 7) return `${p.slice(0, 2)}****${p.slice(-2)}`
+  return '****'
+}
 
 export async function mockRequest(action, payload = {}, query = {}) {
   await delay()
@@ -372,9 +438,92 @@ export async function mockRequest(action, payload = {}, query = {}) {
     case 'orders.list':
       return { list: mockOrders, total: mockOrders.length, page: 1, pageSize: 20 }
     case 'orders.statusCounts':
-      return { all: 4, 待处理: 1, 制作中: 2, 已发货: 1, 已完成: 0 }
-    case 'orders.updateStatus':
-      return { ...mockOrders[0], status: payload.status }
+      return { all: mockOrders.length, 待处理: 2, 制作中: 1, 已发货: 0, 已完成: 0 }
+    case 'orders.updateStatus': {
+      const idx = mockOrders.findIndex((o) => o._id === payload.orderId)
+      if (idx >= 0) {
+        mockOrders[idx] = { ...mockOrders[idx], status: payload.status }
+        if (payload.shippingNo !== undefined) mockOrders[idx].shippingNo = payload.shippingNo
+      }
+      return mockOrders[idx] || { status: payload.status }
+    }
+    case 'orders.updateShipping': {
+      const idx = mockOrders.findIndex((o) => o._id === payload.orderId)
+      if (idx >= 0) mockOrders[idx].shippingNo = payload.shippingNo || ''
+      return mockOrders[idx] || { shippingNo: payload.shippingNo || '' }
+    }
+    case 'orders.batchDelete': {
+      const ids = new Set((payload.items || []).map((i) => i.orderId))
+      const before = mockOrders.length
+      for (let i = mockOrders.length - 1; i >= 0; i -= 1) {
+        if (ids.has(mockOrders[i]._id)) mockOrders.splice(i, 1)
+      }
+      return { deletedCount: before - mockOrders.length, failed: [], results: [] }
+    }
+    case 'orders.export': {
+      const ids = new Set((payload.items || []).map((i) => i.orderId))
+      const picked = mockOrders.filter((o) => ids.has(o._id))
+      const exportable = picked.filter((o) => ['待处理', '制作中'].includes(o.status))
+      exportable.forEach((o) => {
+        o.exportedAtText = new Date().toLocaleString('zh-CN')
+        if (o.status === '待处理') o.status = '制作中'
+      })
+      const frameRows = exportable
+        .filter((o) => o.orderType === 'frame')
+        .map((o) => ({
+          orderNo: o.orderNo,
+          frameCode: o.frameCode || 'F01',
+          frameName: o.frameName,
+          material: o.material,
+          size: o.size,
+          customerName: o.customerName,
+          customerPhone: maskExportPhone(o.customerPhone),
+          imageFileName: `${o.orderNo}.jpg`
+        }))
+      const albumRows = exportable
+        .filter((o) => o.orderType === 'album')
+        .map((o) => ({
+          orderNo: o.orderNo,
+          customerName: o.customerName,
+          customerPhone: maskExportPhone(o.customerPhone),
+          photoCount: o.photoCount || 0,
+          folderName: `${o.orderNo}_${o.customerName}`
+        }))
+      return {
+        exportedCount: exportable.length,
+        skipped: picked.filter((o) => !['待处理', '制作中'].includes(o.status)),
+        frame: {
+          rows: frameRows,
+          images: frameRows.map((r) => ({
+            fileName: r.imageFileName,
+            downloadUrl: '/assets/frames/frame-f01-flamingo.png'
+          }))
+        },
+        album: {
+          rows: albumRows,
+          folders: albumRows.map((r) => ({
+            folderName: r.folderName,
+            files: [{ fileName: '01.jpg', downloadUrl: '/assets/frames/frame-f01-flamingo.png' }]
+          }))
+        }
+      }
+    }
+    case 'orders.exportImage': {
+      const res = await fetch('/assets/frames/frame-f01-flamingo.png')
+      if (!res.ok) throw new Error('mock 图片加载失败')
+      const blob = await res.blob()
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += 1) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      return {
+        mimeType: blob.type || 'image/png',
+        base64: btoa(binary),
+        byteSize: bytes.length
+      }
+    }
     case 'orders.delete': {
       const idx = mockOrders.findIndex((o) => o._id === (payload.orderId || payload._id))
       if (idx >= 0) mockOrders.splice(idx, 1)
@@ -490,6 +639,26 @@ export async function mockRequest(action, payload = {}, query = {}) {
       const m = url.match(/^data:([^;]+);base64,(.+)$/)
       if (!m) throw new Error('mock 样图格式无效')
       return { mimeType: m[1], base64: m[2], byteSize: m[2].length }
+    }
+    case 'styles.generateSample': {
+      const prompt = String(payload.prompt || '').trim()
+      if (!prompt) throw new Error('请先填写提示词')
+      const row = mockStyles.find((s) => s.sampleHdUrl && String(s.sampleHdUrl).startsWith('data:'))
+      if (!row) throw new Error('mock 无可用样图')
+      const m = String(row.sampleHdUrl).match(/^data:([^;]+);base64,(.+)$/)
+      if (!m) throw new Error('mock 样图格式无效')
+      const ts = Date.now()
+      return {
+        sampleHdFileId: `mock-style-hd-${ts}`,
+        sampleHdUrl: row.sampleHdUrl,
+        byteSize: m[2].length,
+        reportedSize: '1728x2304',
+        promptPreview: `${prompt.slice(0, 80)}…`
+      }
+    }
+    case 'styles.discardSamples': {
+      const ids = Array.isArray(payload.fileIds) ? payload.fileIds : []
+      return { deleted: ids.length, skipped: 0, requested: ids.length }
     }
     case 'styles.update': {
       const idx = mockStyles.findIndex((s) => s._id === payload._id)

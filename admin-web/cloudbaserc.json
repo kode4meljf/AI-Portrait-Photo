@@ -1,5 +1,15 @@
 {
   "envId": "ai-ymcx-d0gcwabfjd375ffae",
+  "functionRoot": "../cloudfunctions",
+  "functions": [
+    {
+      "name": "adminApi",
+      "dir": "../cloudfunctions/adminApi",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 120
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": ["node_modules/**", ".git/**"],

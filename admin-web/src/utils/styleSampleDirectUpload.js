@@ -27,14 +27,15 @@ export async function putStyleSampleBody(
 export async function uploadStyleSamplePair({
   thumbBody,
   hdBody,
+  sampleHdFileId: existingHdFileId = '',
   mimeType = 'image/jpeg',
   thumbFilename = 'thumb.jpg',
   hdFilename = 'hd.jpg'
 }) {
-  if (!thumbBody && !hdBody) throw new Error('缺少上传文件')
+  if (!thumbBody && !hdBody && !existingHdFileId) throw new Error('缺少上传文件')
 
   let sampleFileId = ''
-  let sampleHdFileId = ''
+  let sampleHdFileId = String(existingHdFileId || '').trim()
 
   if (thumbBody) {
     const cred = await prepareStyleSampleUpload('thumb', mimeType)

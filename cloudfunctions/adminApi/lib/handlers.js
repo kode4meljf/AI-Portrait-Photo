@@ -5,6 +5,7 @@ const {
   attachFrameCoverUrls,
   uploadStyleSampleFromBase64,
   uploadStyleHdSampleFromBase64,
+  uploadStyleHdBuffer,
   prepareStyleSampleDirectUpload,
   assertValidStyleSampleFileId,
   downloadCloudFileAsBase64,
@@ -30,7 +31,7 @@ const {
   applyStoreAssetAdjustWithCode,
   listStoreAssetAdjustments
 } = require('./storeAssetAdjust')
-const { deleteCloudFileSafe, deleteReplacedCloudFile } = require('./cloudFile')
+const { deleteCloudFileSafe, deleteReplacedCloudFile, deleteCloudFilesSafe } = require('./cloudFile')
 const { listGalleryBatches, getGalleryBatch, deleteGalleryBatch } = require('./gallery')
 const {
   listRechargePackages,
@@ -40,7 +41,9 @@ const {
   deleteRechargePackage,
   seedDefaultPackages
 } = require('./rechargePackages')
-const { deleteOrder } = require('./orders')
+const { deleteOrder, batchDeleteOrders, updateOrderShipping, resolveOrderCollection } = require('./orders')
+const { listMergedOrders, getMergedOrderStatusCounts } = require('./orderList')
+const { prepareOrderExport, fetchOrderExportImage } = require('./orderExport')
 
 const STORE_DOC_ID_RE = /^store_/i
 
@@ -170,35 +173,7 @@ async function uploadCustomerAvatar(payload) {
 }
 
 async function listOrders(query) {
-  const { page, pageSize, skip } = parsePage(query)
-  const storeId = query.storeId
-  if (!storeId) throw new Error('请选择门店 storeId')
-
-  const where = { storeId }
-  if (query.status && query.status !== 'all') {
-    where.status = query.status
-  }
-
-  const coll = db.collection('frame_orders').where(where)
-  const [listRes, countRes] = await Promise.all([
-    coll.orderBy('createTime', 'desc').skip(skip).limit(pageSize).get(),
-    coll.count()
-  ])
-
-  const customerIds = [...new Set(listRes.data.map((o) => o.customerId).filter(Boolean))]
-  let customerMap = {}
-  if (customerIds.length) {
-    const cRes = await db.collection('customers').where({ _id: _.in(customerIds) }).get()
-    cRes.data.forEach((c) => { customerMap[c._id] = c })
-  }
-
-  const list = listRes.data.map((order) => ({
-    ...order,
-    customerName: customerMap[order.customerId]?.nickName || '-',
-    createTimeText: order.createTime ? new Date(order.createTime).toLocaleString('zh-CN') : ''
-  }))
-
-  return { list, total: countRes.total, page, pageSize }
+  return listMergedOrders(query)
 }
 
 async function updateOrderStatus(payload) {
@@ -207,9 +182,13 @@ async function updateOrderStatus(payload) {
   if (!ORDER_STATUSES.includes(status)) {
     throw new Error(`无效状态，可选：${ORDER_STATUSES.join('、')}`)
   }
-  const cur = await db.collection('frame_orders').doc(orderId).get()
+
+  const orderType = payload.orderType === 'album' ? 'album' : 'frame'
+  const collection = resolveOrderCollection(orderType)
+  const cur = await db.collection(collection).doc(orderId).get()
   const order = cur.data
   if (!order) throw new Error('订单不存在')
+
   const extra = { updateTime: db.serverDate() }
   if (payload.shippingNo !== undefined) extra.shippingNo = payload.shippingNo
   if (payload.shippingCom !== undefined) extra.shippingCom = payload.shippingCom
@@ -224,10 +203,10 @@ async function updateOrderStatus(payload) {
   if (shippingChanged) {
     extra.logisticsCache = _.remove()
   }
-  await db.collection('frame_orders').doc(orderId).update({
+  await db.collection(collection).doc(orderId).update({
     data: { status, ...extra }
   })
-  const res = await db.collection('frame_orders').doc(orderId).get()
+  const res = await db.collection(collection).doc(orderId).get()
   return res.data
 }
 
@@ -365,18 +344,7 @@ async function listCheckins(query) {
 }
 
 async function getOrderStatusCounts(query) {
-  const storeId = query.storeId
-  if (!storeId) throw new Error('请选择门店 storeId')
-  const base = { storeId }
-  const counts = {}
-  await Promise.all(
-    ORDER_STATUSES.map(async (status) => {
-      const res = await db.collection('frame_orders').where({ ...base, status }).count()
-      counts[status] = res.total
-    })
-  )
-  const all = Object.values(counts).reduce((a, b) => a + b, 0)
-  return { all, ...counts }
+  return getMergedOrderStatusCounts(query)
 }
 
 async function collectAllStyleRows() {
@@ -616,14 +584,19 @@ async function updateStyle(payload) {
     }
   })
 
+  if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
+
+  const prevSampleFileId = current.sampleFileId
+  const prevSampleHdFileId = current.sampleHdFileId
+
+  await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).update({ data })
+
   if (data.sampleFileId !== undefined) {
-    await deleteReplacedCloudFile(current.sampleFileId, data.sampleFileId)
+    await deleteReplacedCloudFile(prevSampleFileId, data.sampleFileId)
   }
   if (data.sampleHdFileId !== undefined) {
-    await deleteReplacedCloudFile(current.sampleHdFileId, data.sampleHdFileId)
+    await deleteReplacedCloudFile(prevSampleHdFileId, data.sampleHdFileId)
   }
-  if (Object.keys(data).length <= 1) throw new Error('没有可更新字段')
-  await db.collection(STYLE_TEMPLATES_COLLECTION).doc(docId).update({ data })
   return getStyle({ _id: docId })
 }
 
@@ -822,6 +795,51 @@ async function fetchStyleSampleImage(payload) {
   return downloadCloudFileAsBase64(fileId)
 }
 
+const { generateSeedreamStyleSample } = require('./arkSeedreamSample')
+
+async function generateStyleSample(payload) {
+  const prompt = String(payload.prompt || '').trim()
+  if (!prompt) throw new Error('请先填写提示词')
+
+  const settings = await readPlatformSettingsDoc()
+  const modelId = normalizeSeedreamModelId(settings.seedreamModelId)
+  const sizeTier = normalizeSeedreamSizeTier(
+    settings.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER
+  )
+  const orientation = normalizeSeedreamOrientation(
+    settings.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+  )
+  const size = resolveSeedreamOutputSize(sizeTier, orientation)
+
+  const { buffer, reportedSize, promptPreview } = await generateSeedreamStyleSample(prompt, {
+    modelId,
+    size: size || undefined
+  })
+
+  const { sampleHdFileId, sampleHdUrl } = await uploadStyleHdBuffer(buffer, 'image/jpeg')
+
+  return {
+    sampleHdFileId,
+    sampleHdUrl,
+    byteSize: buffer.length,
+    reportedSize,
+    promptPreview
+  }
+}
+
+async function discardStyleSamples(payload) {
+  const fileIds = [
+    ...new Set(
+      (Array.isArray(payload.fileIds) ? payload.fileIds : [])
+        .map((id) => String(id || '').trim())
+        .filter((id) => id.startsWith('cloud://'))
+    )
+  ]
+  if (!fileIds.length) return { deleted: 0, requested: 0 }
+  const { deleted, skipped } = await deleteCloudFilesSafe(fileIds)
+  return { deleted, skipped, requested: fileIds.length }
+}
+
 async function getFrame(payload) {
   if (payload._id) {
     const res = await db.collection('frame_templates').doc(payload._id).get()
@@ -928,7 +946,8 @@ const {
   DEFAULT_SEEDREAM_ORIENTATION,
   normalizeSeedreamSizeTier,
   normalizeSeedreamOrientation,
-  describeSeedreamOutputSize
+  describeSeedreamOutputSize,
+  resolveSeedreamOutputSize
 } = require('./seedreamOutputSize')
 
 const PLATFORM_SETTINGS_COL = 'platform_settings'
@@ -1277,6 +1296,14 @@ async function dispatch(action, payload, query) {
       return updateOrderStatus(payload)
     case 'orders.delete':
       return deleteOrder(payload)
+    case 'orders.batchDelete':
+      return batchDeleteOrders(payload)
+    case 'orders.updateShipping':
+      return updateOrderShipping(payload)
+    case 'orders.export':
+      return prepareOrderExport(payload)
+    case 'orders.exportImage':
+      return fetchOrderExportImage(payload)
     case 'checkins.list':
       return listCheckins({ ...query, ...payload })
     case 'checkins.summary':
@@ -1297,6 +1324,10 @@ async function dispatch(action, payload, query) {
       return prepareStyleSampleUpload(payload)
     case 'styles.fetchSampleImage':
       return fetchStyleSampleImage(payload)
+    case 'styles.generateSample':
+      return generateStyleSample(payload)
+    case 'styles.discardSamples':
+      return discardStyleSamples(payload)
     case 'styles.seedDefaults':
       return seedDefaultStyles(db)
     case 'frames.list':

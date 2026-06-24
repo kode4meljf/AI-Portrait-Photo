@@ -13,12 +13,13 @@ async function isPlatformManagedCloudFile(fileId) {
   const id = String(fileId || '').trim()
   if (!isCloudFileId(id)) return false
 
-  const [styleCount, frameCount] = await Promise.all([
+  const [styleThumbCount, styleHdCount, frameCount] = await Promise.all([
     db.collection('style_templates').where({ sampleFileId: id }).count(),
+    db.collection('style_templates').where({ sampleHdFileId: id }).count(),
     db.collection('frame_templates').where({ coverFileId: id }).count()
   ])
 
-  return (styleCount.total || 0) > 0 || (frameCount.total || 0) > 0
+  return (styleThumbCount.total || 0) > 0 || (styleHdCount.total || 0) > 0 || (frameCount.total || 0) > 0
 }
 
 async function deleteCloudFileSafe(fileId) {
