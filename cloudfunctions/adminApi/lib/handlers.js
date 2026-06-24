@@ -436,13 +436,25 @@ function buildStyleListWhere(keyword, gender) {
   }
   const genderRaw = String(gender || '').trim()
   if (genderRaw === '女' || genderRaw === 'female') {
-    parts.push({ gender: '女' })
+    parts.push(
+      _.or([
+        { id: db.RegExp({ regexp: '^F\\d{2}$', options: 'i' }) },
+        _.and([
+          { id: db.RegExp({ regexp: '^S\\d', options: 'i' }) },
+          { gender: '女' }
+        ])
+      ])
+    )
   } else if (genderRaw === '男' || genderRaw === 'male') {
-    parts.push(_.or([
-      { gender: '男' },
-      { gender: _.exists(false) },
-      { gender: '' }
-    ]))
+    parts.push(
+      _.or([
+        { id: db.RegExp({ regexp: '^M\\d{2}$', options: 'i' }) },
+        _.and([
+          { id: db.RegExp({ regexp: '^S\\d', options: 'i' }) },
+          _.or([{ gender: '男' }, { gender: _.exists(false) }, { gender: '' }])
+        ])
+      ])
+    )
   }
   if (!parts.length) return null
   if (parts.length === 1) return parts[0]

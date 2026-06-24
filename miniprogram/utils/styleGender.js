@@ -35,7 +35,14 @@ function filterStylesByGender(pool, genderLabel) {
   return (pool || []).filter((s) => resolveStyleGender(s) === g)
 }
 
-/** 云数据库 where：按适用性别筛选（与 adminApi buildStyleListWhere 一致） */
+/** 云数据库 where：F01–F30 / M01–M30 按编号前缀（不依赖可能错误的 gender 字段） */
+function buildStyleIdPrefixWhere(db, prefix) {
+  const p = String(prefix || '').trim().toUpperCase()
+  if (p !== 'F' && p !== 'M') return null
+  return { id: db.RegExp({ regexp: `^${p}\\d{2}$`, options: 'i' }) }
+}
+
+/** 云数据库 where：按适用性别筛选；F/M 编号优先，旧版 S 编号回退 gender 字段 */
 function buildStyleGenderDbWhere(db, genderLabel) {
   const genderRaw = String(genderLabel || '').trim()
   if (!genderRaw) return null
@@ -43,15 +50,23 @@ function buildStyleGenderDbWhere(db, genderLabel) {
   const g = normalizeStyleGender(genderRaw)
   if (g === STYLE_GENDER_FEMALE) {
     return _.or([
-      { id: db.RegExp({ regexp: '^F\\d{2}$', options: 'i' }) },
-      { gender: STYLE_GENDER_FEMALE }
+      buildStyleIdPrefixWhere(db, 'F'),
+      _.and([
+        { id: db.RegExp({ regexp: '^S\\d', options: 'i' }) },
+        { gender: STYLE_GENDER_FEMALE }
+      ])
     ])
   }
   return _.or([
-    { id: db.RegExp({ regexp: '^M\\d{2}$', options: 'i' }) },
-    { gender: STYLE_GENDER_MALE },
-    { gender: _.exists(false) },
-    { gender: '' }
+    buildStyleIdPrefixWhere(db, 'M'),
+    _.and([
+      { id: db.RegExp({ regexp: '^S\\d', options: 'i' }) },
+      _.or([
+        { gender: STYLE_GENDER_MALE },
+        { gender: _.exists(false) },
+        { gender: '' }
+      ])
+    ])
   ])
 }
 
@@ -64,5 +79,6 @@ module.exports = {
   resolveStyleGender,
   styleGenderFromCustomer,
   filterStylesByGender,
+  buildStyleIdPrefixWhere,
   buildStyleGenderDbWhere
 }

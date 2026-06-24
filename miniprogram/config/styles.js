@@ -2,7 +2,11 @@
  * @file 风格模板：云库读取与展示字段归一化
  */
 
-const { resolveStyleGender, buildStyleGenderDbWhere } = require('../utils/styleGender')
+const {
+  resolveStyleGender,
+  buildStyleGenderDbWhere,
+  buildStyleIdPrefixWhere
+} = require('../utils/styleGender')
 
 function parseStyleCode(id) {
   const text = String(id || '').trim()
@@ -117,8 +121,13 @@ function buildStyleFetchWhere(db, options = {}) {
     parts.push(_.or([{ enabled: true }, { enabled: _.exists(false) }]))
   }
 
-  const genderWhere = buildStyleGenderDbWhere(db, options.gender)
-  if (genderWhere) parts.push(genderWhere)
+  const idPrefixWhere = buildStyleIdPrefixWhere(db, options.idPrefix)
+  if (idPrefixWhere) {
+    parts.push(idPrefixWhere)
+  } else {
+    const genderWhere = buildStyleGenderDbWhere(db, options.gender)
+    if (genderWhere) parts.push(genderWhere)
+  }
 
   if (!parts.length) return null
   return parts.length === 1 ? parts[0] : _.and(parts)
@@ -151,6 +160,28 @@ async function fetchStyleTemplates(db, options = {}) {
   return attachSampleDisplayUrls(list)
 }
 
+function hasShowcaseSample(style) {
+  if (!style) return false
+  return !!(
+    String(style.sampleFileId || '').trim() ||
+    String(style.sampleHdFileId || '').trim() ||
+    String(style.sampleDisplayUrl || '').trim() ||
+    String(style.sampleHdDisplayUrl || '').trim()
+  )
+}
+
+/** F1,M1,F2,M2… 交错（两列已按编号排好序的列表） */
+function interleaveShowcaseLists(femaleList, maleList) {
+  const mixed = []
+  let fi = 0
+  let mi = 0
+  while (fi < femaleList.length || mi < maleList.length) {
+    if (fi < femaleList.length) mixed.push(femaleList[fi++])
+    if (mi < maleList.length) mixed.push(maleList[mi++])
+  }
+  return mixed
+}
+
 /**
  * 展示页用：男女风格交错排列（F1,M1,F2,M2…），避免首页只看到女性样板
  */
@@ -164,23 +195,32 @@ function mixShowcaseStyles(list) {
       male.push(item)
     }
   }
-  const mixed = []
-  let fi = 0
-  let mi = 0
-  const total = female.length + male.length
-  while (mixed.length < total) {
-    if (fi < female.length) mixed.push(female[fi++])
-    if (mi < male.length) mixed.push(male[mi++])
-  }
-  return mixed
+  return interleaveShowcaseLists(female, male)
 }
 
 /**
- * 首页 / 风格展示页：拉取启用风格并按男女交错排序
+ * 首页 / 风格展示页：分别拉取 F、M 编号后交错排序（不依赖 gender 字段）
  */
 async function fetchShowcaseStyleTemplates(db, options = {}) {
-  const list = await fetchStyleTemplates(db, options)
-  return mixShowcaseStyles(list)
+  const base = { ...options }
+  delete base.gender
+  delete base.idPrefix
+
+  const [femaleList, maleList] = await Promise.all([
+    fetchStyleTemplates(db, { ...base, idPrefix: 'F' }),
+    fetchStyleTemplates(db, { ...base, idPrefix: 'M' })
+  ])
+
+  if (!maleList.length) {
+    console.warn('[showcase] 云库无 M01–M30，首页只能展示女性样板')
+  } else if (!maleList.some(hasShowcaseSample)) {
+    console.warn(
+      '[showcase] M 系列尚无样图:',
+      maleList.map((s) => s.id).join(', ')
+    )
+  }
+
+  return interleaveShowcaseLists(femaleList, maleList)
 }
 
 /**
@@ -269,6 +309,8 @@ module.exports = {
   fetchStyleTemplates,
   fetchShowcaseStyleTemplates,
   mixShowcaseStyles,
+  interleaveShowcaseLists,
+  hasShowcaseSample,
   fetchStylesByIds,
   pickStyles,
   pickStylesForShoot
