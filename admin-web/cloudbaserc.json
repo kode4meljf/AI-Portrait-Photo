@@ -8,6 +8,20 @@
       "runtime": "Nodejs18.15",
       "handler": "index.main",
       "timeout": 120
+    },
+    {
+      "name": "photoRetention",
+      "dir": "../cloudfunctions/photoRetention",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 60,
+      "triggers": [
+        {
+          "name": "photoRetentionDaily",
+          "type": "timer",
+          "config": "0 0 4 * * * *"
+        }
+      ]
     }
   ],
   "hosting": {
