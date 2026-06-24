@@ -2,7 +2,7 @@
   <view class="privacy-dialog">
     <text class="privacy-title">用户隐私保护提示</text>
     <view class="privacy-body">
-      <text class="privacy-text">在使用 AI写真馆 前，请阅读并同意</text>
+      <text class="privacy-text">在使用 银梦AI写真 前，请阅读并同意</text>
       <text class="privacy-link" bindtap="onOpenContract">《{{contractName}}》</text>
       <text class="privacy-text">。我们将严格保护您的个人信息安全。</text>
     </view>

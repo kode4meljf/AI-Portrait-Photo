@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "AI写真馆",
+  "navigationBarTitleText": "银梦AI写真",
   "usingComponents": {
     "customer-picker": "/components/customer-picker/customer-picker",
     "style-showcase-home": "/components/style-showcase-home/style-showcase-home",

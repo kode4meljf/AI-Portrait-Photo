@@ -1,0 +1,9 @@
+{
+  "name": "photoRetention",
+  "version": "1.0.0",
+  "description": "拍摄原图 7 日保留期自动清理",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

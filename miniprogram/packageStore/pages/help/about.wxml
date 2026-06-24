@@ -1,7 +1,7 @@
 <view class="about-page">
   <view class="about-header">
     <view class="about-logo">AI</view>
-    <text class="about-name">AI写真馆</text>
+    <text class="about-name">银梦AI写真</text>
     <text class="about-ver">版本 {{version}}</text>
   </view>
   <view class="about-body">

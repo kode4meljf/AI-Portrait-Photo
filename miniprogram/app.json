@@ -64,7 +64,7 @@
   "lazyCodeLoading": "requiredComponents",
   "window": {
     "navigationBarBackgroundColor": "#ffffff",
-    "navigationBarTitleText": "AI写真馆",
+    "navigationBarTitleText": "银梦AI写真",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f5f5f5"
   },
