@@ -18,4 +18,18 @@ function normalizeMobilePhone(phone) {
   return { ok: true, phone: p }
 }
 
-module.exports = { isValidMobilePhone, normalizeMobilePhone, stripPhoneDigits, MOBILE_RE }
+/** 列表展示用脱敏，完整号码仍保留在 phone 字段 */
+function maskPhoneForDisplay(phone) {
+  const p = String(phone || '').trim()
+  if (!p) return '未绑定手机'
+  if (/^\d{11}$/.test(p)) return `${p.slice(0, 3)}****${p.slice(7)}`
+  return p
+}
+
+module.exports = {
+  isValidMobilePhone,
+  normalizeMobilePhone,
+  stripPhoneDigits,
+  maskPhoneForDisplay,
+  MOBILE_RE
+}

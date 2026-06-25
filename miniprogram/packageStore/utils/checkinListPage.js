@@ -6,13 +6,6 @@ const { mapCustomerRow } = require('../../utils/customerListDisplay')
 
 const WEEKDAY = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
-function maskPhone(phone) {
-  const p = String(phone || '').trim()
-  if (!p) return '未绑定手机'
-  if (/^\d{11}$/.test(p)) return `${p.slice(0, 3)}****${p.slice(7)}`
-  return p
-}
-
 function formatWeekdayLine(dateStr) {
   if (!dateStr) return ''
   const d = new Date(`${dateStr}T12:00:00`)
@@ -119,7 +112,6 @@ function mapListRow(customer, ctx) {
   const base = mapCustomerRow(customer)
   const row = {
     ...base,
-    phoneMasked: maskPhone(customer.phone),
     metaLine: `累计打卡 ${Number(customer.totalCheckins) || 0} 次`
   }
   if (ctx.mode === 'checked') {
@@ -182,7 +174,6 @@ function emptySubHint(mode) {
 }
 
 module.exports = {
-  maskPhone,
   formatWeekdayLine,
   mergeDayCheckinMap,
   resolveMode,

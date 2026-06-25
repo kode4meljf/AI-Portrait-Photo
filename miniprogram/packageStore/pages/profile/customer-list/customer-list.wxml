@@ -40,7 +40,7 @@
         </view>
         <view class="customer-info">
           <text class="customer-name">{{item.displayName}}<text class="customer-gender">{{item.genderLabel}}</text></text>
-          <text class="customer-phone">{{item.phone || '未绑定手机'}}</text>
+          <text class="customer-phone">{{item.phoneMasked}}</text>
         </view>
         <view class="customer-right">
           <view class="right-status-col">

@@ -17,6 +17,7 @@ const { genderLabel } = require('../../utils/customerGender');
 const { applyShootCustomer, clearShootCustomer, buildShootQuery } = require('../../utils/shootContext');
 const { syncStoreTabBar, setStoreTabBarHidden } = require('../../utils/storeTabBar');
 const { ensurePrivacyAuthorized } = require('../../utils/privacy');
+const { maskPhoneForDisplay } = require('../../utils/phone');
 
 function linkedCustomerView(customer) {
   if (!customer) {
@@ -277,6 +278,7 @@ Page({
           ...this.data.checkinResult,
           nickName: customer.nickName,
           phone: customer.phone,
+          phoneMasked: maskPhoneForDisplay(customer.phone),
           genderLabel: genderLabel(customer.gender)
         }
       });
@@ -313,6 +315,7 @@ Page({
         checkinResult: {
           ...customer,
           displayName: getCustomerDisplayName(customer),
+          phoneMasked: maskPhoneForDisplay(customer.phone),
           genderLabel: genderLabel(customer.gender),
           timeText: `打卡时间 ${formatNow()}`,
           totalCheckins: customer.totalCheckins || 0

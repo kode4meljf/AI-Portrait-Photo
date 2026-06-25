@@ -3,6 +3,7 @@
  */
 const { getCustomerDisplayName } = require('./customerDisplay')
 const { genderLabel } = require('./customerGender')
+const { maskPhoneForDisplay } = require('./phone')
 
 const AVATAR_BG = ['#4e7cf6', '#5ac8a8', '#f5a623', '#e85d75', '#8b6fd4', '#3db0e4', '#7ebc59', '#d94dbb']
 
@@ -38,7 +39,8 @@ function mapCustomerRow(c) {
     displayName: getCustomerDisplayName(c),
     genderLabel: genderLabel(c.gender),
     avatarInitial: initialFromName(c.nickName || c.wxNickName),
-    avatarTint: pickAvatarTint(c._id || nick)
+    avatarTint: pickAvatarTint(c._id || nick),
+    phoneMasked: maskPhoneForDisplay(c.phone)
   }
 }
 
