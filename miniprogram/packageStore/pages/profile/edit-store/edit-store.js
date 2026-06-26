@@ -7,6 +7,7 @@ const { isValidStoreId, updateStoreProfile, callStoreMember } = require('../../.
 const { getProfileCollection } = require('../../../../utils/account');
 const { normalizeMobilePhone } = require('../../../../utils/phone');
 const { isStoreOwner } = require('../../../../utils/storeRole');
+const { ensurePrivacyAuthorized } = require('../../../../utils/privacy');
 
 const TEXT_FIELDS = [
   "name",
@@ -198,7 +199,13 @@ Page({
     }
   },
 
-  chooseAddressOnMap() {
+  async chooseAddressOnMap() {
+    try {
+      await ensurePrivacyAuthorized();
+    } catch (e) {
+      wx.showToast({ title: "需同意隐私政策后选点", icon: "none" });
+      return;
+    }
     wx.chooseLocation({
       success: (res) => {
         const name = (res.name || "").trim();

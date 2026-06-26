@@ -175,9 +175,9 @@
       <view class="head">订单信息</view>
       <view class="kv">
         <text class="k">订单编号</text>
-        <view class="v v--copy">
+        <view class="v v--copy" catchtap="onCopyOrderNo">
           <text class="mono">{{view.orderNo}}</text>
-          <view class="copy-btn" catchtap="onCopyOrderNo">复制</view>
+          <view class="copy-btn">复制</view>
         </view>
       </view>
       <view class="kv">

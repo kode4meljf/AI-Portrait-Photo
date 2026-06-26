@@ -12,6 +12,7 @@ const { isValidStoreId, resolveSessionIfNeeded } = require('../../utils/storeSes
 
 const { buildOrderCardThumb } = require('../../utils/orderCardThumb');
 const { parseCloudDate } = require('../../utils/cloudDate');
+const { copyTextToClipboard } = require('../../packageStore/utils/clipboard');
 
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
   if (!date) return "";
@@ -257,6 +258,14 @@ Page({
   },
 
   stopActionBubble() {},
+
+  async onCopyOrderNo(e) {
+    const orderNo = e.currentTarget.dataset.orderno;
+    await copyTextToClipboard(orderNo, {
+      emptyToast: '暂无订单号',
+      successToast: '已复制订单号',
+    });
+  },
 
   buildOrderDetailUrl(order, extra = {}) {
     if (!order || !order._id) return '';

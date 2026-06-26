@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "编辑门店",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/privacy-popup"
+  }
 }

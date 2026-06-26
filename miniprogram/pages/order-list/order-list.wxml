@@ -81,7 +81,11 @@
           <view class="order-main">
             <view class="order-top">
               <view class="order-head-text">
-                <text class="order-no">{{order.orderNo}}</text>
+                <text
+                  class="order-no order-no--copy"
+                  catchtap="onCopyOrderNo"
+                  data-orderno="{{order.orderNo}}"
+                >{{order.orderNo}}</text>
                 <text class="order-title">{{order.frameName || '写真摆台'}}</text>
               </view>
               <view class="order-status {{order.statusClass}}">{{order.statusText}}</view>
