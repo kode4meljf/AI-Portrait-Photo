@@ -1,8 +1,8 @@
 const cloud = require('wx-server-sdk');
 const { parseHttpEvent } = require('./lib/http');
 const { isPayConfigured, getPayConfigSummary, assertPayConfigured, getPayConfig } = require('./lib/config');
+const { verifyXpayConfig } = require('./lib/xpay');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStore');
-const { verifyMerchantCredentials } = require('./lib/wxpay');
 const recharge = require('./lib/recharge');
 const { assertProductionSecurity, warnIfInsecure } = require('./lib/productionGuard');
 
@@ -32,8 +32,7 @@ async function dispatchCallFunction(action, event, openid) {
 
     case 'pay.verify': {
       assertPayConfigured(opts);
-      const cfg = getPayConfig(opts);
-      const result = await verifyMerchantCredentials(cfg);
+      const result = verifyXpayConfig(getPayConfig(opts));
       return ok(result);
     }
 
@@ -44,13 +43,14 @@ async function dispatchCallFunction(action, event, openid) {
       assertProductionSecurity('payApi');
       const storeId = await resolveStoreIdFromOpenid(openid);
       const packageId = event.packageId;
-      const data = await recharge.createRechargeOrder(openid, storeId, packageId, opts);
+      const loginCode = event.loginCode;
+      const data = await recharge.createRechargeOrder(openid, storeId, packageId, loginCode, opts);
       return ok(data);
     }
 
     case 'recharge.query': {
       const storeId = await resolveStoreIdFromOpenid(openid);
-      const data = await recharge.queryRechargeOrder(openid, storeId, event.outTradeNo);
+      const data = await recharge.queryRechargeOrder(openid, storeId, event.outTradeNo, opts);
       return ok(data);
     }
 
@@ -70,17 +70,15 @@ exports.main = async (event) => {
       return {
         statusCode: 405,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'FAIL', message: 'Method Not Allowed' })
+        body: JSON.stringify({ ErrCode: 1, ErrMsg: 'Method Not Allowed' })
       };
     }
     assertProductionSecurity('payApi');
-    const result = await recharge.handlePayNotify({
-      headers: httpCtx.headers,
-      body: typeof event.body === 'string' ? event.body : JSON.stringify(httpCtx.body || {})
-    });
+    const rawBody = typeof event.body === 'string' ? event.body : JSON.stringify(httpCtx.body || {});
+    const result = await recharge.handleXpayPush(rawBody);
     return {
       statusCode: result.statusCode,
-      headers: { 'Content-Type': 'application/json' },
+      headers: result.headers,
       body: JSON.stringify(result.body)
     };
   }

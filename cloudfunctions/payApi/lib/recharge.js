@@ -1,12 +1,15 @@
 const cloud = require('wx-server-sdk');
 const { getPackageById, yuanToFen, listPackages } = require('./packages');
-const { assertPayConfigured, getPayConfig } = require('./config');
+const { assertPayConfigured, getPayConfig, isPayConfigured } = require('./config');
 const {
-  createJsapiOrder,
-  buildMiniProgramPayment,
-  decryptNotifyResource,
-  verifyNotifySignature
-} = require('./wxpay');
+  buildGoodsSignData,
+  calcVirtualPaymentSign,
+  code2Session,
+  queryXpayOrder,
+  isXpayOrderPaid,
+  resolveProductId
+} = require('./xpay');
+const { normalizePushPayload, xpaySuccessResponse, xpayFailResponse } = require('./xpayNotify');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -14,13 +17,13 @@ const _ = db.command;
 
 const ORDERS = 'recharge_orders';
 const STORES = 'stores';
+const VIRTUAL_PAYMENT_MODE = 'short_series_goods';
 
 function buildOutTradeNo(storeId) {
   const tail = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
   return `rc_${storeId.replace(/^store_/, '').slice(0, 12)}_${tail}`.slice(0, 32);
 }
 
-/** 微信 attach 上限 128 字节；1.0 不落 pending，支付成功后再写库 */
 function buildAttach(storeId, packageId) {
   const raw = JSON.stringify({ s: storeId, p: Number(packageId) });
   if (Buffer.byteLength(raw, 'utf8') > 128) {
@@ -29,90 +32,51 @@ function buildAttach(storeId, packageId) {
   return raw;
 }
 
-function parseAttach(attach) {
-  if (!attach) throw new Error('缺少支付上下文');
-  let parsed;
-  try {
-    parsed = JSON.parse(String(attach));
-  } catch (e) {
-    throw new Error('支付上下文无效');
-  }
-  const storeId = String(parsed.s || '').trim();
-  const packageId = Number(parsed.p);
-  if (!storeId || !packageId) throw new Error('支付上下文无效');
-  return { storeId, packageId };
+function toPublicOrder(order) {
+  return {
+    outTradeNo: order.outTradeNo,
+    status: order.status,
+    points: order.points != null ? order.points : order.times,
+    times: order.points != null ? order.points : order.times,
+    amountFen: order.amountFen,
+    packageName: order.packageName,
+    paidAt: order.paidAt || null
+  };
 }
 
-async function recordPaidRechargeOrder({
+async function createPendingOrder({
   outTradeNo,
   storeId,
   packageId,
   payerOpenId,
-  transactionId,
-  paidFen,
-  pkg
+  pkg,
+  amountFen,
+  productId
 }) {
-  const resolvedPkg = pkg || (await getPackageById(packageId));
-  if (!resolvedPkg) {
-    throw new Error('套餐不存在');
-  }
-  if (Number(resolvedPkg.id) !== Number(packageId)) {
-    throw new Error('套餐信息不一致');
-  }
-
-  const amountFen = yuanToFen(resolvedPkg.price);
-  if (Number(amountFen) !== Number(paidFen)) {
-    throw new Error('支付金额与订单不一致');
-  }
-
-  const points = resolvedPkg.points;
-  const expireAt = new Date(Date.now() + (resolvedPkg.expireDays || 30) * 86400000);
+  const points = pkg.points;
   const now = db.serverDate();
-
-  await db.runTransaction(async (transaction) => {
-    const dupRes = await transaction.collection(ORDERS).where({ outTradeNo }).limit(1).get();
-    const existing = dupRes.data && dupRes.data[0];
-    if (existing) {
-      if (existing.status === 'paid') return;
-      throw new Error('订单状态不可支付');
+  await db.collection(ORDERS).add({
+    data: {
+      outTradeNo,
+      storeId,
+      payerOpenId: payerOpenId || '',
+      packageId: pkg.id,
+      packageName: pkg.name,
+      points,
+      times: points,
+      amountFen,
+      expireDays: pkg.expireDays || 365,
+      xpayProductId: productId,
+      status: 'pending',
+      transactionId: '',
+      paidAt: null,
+      createTime: now,
+      updateTime: now
     }
-
-    await transaction.collection(ORDERS).add({
-      data: {
-        outTradeNo,
-        storeId,
-        payerOpenId: payerOpenId || '',
-        packageId: resolvedPkg.id,
-        packageName: resolvedPkg.name,
-        points,
-        times: points,
-        amountFen,
-        expireDays: resolvedPkg.expireDays || 30,
-        status: 'paid',
-        transactionId: transactionId || '',
-        prepayId: '',
-        paidAt: now,
-        createTime: now,
-        updateTime: now
-      }
-    });
-
-    await transaction.collection(STORES).doc(storeId).update({
-      data: {
-        balance: _.inc(points),
-        packageTotal: points,
-        packageUsed: 0,
-        packageExpireDate: expireAt,
-        updateTime: Date.now()
-      }
-    });
   });
-
-  const orderRes = await db.collection(ORDERS).where({ outTradeNo }).limit(1).get();
-  return orderRes.data[0];
 }
 
-async function upgradeLegacyPendingOrder(order, transactionId, paidFen) {
+async function fulfillPendingOrder(order, { transactionId, paidFen, productId }) {
   if (order.status === 'paid') {
     return { ok: true, duplicate: true, order };
   }
@@ -122,8 +86,11 @@ async function upgradeLegacyPendingOrder(order, transactionId, paidFen) {
   if (Number(order.amountFen) !== Number(paidFen)) {
     throw new Error('支付金额与订单不一致');
   }
+  if (productId && order.xpayProductId && productId !== order.xpayProductId) {
+    throw new Error('道具 ID 与订单不一致');
+  }
 
-  const expireAt = new Date(Date.now() + (order.expireDays || 30) * 86400000);
+  const expireAt = new Date(Date.now() + (order.expireDays || 365) * 86400000);
   const points = order.points != null ? order.points : order.times;
 
   await db.runTransaction(async (transaction) => {
@@ -132,6 +99,9 @@ async function upgradeLegacyPendingOrder(order, transactionId, paidFen) {
     if (!row) throw new Error('充值订单不存在');
     if (row.status === 'paid') return;
     if (row.status !== 'pending') throw new Error('订单状态不可支付');
+    if (Number(row.amountFen) !== Number(paidFen)) {
+      throw new Error('支付金额与订单不一致');
+    }
 
     await transaction.collection(ORDERS).doc(order._id).update({
       data: {
@@ -153,13 +123,30 @@ async function upgradeLegacyPendingOrder(order, transactionId, paidFen) {
     });
   });
 
-  return { ok: true, duplicate: false, order };
+  const fresh = await db.collection(ORDERS).where({ outTradeNo: order.outTradeNo }).limit(1).get();
+  return { ok: true, duplicate: false, order: fresh.data[0] };
 }
 
-/**
- * 1.0：create 阶段不写库；仅 mock 或支付回调成功后写入 paid 订单。
- */
-async function createRechargeOrder(openid, storeId, packageId, options = {}) {
+async function getPendingOrder(outTradeNo) {
+  const res = await db.collection(ORDERS).where({ outTradeNo }).limit(1).get();
+  return res.data && res.data[0] ? res.data[0] : null;
+}
+
+async function syncPaidFromXpay(openid, order, cfg) {
+  if (!order || order.status === 'paid') return order;
+  const remote = await queryXpayOrder({ openid, outTradeNo: order.outTradeNo, cfg });
+  if (!isXpayOrderPaid(remote)) return order;
+
+  const paidFen = Number(remote.paid_fee != null ? remote.paid_fee : remote.order_fee) || order.amountFen;
+  const result = await fulfillPendingOrder(order, {
+    transactionId: remote.wxpay_order_id || remote.channel_order_id || '',
+    paidFen,
+    productId: order.xpayProductId
+  });
+  return result.order || order;
+}
+
+async function createRechargeOrder(openid, storeId, packageId, loginCode, options = {}) {
   assertPayConfigured(options);
   const pkg = await getPackageById(packageId);
   if (!pkg) {
@@ -167,26 +154,27 @@ async function createRechargeOrder(openid, storeId, packageId, options = {}) {
   }
 
   const cfg = getPayConfig(options);
-  if (cfg.appIdMismatch) {
-    console.warn(
-      '[payApi] WX_PAY_APP_ID 与当前小程序不一致，已使用运行时 APPID:',
-      cfg.runtimeAppId
-    );
-  }
-
   const amountFen = yuanToFen(pkg.price);
+  const productId = resolveProductId(pkg.id, cfg);
   const outTradeNo = buildOutTradeNo(storeId);
   const attach = buildAttach(storeId, pkg.id);
 
+  await createPendingOrder({
+    outTradeNo,
+    storeId,
+    packageId: pkg.id,
+    payerOpenId: openid,
+    pkg,
+    amountFen,
+    productId
+  });
+
   if (cfg.mock) {
-    await recordPaidRechargeOrder({
-      outTradeNo,
-      storeId,
-      packageId: pkg.id,
-      payerOpenId: openid,
+    const pending = await getPendingOrder(outTradeNo);
+    await fulfillPendingOrder(pending, {
       transactionId: `mock_${Date.now()}`,
       paidFen: amountFen,
-      pkg
+      productId
     });
     return {
       outTradeNo,
@@ -197,65 +185,37 @@ async function createRechargeOrder(openid, storeId, packageId, options = {}) {
     };
   }
 
-  const prepayId = await createJsapiOrder({
-    appId: cfg.appId,
-    mchId: cfg.mchId,
-    serialNo: cfg.serialNo,
-    privateKey: cfg.privateKey,
-    notifyUrl: cfg.notifyUrl,
+  const sessionKey = await code2Session(loginCode, cfg);
+  const signData = buildGoodsSignData({
+    offerId: cfg.offerId,
+    productId,
+    goodsPrice: amountFen,
     outTradeNo,
-    description: `${pkg.name}-${pkg.points}积分`,
-    amountFen,
-    payerOpenId: openid,
-    attach
-  }).catch((err) => {
-    const wxMsg = (err.response && (err.response.message || err.response.code)) || err.message;
-    console.error('[payApi] createJsapiOrder failed', wxMsg, err.response || '');
-    const e = new Error(wxMsg || '微信下单失败');
-    e.code = 'WX_PAY_ORDER_FAILED';
-    throw e;
+    attach,
+    env: cfg.env
   });
-
-  const payment = buildMiniProgramPayment({
-    appId: cfg.appId,
-    prepayId,
-    privateKey: cfg.privateKey
-  });
+  const { paySig, signature } = calcVirtualPaymentSign(signData, sessionKey, cfg);
 
   return {
     outTradeNo,
-    payment,
     mockPaid: false,
     points: pkg.points,
     times: pkg.points,
-    packageName: pkg.name
+    packageName: pkg.name,
+    virtualPayment: {
+      signData,
+      paySig,
+      signature,
+      mode: VIRTUAL_PAYMENT_MODE
+    }
   };
 }
 
-async function fulfillRechargeOrder(outTradeNo, transactionId, paidFen, attach, payerOpenId) {
-  const orderRes = await db.collection(ORDERS).where({ outTradeNo }).limit(1).get();
-  if (orderRes.data.length) {
-    return upgradeLegacyPendingOrder(orderRes.data[0], transactionId, paidFen);
-  }
-
-  const { storeId, packageId } = parseAttach(attach);
-  const order = await recordPaidRechargeOrder({
-    outTradeNo,
-    storeId,
-    packageId,
-    payerOpenId,
-    transactionId,
-    paidFen
-  });
-
-  return { ok: true, duplicate: false, order };
-}
-
-async function queryRechargeOrder(openid, storeId, outTradeNo) {
+async function queryRechargeOrder(openid, storeId, outTradeNo, options = {}) {
   const no = String(outTradeNo || '').trim();
   if (!no) throw new Error('缺少订单号');
 
-  const res = await db.collection(ORDERS).where({ outTradeNo: no, storeId }).limit(1).get();
+  let res = await db.collection(ORDERS).where({ outTradeNo: no, storeId }).limit(1).get();
   if (!res.data.length) {
     return {
       outTradeNo: no,
@@ -268,110 +228,66 @@ async function queryRechargeOrder(openid, storeId, outTradeNo) {
     };
   }
 
-  const order = res.data[0];
+  let order = res.data[0];
   if (order.payerOpenId && order.payerOpenId !== openid) {
     throw new Error('无权查看该订单');
   }
-  return {
-    outTradeNo: order.outTradeNo,
-    status: order.status,
-    points: order.points != null ? order.points : order.times,
-    times: order.points != null ? order.points : order.times,
-    amountFen: order.amountFen,
-    packageName: order.packageName,
-    paidAt: order.paidAt || null
-  };
+
+  if (order.status === 'pending') {
+    const cfg = getPayConfig(options);
+    if (!cfg.mock && isPayConfigured(options)) {
+      try {
+        order = await syncPaidFromXpay(openid, order, cfg);
+      } catch (err) {
+        console.warn('[payApi] syncPaidFromXpay', err.message || err);
+      }
+    }
+  }
+
+  return toPublicOrder(order);
 }
 
-async function handlePayNotify(httpEvent) {
-  const cfg = getPayConfig();
-  if (!cfg.apiV3Key) {
-    return { statusCode: 500, body: { code: 'FAIL', message: '未配置支付' } };
+async function handleXpayPush(rawBody) {
+  const payload = normalizePushPayload(rawBody);
+  if (!payload) {
+    return xpayFailResponse('无效推送', 400);
+  }
+  if (payload.event !== 'xpay_goods_deliver_notify') {
+    return xpaySuccessResponse();
+  }
+  if (!payload.outTradeNo) {
+    return xpayFailResponse('缺少订单号', 400);
   }
 
-  const headers = httpEvent.headers || {};
-  const timestamp = headers['wechatpay-timestamp'] || headers['Wechatpay-Timestamp'] || '';
-  const nonce = headers['wechatpay-nonce'] || headers['Wechatpay-Nonce'] || '';
-  const signature = headers['wechatpay-signature'] || headers['Wechatpay-Signature'] || '';
-  const rawBody = typeof httpEvent.body === 'string' ? httpEvent.body : JSON.stringify(httpEvent.body || {});
+  const order = await getPendingOrder(payload.outTradeNo);
+  if (!order) {
+    console.error('[payApi] xpay push: order not found', payload.outTradeNo);
+    return xpayFailResponse('订单不存在', 404);
+  }
+  if (order.status === 'paid') {
+    return xpaySuccessResponse();
+  }
 
-  if (cfg.platformPublicKey) {
-    const ok = verifyNotifySignature({
-      timestamp,
-      nonce,
-      body: rawBody,
-      signature,
-      platformPublicKey: cfg.platformPublicKey
+  const paidFen = payload.actualPriceFen || order.amountFen;
+  try {
+    await fulfillPendingOrder(order, {
+      transactionId: payload.transactionId,
+      paidFen,
+      productId: payload.productId
     });
-    if (!ok) {
-      console.error('[payApi] notify signature verify failed', {
-        serial: headers['wechatpay-serial'] || headers['Wechatpay-Serial'] || '',
-        hasPlatformKey: true
-      });
-      if (!cfg.notifyRelax) {
-        return { statusCode: 401, body: { code: 'FAIL', message: '签名校验失败' } };
-      }
-      console.warn('[payApi] WX_PAY_NOTIFY_RELAX=1，跳过验签继续解密');
-    }
-  }
-
-  let envelope = {};
-  try {
-    envelope = JSON.parse(rawBody);
-  } catch (e) {
-    return { statusCode: 400, body: { code: 'FAIL', message: '无效请求体' } };
-  }
-
-  const resource = envelope.resource || {};
-  let decrypted;
-  try {
-    decrypted = decryptNotifyResource({
-      ciphertext: resource.ciphertext,
-      associatedData: resource.associated_data || '',
-      nonce: resource.nonce,
-      apiV3Key: cfg.apiV3Key
-    });
-  } catch (e) {
-    console.error('[payApi] decrypt notify failed', e);
-    return { statusCode: 400, body: { code: 'FAIL', message: '解密失败' } };
-  }
-
-  if (decrypted.trade_state !== 'SUCCESS') {
-    return { statusCode: 200, body: { code: 'SUCCESS', message: '成功' } };
-  }
-
-  const payerOpenId =
-    (decrypted.payer && decrypted.payer.openid) ||
-    (decrypted.payer && decrypted.payer.sp_openid) ||
-    '';
-
-  try {
-    await fulfillRechargeOrder(
-      decrypted.out_trade_no,
-      decrypted.transaction_id,
-      decrypted.amount && decrypted.amount.total,
-      decrypted.attach,
-      payerOpenId
-    );
+    return xpaySuccessResponse();
   } catch (err) {
-    console.error('[payApi] fulfill failed', err);
-    if (/不可支付|金额|上下文|套餐/.test(err.message || '')) {
-      return { statusCode: 500, body: { code: 'FAIL', message: err.message } };
+    console.error('[payApi] xpay push fulfill failed', err);
+    if (/金额|道具|状态/.test(err.message || '')) {
+      return xpayFailResponse(err.message, 500);
     }
-    if (/不存在/.test(err.message || '')) {
-      return { statusCode: 404, body: { code: 'FAIL', message: err.message } };
-    }
-    return { statusCode: 500, body: { code: 'FAIL', message: '入账失败' } };
+    return xpayFailResponse('入账失败', 500);
   }
-
-  return { statusCode: 200, body: { code: 'SUCCESS', message: '成功' } };
 }
 
 module.exports = {
   listPackages,
   createRechargeOrder,
   queryRechargeOrder,
-  handlePayNotify,
-  fulfillRechargeOrder,
-  recordPaidRechargeOrder
+  handleXpayPush
 };

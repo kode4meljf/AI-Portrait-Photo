@@ -227,7 +227,7 @@ async function onDelete(row) {
 async function onSeedDefaults() {
   try {
     await ElMessageBox.confirm(
-      '仅在云库尚无套餐时写入散单/相框默认积分套餐，已有数据不会覆盖。',
+      '已无内置默认套餐。若云库为空，请使用「新增套餐」手动创建；已有数据不会被改动。',
       '初始化默认套餐',
       { type: 'info' }
     )

@@ -2,67 +2,6 @@ const { db, _, parsePage } = require('./db')
 
 const COLLECTION = 'recharge_packages'
 
-const DEFAULT_PACKAGES = [
-  {
-    id: 1,
-    name: '尝鲜包',
-    points: 30,
-    bonusPoints: 0,
-    price: 3,
-    originalPrice: 3,
-    slogan: '新客试拍，低门槛体验',
-    group: 'casual',
-    tag: '1人9张',
-    expireDays: 365,
-    sort: 10,
-    enabled: true
-  },
-  {
-    id: 3,
-    name: '优享包',
-    points: 860,
-    bonusPoints: 80,
-    price: 78,
-    originalPrice: 90,
-    slogan: '客流稳定，性价比之选',
-    group: 'casual',
-    tag: '约28人',
-    expireDays: 365,
-    sort: 30,
-    enabled: true
-  },
-  {
-    id: 5,
-    name: '至尊套餐',
-    points: 21800,
-    bonusPoints: 2000,
-    price: 1980,
-    originalPrice: 1980,
-    slogan: '年度主推 · 会员价 + 约 10% 赠送',
-    group: 'annual',
-    badge: 'hot',
-    tag: '至尊会员',
-    expireDays: 365,
-    sort: 100,
-    enabled: true
-  },
-  {
-    id: 6,
-    name: '荣耀套餐',
-    points: 44800,
-    bonusPoints: 5000,
-    price: 3980,
-    originalPrice: 3980,
-    slogan: '高客流门店 · 约 12% 赠送',
-    group: 'annual',
-    badge: 'crown',
-    tag: '荣耀会员',
-    expireDays: 365,
-    sort: 110,
-    enabled: true
-  }
-]
-
 function formatDateTime(value) {
   if (!value) return ''
   const d = value instanceof Date ? value : new Date(value)
@@ -146,13 +85,7 @@ async function seedDefaultPackages() {
   if (countRes.total > 0) {
     return { seeded: 0, message: '已有套餐数据，未写入默认项' }
   }
-  const now = new Date()
-  for (const pkg of DEFAULT_PACKAGES) {
-    await db.collection(COLLECTION).add({
-      data: { ...pkg, times: pkg.points, createTime: now, updateTime: now }
-    })
-  }
-  return { seeded: DEFAULT_PACKAGES.length, message: '已写入默认套餐' }
+  return { seeded: 0, message: '已无内置默认套餐，请通过「新增套餐」手动创建' }
 }
 
 async function listRechargePackages(query) {
@@ -253,7 +186,6 @@ async function deleteRechargePackage(payload) {
 
 module.exports = {
   COLLECTION,
-  DEFAULT_PACKAGES,
   listRechargePackages,
   getRechargePackage,
   createRechargePackage,

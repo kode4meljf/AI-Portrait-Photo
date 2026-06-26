@@ -33,22 +33,39 @@ function fetchRechargePackages() {
   return callPayApi('packages.list').then((data) => data.packages || []);
 }
 
+function wxLogin() {
+  return new Promise((resolve, reject) => {
+    wx.login({
+      success: (res) => {
+        if (res.code) resolve(res.code);
+        else reject(new Error('获取 login code 失败'));
+      },
+      fail: reject
+    });
+  });
+}
+
 function createRechargeOrder(packageId) {
-  return callPayApi('recharge.create', { packageId });
+  return wxLogin().then((loginCode) =>
+    callPayApi('recharge.create', { packageId, loginCode })
+  );
 }
 
 function queryRechargeOrder(outTradeNo) {
   return callPayApi('recharge.query', { outTradeNo });
 }
 
-function requestWxPayment(payment) {
+function requestVirtualPayment(virtualPayment) {
   return new Promise((resolve, reject) => {
-    wx.requestPayment({
-      timeStamp: payment.timeStamp,
-      nonceStr: payment.nonceStr,
-      package: payment.package,
-      signType: payment.signType || 'RSA',
-      paySign: payment.paySign,
+    if (!wx.canIUse('requestVirtualPayment')) {
+      reject(new Error('当前微信版本不支持虚拟支付，请升级微信'));
+      return;
+    }
+    wx.requestVirtualPayment({
+      signData: virtualPayment.signData,
+      paySig: virtualPayment.paySig,
+      signature: virtualPayment.signature,
+      mode: virtualPayment.mode || 'short_series_goods',
       success: resolve,
       fail: reject
     });
@@ -76,6 +93,6 @@ module.exports = {
   fetchRechargePackages,
   createRechargeOrder,
   queryRechargeOrder,
-  requestWxPayment,
+  requestVirtualPayment,
   waitRechargePaid
 };

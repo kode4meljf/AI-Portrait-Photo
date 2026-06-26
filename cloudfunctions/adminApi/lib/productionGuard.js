@@ -24,8 +24,8 @@ function collectSecurityIssues() {
   if (isTruthy(process.env.ADMIN_SMS_MOCK)) {
     issues.push('ADMIN_SMS_MOCK 已开启')
   }
-  if (isTruthy(process.env.WX_PAY_MOCK)) {
-    issues.push('WX_PAY_MOCK 已开启')
+  if (isTruthy(process.env.XPAY_MOCK)) {
+    issues.push('XPAY_MOCK 已开启')
   }
   return issues
 }

@@ -1,7 +1,4 @@
-/** 生产环境安全配置校验（云函数环境变量 PRODUCTION=1 时启用严格模式） */
-
-const DEFAULT_JWT = 'change-me-in-cloud-console'
-const DEFAULT_PASS = 'admin123'
+/** 生产环境支付安全配置校验（云函数环境变量 PRODUCTION=1 时启用严格模式） */
 
 function isProduction() {
   const v = String(process.env.PRODUCTION || process.env.ENVIRONMENT || '').trim().toLowerCase()
@@ -14,18 +11,8 @@ function isTruthy(v) {
 
 function collectSecurityIssues() {
   const issues = []
-  const secret = String(process.env.ADMIN_JWT_SECRET || process.env.ADMIN_API_SECRET || '').trim()
-  if (!secret || secret === DEFAULT_JWT) {
-    issues.push('ADMIN_JWT_SECRET 未配置或为默认值')
-  }
-  if (!process.env.ADMIN_PASSWORD || String(process.env.ADMIN_PASSWORD) === DEFAULT_PASS) {
-    issues.push('ADMIN_PASSWORD 未配置或为弱口令 admin123')
-  }
-  if (isTruthy(process.env.ADMIN_SMS_MOCK)) {
-    issues.push('ADMIN_SMS_MOCK 已开启')
-  }
-  if (isTruthy(process.env.WX_PAY_MOCK)) {
-    issues.push('WX_PAY_MOCK 已开启')
+  if (isTruthy(process.env.XPAY_MOCK)) {
+    issues.push('XPAY_MOCK 已开启')
   }
   return issues
 }

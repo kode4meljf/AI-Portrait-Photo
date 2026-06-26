@@ -1,0 +1,4 @@
+{
+  "description": "占位文件，满足微信开发者工具读取要求；编译配置以 project.config.json 为准",
+  "setting": {}
+}

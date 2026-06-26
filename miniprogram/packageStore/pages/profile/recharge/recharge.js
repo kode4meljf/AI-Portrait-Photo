@@ -4,7 +4,7 @@ const {
   fetchPayStatus,
   fetchRechargePackages,
   createRechargeOrder,
-  requestWxPayment,
+  requestVirtualPayment,
   waitRechargePaid,
   queryRechargeOrder
 } = require('../../../utils/payApi');
@@ -135,7 +135,7 @@ Page({
         return;
       }
 
-      await requestWxPayment(order.payment);
+      await requestVirtualPayment(order.virtualPayment);
 
       wx.showLoading({ title: '确认到账...', mask: true });
       try {

@@ -1,7 +1,7 @@
 {
   "name": "payApi",
   "version": "1.0.0",
-  "description": "门店充值：微信支付下单、回调、加 balance",
+  "description": "门店充值：小程序虚拟支付、回调、加 balance",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"
