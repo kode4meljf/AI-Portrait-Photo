@@ -21,6 +21,7 @@ function isStoreStaffAccount() {
 }
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     orderId: '',
     orderType: 'frame',

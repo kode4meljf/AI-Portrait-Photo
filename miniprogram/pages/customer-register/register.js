@@ -10,6 +10,7 @@ const CUSTOMER_HOME = '/packageCustomer/pages/home/home'
 const RESCAN_TOAST = '请重新扫描门店注册小程序码'
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     token: '',
     tokenInvalid: false,

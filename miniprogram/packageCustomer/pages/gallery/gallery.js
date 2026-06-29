@@ -2,7 +2,7 @@ const { ensureCustomerPage } = require('../../utils/customerGuard')
 const { callCustomer } = require('../../../utils/customerApi')
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     photos: [],

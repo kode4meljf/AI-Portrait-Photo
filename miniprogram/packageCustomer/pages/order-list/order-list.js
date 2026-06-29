@@ -11,7 +11,7 @@ const CACHE_STORAGE_KEY = 'customer_orders_list_v1'
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     orders: [],

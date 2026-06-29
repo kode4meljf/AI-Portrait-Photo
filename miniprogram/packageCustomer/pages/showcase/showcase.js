@@ -57,7 +57,7 @@ function calcHeroHeightPx() {
 }
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     templates: [],

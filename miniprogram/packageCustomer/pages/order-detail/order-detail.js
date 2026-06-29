@@ -5,7 +5,7 @@ const { buildFrameOrderView, PLACEHOLDER_THUMB, shouldQueryLogistics } = require
 const { copyTextToClipboard } = require('../../utils/clipboard')
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     orderId: '',

@@ -32,7 +32,12 @@ const {
   listStoreAssetAdjustments
 } = require('./storeAssetAdjust')
 const { deleteCloudFileSafe, deleteReplacedCloudFile, deleteCloudFilesSafe } = require('./cloudFile')
-const { listGalleryBatches, getGalleryBatch, deleteGalleryBatch } = require('./gallery')
+const {
+  listGalleryBatches,
+  getGalleryBatch,
+  deleteGalleryBatch,
+  batchDeleteGalleryBatches
+} = require('./gallery')
 const {
   listRechargePackages,
   getRechargePackage,
@@ -1358,6 +1363,8 @@ async function dispatch(action, payload, query) {
       return getGalleryBatch(payload)
     case 'gallery.batches.delete':
       return deleteGalleryBatch(payload)
+    case 'gallery.batches.batchDelete':
+      return batchDeleteGalleryBatches(payload)
     case 'rechargePackages.list':
       return listRechargePackages({ ...query, ...payload })
     case 'rechargePackages.get':

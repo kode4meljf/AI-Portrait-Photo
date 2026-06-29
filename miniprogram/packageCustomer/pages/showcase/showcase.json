@@ -5,5 +5,6 @@
   "backgroundColor": "#12141f",
   "backgroundColorTop": "#12141f",
   "backgroundColorBottom": "#12141f",
-  "homeButton": false
+  "homeButton": false,
+  "enableShareTimeline": true
 }

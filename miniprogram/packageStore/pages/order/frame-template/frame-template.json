@@ -3,5 +3,6 @@
   "usingComponents": {
     "points-cost": "/packageStore/components/points-cost/points-cost"
   },
-  "backgroundColor": "#f5f5f5"
+  "backgroundColor": "#f5f5f5",
+  "enableShareTimeline": true
 }

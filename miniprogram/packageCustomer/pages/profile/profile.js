@@ -41,7 +41,7 @@ function applyProfileToPage(page, profile) {
 }
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     profile: null,

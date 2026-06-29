@@ -4,5 +4,6 @@
   "usingComponents": {
     "customer-nav": "/packageCustomer/components/customer-nav/customer-nav",
     "order-card-thumb": "/components/order-card-thumb/order-card-thumb"
-  }
+  },
+  "enableShareTimeline": true
 }

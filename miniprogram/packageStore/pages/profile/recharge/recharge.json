@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "充值套餐",
-  "usingComponents": {}
+  "usingComponents": {},
+  "enableShareTimeline": true
 }

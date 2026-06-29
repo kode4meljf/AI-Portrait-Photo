@@ -15,6 +15,7 @@ const { buildShootQuery, setPendingShoot, getShootCustomerId } = require('../../
 const { portraitCostForCount, assertPortraitBalance } = require('../../../utils/portraitBilling.js')
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     originalUrl: '',
     count: 3,

@@ -29,6 +29,10 @@ http.interceptors.response.use(
     return body
   },
   (err) => {
+    if (isUnauthorizedError(err)) {
+      redirectToLogin()
+      return Promise.reject(new Error('未登录或 token 已过期'))
+    }
     const msg = extractHttpErrorMessage(err)
     return Promise.reject(new Error(msg))
   }
@@ -64,6 +68,20 @@ function extractHttpErrorMessage(err) {
     return '请求失败，请稍后重试'
   }
   return axiosMsg || '网络错误'
+}
+
+function isUnauthorizedError(err) {
+  const status = err.response?.status
+  const body = parseResponseBody(err.response?.data)
+  return status === 401 || body?.code === 'UNAUTHORIZED'
+}
+
+function redirectToLogin() {
+  localStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_user')
+  const path = window.location.pathname + window.location.search
+  const redirect = path.startsWith('/login') ? '' : `?redirect=${encodeURIComponent(path)}`
+  window.location.replace(`/login${redirect}`)
 }
 
 function resolveUrl() {

@@ -16,7 +16,7 @@ const {
 const QR_UNAVAILABLE_HINT = '暂无法显示打卡码，请联系店长协助处理'
 
 Page({
-  behaviors: [require('../../behaviors/customerPageNav')],
+  behaviors: [require('../../behaviors/customerPageNav'), require('../../../behaviors/pageShare')],
 
   data: {
     customer: null,

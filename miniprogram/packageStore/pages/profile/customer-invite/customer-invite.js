@@ -10,6 +10,7 @@ function formatExpire(ts) {
 }
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     loading: false,
     generated: false,

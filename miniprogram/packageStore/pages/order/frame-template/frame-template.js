@@ -6,6 +6,7 @@ const { FRAME_ORDER_COST, fetchFrameTemplates } = require('../../../config/frame
 const db = wx.cloud.database();
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     photoUrls: [],
     templates: [],

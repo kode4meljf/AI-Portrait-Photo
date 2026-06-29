@@ -30,6 +30,7 @@ function sortActive(list) {
 }
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     storeId: '',
     isOwner: false,

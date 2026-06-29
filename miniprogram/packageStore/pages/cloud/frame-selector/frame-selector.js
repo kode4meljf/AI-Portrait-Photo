@@ -23,6 +23,7 @@ const MOCK_STORE = {
 };
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     photoUrl: '',
     styleId: '',

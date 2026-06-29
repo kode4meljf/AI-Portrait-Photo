@@ -1,6 +1,7 @@
 const { PHOTO_SAMPLE_LIST } = require('../../../config/photoSamples.js');
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     originalUrl: '',
     pendingPath: '',

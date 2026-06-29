@@ -13,6 +13,7 @@ const { STORE_BASE } = require('../../utils/helpCenter');
 const { isStoreOwner } = require('../../utils/storeRole');
 const { getPointsPriceList, formatBalanceDisplay, formatBalanceText, PORTRAIT_POINTS_9, FRAME_POINTS } = require('../../utils/storePoints');
 const { callOrderApi } = require('../../utils/orderApi');
+const { syncPendingRechargeOrders } = require('../../utils/payApi');
 const { parseCloudDate } = require('../../utils/cloudDate');
 const { computeDashboardStats, filterOrdersInMonth } = require('../../utils/orderDashboardStats');
 
@@ -48,6 +49,7 @@ const computeUseGrid = (balance) => {
 };
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     storeInfo: {},
     orderStats: {
@@ -103,6 +105,16 @@ Page({
     this.loadStoreInfo();
     this.loadOrderStats();
     this.loadCheckinStats();
+    syncPendingRechargeOrders()
+      .then(({ credited }) => {
+        if (credited > 0) {
+          this.loadStoreInfo();
+          wx.showToast({ title: `积分到账 +${credited}`, icon: 'success' });
+        }
+      })
+      .catch((err) => {
+        console.warn('[profile] syncPendingRechargeOrders', err);
+      });
   },
 
   async loadStoreInfo() {

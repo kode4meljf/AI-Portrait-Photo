@@ -16,6 +16,7 @@ function shouldShowEntryInsteadOfDisabled(app, account) {
 }
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     loading: true,
     status: '',

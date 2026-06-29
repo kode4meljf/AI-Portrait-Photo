@@ -1,6 +1,7 @@
 const { AGREEMENT_TEXT } = require('../../../utils/helpCenter')
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: { text: AGREEMENT_TEXT },
 
   onLoad() {

@@ -24,6 +24,7 @@ async function ensureOpenId() {
 }
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     token: '',
     staffNickName: '',

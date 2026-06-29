@@ -2,5 +2,6 @@
   "navigationBarTitleText": "打卡名单",
   "navigationBarBackgroundColor": "#ffffff",
   "enablePullDownRefresh": true,
-  "usingComponents": {}
+  "usingComponents": {},
+  "enableShareTimeline": true
 }

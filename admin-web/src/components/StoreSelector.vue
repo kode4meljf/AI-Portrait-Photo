@@ -45,7 +45,12 @@ async function loadStores() {
     stores.value = res.list || []
     if (selectedId.value) {
       const found = stores.value.find((s) => s._id === selectedId.value)
-      if (found) appStore.setStore(found)
+      if (found) {
+        appStore.setStore(found)
+      } else {
+        appStore.setStore(null)
+        selectedId.value = ''
+      }
     }
   } finally {
     loading.value = false

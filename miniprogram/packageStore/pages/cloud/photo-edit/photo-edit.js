@@ -4,6 +4,7 @@
  */
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     imageUrl: "",
     brightness: 100,

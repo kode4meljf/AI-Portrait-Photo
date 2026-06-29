@@ -4,5 +4,6 @@
     "privacy-popup": "/components/privacy-popup/privacy-popup",
     "order-card-thumb": "/components/order-card-thumb/order-card-thumb"
   },
-  "onReachBottomDistance": 100
+  "onReachBottomDistance": 100,
+  "enableShareTimeline": true
 }

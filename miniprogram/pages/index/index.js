@@ -44,6 +44,7 @@ function formatNow() {
 }
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     selectedCustomer: null,
     pickerVisible: false,

@@ -54,6 +54,10 @@ App({
       console.error('初始化失败:', error);
       wx.showToast({ title: '登录失败', icon: 'none' });
     }
+
+    if (typeof wx.showShareMenu === 'function') {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
   },
 
   async ensureLogin() {

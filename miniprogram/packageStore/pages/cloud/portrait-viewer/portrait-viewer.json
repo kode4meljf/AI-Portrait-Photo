@@ -10,5 +10,6 @@
   "usingComponents": {
     "portrait-retry-dialog": "/packageStore/components/portrait-retry-dialog/portrait-retry-dialog",
     "portrait-result-viewer": "/packageStore/components/portrait-result-viewer/portrait-result-viewer"
-  }
+  },
+  "enableShareTimeline": true
 }

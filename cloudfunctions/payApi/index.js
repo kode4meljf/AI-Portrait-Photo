@@ -21,6 +21,21 @@ function fail(error, code) {
   return { success: false, error: error || '操作失败', code: code || 'BAD_REQUEST' };
 }
 
+function getCloudPushEvent(event) {
+  if (!event || typeof event !== 'object') return '';
+  return String(event.Event || event.event || '').trim();
+}
+
+function isCloudXpayPush(event) {
+  const ev = getCloudPushEvent(event);
+  return ev.startsWith('xpay_');
+}
+
+function toCloudPushResponse(result) {
+  const body = (result && result.body) || { ErrCode: 1, ErrMsg: 'fail' };
+  return { ErrCode: body.ErrCode != null ? body.ErrCode : 1, ErrMsg: body.ErrMsg || 'fail' };
+}
+
 async function dispatchCallFunction(action, event, openid) {
   const opts = payOptions();
   switch (action) {
@@ -54,6 +69,13 @@ async function dispatchCallFunction(action, event, openid) {
       return ok(data);
     }
 
+    case 'recharge.cancel': {
+      assertProductionSecurity('payApi');
+      const storeId = await resolveStoreIdFromOpenid(openid);
+      const data = await recharge.cancelRechargeOrder(openid, storeId, event.outTradeNo, opts);
+      return ok(data);
+    }
+
     default:
       return fail(`未知 action: ${action}`, 'UNKNOWN_ACTION');
   }
@@ -61,6 +83,19 @@ async function dispatchCallFunction(action, event, openid) {
 
 exports.main = async (event) => {
   warnIfInsecure('payApi');
+
+  if (isCloudXpayPush(event)) {
+    const pushEvent = getCloudPushEvent(event);
+    console.log('[payApi] xpay push (cloud)', pushEvent, event.OutTradeNo || event.outTradeNo || '');
+    try {
+      const result = await recharge.handleXpayPush(event);
+      return toCloudPushResponse(result);
+    } catch (err) {
+      console.error('[payApi] xpay push (cloud) failed', err);
+      return { ErrCode: -1, ErrMsg: err.message || 'fail' };
+    }
+  }
+
   const httpCtx = parseHttpEvent(event);
   if (httpCtx) {
     if (httpCtx.method === 'OPTIONS') {
@@ -75,6 +110,7 @@ exports.main = async (event) => {
     }
     assertProductionSecurity('payApi');
     const rawBody = typeof event.body === 'string' ? event.body : JSON.stringify(httpCtx.body || {});
+    console.log('[payApi] xpay push (http)', httpCtx.method);
     const result = await recharge.handleXpayPush(rawBody);
     return {
       statusCode: result.statusCode,

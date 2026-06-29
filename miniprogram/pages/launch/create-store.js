@@ -4,6 +4,7 @@ const { normalizeMobilePhone } = require('../../utils/phone')
 const { auditPageLayout } = require('../../utils/pageLayoutGuard')
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     name: '',
     contactName: '',

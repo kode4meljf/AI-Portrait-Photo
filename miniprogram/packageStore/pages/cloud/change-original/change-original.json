@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "更换原图",
-  "usingComponents": {}
+  "usingComponents": {},
+  "enableShareTimeline": true
 }

@@ -131,6 +131,7 @@ function clearStoreCache() {
 
 function createHelpIndexPage(role) {
   return {
+    behaviors: [require('../behaviors/pageShare')],
     data: {
       tip: '',
       sections: [],

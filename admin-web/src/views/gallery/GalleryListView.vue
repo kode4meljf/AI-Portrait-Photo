@@ -15,12 +15,20 @@
       </el-button>
     </div>
 
+    <div v-if="selectedRows.length" class="toolbar">
+      <span class="toolbar-tip">已选 {{ selectedRows.length }} 条</span>
+      <el-button type="danger" :loading="batchDeleting" @click="onBatchDelete">批量删除</el-button>
+    </div>
+
     <el-table
+      ref="tableRef"
       :data="list"
       v-loading="loading"
       stripe
       empty-text="暂无云相册批次"
+      @selection-change="onSelectionChange"
     >
+      <el-table-column type="selection" width="48" />
       <el-table-column label="封面" width="88">
         <template #default="{ row }">
           <el-image
@@ -32,6 +40,11 @@
             preview-teleported
           />
           <span v-else class="cover-placeholder">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="批次 ID" width="200" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span class="batch-id-cell">{{ row._id }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="createTimeText" label="创建时间" width="160" />
@@ -75,8 +88,21 @@
 
     <el-dialog v-model="detailVisible" title="批次详情" width="720px" destroy-on-close>
       <div v-if="detailBatch" class="detail-meta">
+        <div class="detail-row">
+          <span>批次 ID：</span>
+          <code class="batch-id">{{ detailBatch._id }}</code>
+          <el-button link type="primary" size="small" @click="copyText(detailBatch._id, '批次 ID')">
+            复制
+          </el-button>
+        </div>
         <div>创建：{{ detailBatch.createTimeText }}</div>
-        <div>状态：{{ detailBatch.statusLabel }} · 照片 {{ detailBatch.generatedCount }}/{{ detailBatch.photoCount }}</div>
+        <div>
+          状态：{{ detailBatch.statusLabel }}
+          · 照片 {{ detailBatch.generatedCount }}/{{ detailBatch.photoCount }}
+          <span v-if="detailBatch.status === 'generating'" class="progress-hint">
+            ({{ detailBatch.progressPercent }}%)
+          </span>
+        </div>
         <div>客户：{{ detailBatch.customerName }}</div>
       </div>
       <div v-loading="detailLoading" class="photo-grid">
@@ -104,10 +130,19 @@
                 :preview-src-list="previewList(p)"
                 preview-teleported
               />
-              <span v-else class="no-img">{{ p.generateStatus === 'failed' ? '失败' : '未生成' }}</span>
+              <span v-else class="no-img">{{ photoStatusLabel(p) }}</span>
             </div>
           </div>
-          <div class="photo-caption">{{ p.styleName || '—' }}</div>
+          <div class="photo-caption">
+            <span>{{ p.styleName || '—' }}</span>
+            <span class="photo-status-tag" :class="p.generateStatus || 'pending'">
+              {{ photoStatusLabel(p) }}
+            </span>
+          </div>
+          <div class="photo-id-row">
+            <span class="photo-id" :title="p._id">{{ p._id }}</span>
+            <el-button link type="primary" size="small" @click="copyText(p._id, '照片 ID')">复制</el-button>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -130,10 +165,20 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const deletingId = ref('')
+const batchDeleting = ref(false)
+const selectedRows = ref([])
+const tableRef = ref(null)
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailBatch = ref(null)
 const detailPhotos = ref([])
+
+const PHOTO_STATUS_LABEL = {
+  pending: '待生成',
+  processing: '生成中',
+  completed: '已完成',
+  failed: '失败'
+}
 
 function statusTagType(status) {
   if (status === 'completed') return 'success'
@@ -142,8 +187,45 @@ function statusTagType(status) {
   return 'info'
 }
 
+function photoStatusLabel(photo) {
+  const status = photo.generateStatus || (photo.aiDisplayUrl || photo.isGenerated ? 'completed' : 'pending')
+  return PHOTO_STATUS_LABEL[status] || status || '待生成'
+}
+
 function previewList(photo) {
   return [photo.aiDisplayUrl, photo.originalDisplayUrl].filter(Boolean)
+}
+
+async function copyText(text, label) {
+  const value = String(text || '').trim()
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
+    ElMessage.success(`${label}已复制`)
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = value
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      ElMessage.success(`${label}已复制`)
+    } catch {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
+function onSelectionChange(rows) {
+  selectedRows.value = rows || []
+}
+
+function clearSelection() {
+  selectedRows.value = []
+  tableRef.value?.clearSelection()
 }
 
 async function loadList() {
@@ -161,6 +243,7 @@ async function loadList() {
     })
     list.value = res.list || []
     total.value = res.total || 0
+    clearSelection()
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -226,6 +309,41 @@ async function onDelete(row) {
   }
 }
 
+async function onBatchDelete() {
+  if (!selectedRows.value.length || !appStore.currentStoreId) return
+  try {
+    await ElMessageBox.confirm(
+      `确定删除选中的 ${selectedRows.value.length} 个批次？\n将一并删除云存储文件及 photos / batches / ai_tasks 等记录。`,
+      '批量删除云相册批次',
+      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
+  batchDeleting.value = true
+  try {
+    const res = await api.batchDeleteGalleryBatches({
+      storeId: appStore.currentStoreId,
+      items: selectedRows.value.map((row) => ({ batchId: row._id }))
+    })
+    const failed = res.failed || []
+    if (failed.length) {
+      ElMessage.warning(`已删除 ${res.deletedCount} 个批次，${failed.length} 个失败`)
+    } else {
+      ElMessage.success(`已删除 ${res.deletedCount} 个批次`)
+    }
+    if (detailVisible.value && selectedRows.value.some((r) => r._id === detailBatch.value?._id)) {
+      detailVisible.value = false
+    }
+    await loadList()
+  } catch (e) {
+    ElMessage.error(e.message || '批量删除失败')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 watch(
   () => appStore.currentStoreId,
   () => {
@@ -242,6 +360,18 @@ onMounted(loadList)
   margin-bottom: 16px;
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.toolbar-tip {
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+
 .cover-thumb {
   width: 56px;
   height: 56px;
@@ -253,9 +383,32 @@ onMounted(loadList)
   font-size: 12px;
 }
 
+.batch-id-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #606266;
+}
+
 .progress-hint {
   color: #909399;
   font-size: 12px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.batch-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #303133;
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-all;
 }
 
 .pager {
@@ -321,11 +474,66 @@ onMounted(loadList)
 }
 
 .photo-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 8px;
   font-size: 12px;
   color: #303133;
+}
+
+.photo-caption > span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.photo-status-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f0f2f5;
+  color: #909399;
+}
+
+.photo-status-tag.processing {
+  background: #fdf6ec;
+  color: #e6a23c;
+}
+
+.photo-status-tag.pending {
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+.photo-status-tag.completed {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.photo-status-tag.failed {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.photo-id-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.photo-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 </style>

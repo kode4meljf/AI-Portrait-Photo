@@ -7,5 +7,6 @@
     "customer-edit-panel": "/components/customer-edit-panel/customer-edit-panel"
   },
   "enablePullDownRefresh": true,
-  "onReachBottomDistance": 100
+  "onReachBottomDistance": 100,
+  "enableShareTimeline": true
 }

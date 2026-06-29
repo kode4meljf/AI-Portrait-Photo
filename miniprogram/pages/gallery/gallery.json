@@ -5,5 +5,6 @@
     "privacy-popup": "/components/privacy-popup/privacy-popup"
   },
   "enablePullDownRefresh": false,
-  "onReachBottomDistance": 100
+  "onReachBottomDistance": 100,
+  "enableShareTimeline": true
 }

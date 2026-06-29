@@ -114,6 +114,7 @@ function buildSummaryText(photos, generatedCount, photoCount, batchIsFavorite, r
 }
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     activeTab: 'time',
     activeTabIndex: 0,

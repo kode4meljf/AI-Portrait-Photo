@@ -906,6 +906,14 @@ export async function mockRequest(action, payload = {}, query = {}) {
       mockGalleryBatches.splice(idx, 1)
       return { batchId: payload.batchId, deletedPhotos: 1, deletedTasks: 1, deletedFiles: 2 }
     }
+    case 'gallery.batches.batchDelete': {
+      const ids = new Set((payload.items || []).map((i) => i.batchId || i._id))
+      const before = mockGalleryBatches.length
+      for (let i = mockGalleryBatches.length - 1; i >= 0; i -= 1) {
+        if (ids.has(mockGalleryBatches[i]._id)) mockGalleryBatches.splice(i, 1)
+      }
+      return { deletedCount: before - mockGalleryBatches.length, failed: [], results: [] }
+    }
     case 'rechargePackages.list': {
       const keyword = (query.keyword || '').trim().toLowerCase()
       let rows = [...mockRechargePackages]

@@ -21,6 +21,7 @@ const TEXT_FIELDS = [
 ];
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     storeInfo: null,
     isChanged: false,

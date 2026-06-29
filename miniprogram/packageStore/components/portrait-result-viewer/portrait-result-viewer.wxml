@@ -135,7 +135,10 @@
           <view class="style-tray">
             <view class="tray-panel">
               <view class="tray-header">
-                <text class="tray-title">{{results.length > 1 ? results.length + '种风格' : '当前风格'}}</text>
+                <view class="tray-title-wrap">
+                  <text class="tray-title">{{results.length > 1 ? results.length + '种风格' : '当前风格'}}</text>
+                  <text class="tray-ai-note">（以上写真均为 AI 生成）</text>
+                </view>
                 <view
                   wx:if="{{originalUrl && !currentItemFailed}}"
                   class="origin-toggle {{showOriginFloat ? 'is-on' : ''}}"

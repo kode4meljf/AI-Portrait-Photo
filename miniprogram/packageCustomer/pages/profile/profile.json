@@ -6,5 +6,6 @@
   "homeButton": false,
   "usingComponents": {
     "customer-nav": "/packageCustomer/components/customer-nav/customer-nav"
-  }
+  },
+  "enableShareTimeline": true
 }

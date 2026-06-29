@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 生成标识 — 设计稿 v3</title>
+  <style>
+    :root {
+      --bg: #eef1f5;
+      --phone-bg: #f6f7f9;
+      --ink: #1a1a2e;
+      --muted: #888;
+      --gold: #c49a3d;
+      --gold-soft: rgba(196, 154, 61, 0.12);
+      --warm-text-soft: #a08030;
+      --line: #e5e7eb;
+      --shadow: 0 12px 40px rgba(26, 26, 46, 0.12);
+      --warm-bg: #fdf8f0;
+      --warm-border: #f0e4d0;
+      --warm-text: #8b6914;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+      padding: 32px 20px 64px;
+    }
+
+    .doc-header {
+      max-width: 720px;
+      margin: 0 auto 32px;
+    }
+
+    .doc-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .doc-header p {
+      color: #555;
+      font-size: 14px;
+    }
+
+    .scope-badge {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--warm-text);
+      background: var(--gold-soft);
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      margin-bottom: 20px;
+    }
+
+    .panel-head h2 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .panel-head p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .phone {
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      background: var(--phone-bg);
+      border-radius: 28px;
+      overflow: hidden;
+      border: 6px solid #111;
+      box-shadow: inset 0 0 0 1px #333;
+      aspect-ratio: 9 / 19.5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .status-bar {
+      height: 28px;
+      background: var(--phone-bg);
+      flex-shrink: 0;
+    }
+
+    .nav {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      font-size: 15px;
+      font-weight: 600;
+      background: var(--phone-bg);
+      flex-shrink: 0;
+    }
+
+    .nav-back {
+      position: absolute;
+      left: 12px;
+      width: 10px;
+      height: 10px;
+      border-left: 2px solid rgba(0,0,0,.85);
+      border-bottom: 2px solid rgba(0,0,0,.85);
+      transform: rotate(45deg);
+    }
+
+    .screen-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .hero-stage {
+      flex: 1;
+      min-height: 0;
+      background: #e9edf3;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .hero-img {
+      width: 78%;
+      aspect-ratio: 3/4;
+      background: linear-gradient(160deg, #c4b5a8 0%, #8b7355 40%, #5c4a3a 100%);
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    }
+
+    .hero-chrome {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.45);
+      color: #fff;
+      font-size: 9px;
+    }
+
+    .origin-float {
+      position: absolute;
+      right: 12px;
+      bottom: 48px;
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      border: 2px solid var(--gold);
+      background: #ddd;
+    }
+
+    .style-tray {
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      padding: 12px;
+      flex-shrink: 0;
+    }
+
+    .tray-header {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0 4px;
+    }
+
+    .tray-title {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tray-ai-note {
+      font-size: 10px;
+      color: var(--warm-text-soft);
+      font-weight: 400;
+    }
+
+    .tray-tip {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .thumb-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .thumb {
+      width: 48px;
+      height: 64px;
+      border-radius: 6px;
+      background: linear-gradient(160deg, #b8a99a, #6b5b4f);
+      border: 2px solid transparent;
+    }
+
+    .thumb.active { border-color: var(--ink); }
+
+    .footer {
+      padding: 10px 12px 16px;
+      background: #fff;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-outline {
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .callout {
+      margin-top: 8px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #fef9c3;
+      border: 1px dashed #ca8a04;
+      font-size: 11px;
+      color: #854d0e;
+      display: inline-block;
+    }
+
+    .scheme-note {
+      max-width: 720px;
+      margin: 28px auto 0;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .scheme-note h3 {
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+
+    .change-log {
+      padding: 12px 14px;
+      background: var(--warm-bg);
+      border-radius: 10px;
+      border: 1px solid var(--warm-border);
+      font-size: 13px;
+      color: #6b5a3e;
+      line-height: 1.7;
+    }
+
+    .change-log strong { color: var(--warm-text); }
+
+    .copy-chip {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gold);
+      background: var(--gold-soft);
+      color: var(--warm-text);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .deferred-list {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .deferred-list li {
+      margin-left: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="doc-header">
+    <h1>AI 生成内容标识 — 设计稿 v3</h1>
+    <p>当前范围：仅在生成结果页加标识，其他页面暂不改动。</p>
+    <span class="scope-badge">实施范围：portrait-result-viewer 一处</span>
+  </header>
+
+  <div class="main">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>生成结果页（portrait-result-viewer）</h2>
+        <p>在 tray 标题「3种风格」后追加括号说明，本页仅此一处，其余 UI 不变。</p>
+      </div>
+
+      <div class="phone">
+        <div class="status-bar"></div>
+        <div class="nav"><span class="nav-back"></span>生成结果</div>
+        <div class="screen-body">
+          <div class="hero-stage">
+            <div class="hero-img"></div>
+            <div class="hero-chrome">
+              <span class="pill">1/3</span>
+              <span class="pill">收藏</span>
+            </div>
+            <div class="origin-float"></div>
+          </div>
+          <div class="style-tray">
+            <div class="tray-header">
+              <span class="tray-title">3种风格</span>
+              <span class="tray-ai-note">（以上写真均为 AI 生成）</span>
+              <span class="callout">仅此一处</span>
+            </div>
+            <div class="tray-tip">* 默认以当前展示写真制作实物摆台</div>
+            <div class="thumb-row">
+              <div class="thumb active"></div>
+              <div class="thumb"></div>
+              <div class="thumb"></div>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="btn btn-outline">制作影集</button>
+            <button class="btn btn-primary">制作摆台</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="scheme-note">
+    <h3>v3 实施说明</h3>
+    <div class="change-log">
+      <strong>本次只做</strong>：在 <code>portrait-result-viewer</code> 组件的 style tray 标题行，将<br>
+      <code>3种风格</code> → <code>3种风格（以上写真均为 AI 生成）</code><br><br>
+      <strong>本次不做</strong>：顾客相册、门店云相册、全屏预览等其他页面的 AI 标识。
+    </div>
+
+    <span class="copy-chip">（以上写真均为 AI 生成）</span>
+
+    <ul class="deferred-list">
+      <li>顾客相册 — 暂不改动</li>
+      <li>门店云相册 — 暂不改动</li>
+      <li>全屏预览 — 暂不改动</li>
+    </ul>
+  </section>
+
+</body>
+</html>

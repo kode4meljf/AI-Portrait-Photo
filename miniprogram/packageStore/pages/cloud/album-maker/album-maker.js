@@ -14,6 +14,7 @@ const {
 const db = wx.cloud.database()
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     customerId: '',
     albumSelectMin: DEFAULTS.albumSelectMin,

@@ -2,5 +2,6 @@
   "navigationBarTitleText": "云相册",
   "usingComponents": {
     "points-cost": "/packageStore/components/points-cost/points-cost"
-  }
+  },
+  "enableShareTimeline": true
 }

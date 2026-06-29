@@ -1,3 +1,4 @@
 {
-  "navigationBarTitleText": "编辑客户"
+  "navigationBarTitleText": "编辑客户",
+  "enableShareTimeline": true
 }

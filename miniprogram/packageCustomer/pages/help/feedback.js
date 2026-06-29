@@ -1,6 +1,7 @@
 const { submitFeedback } = require('../../utils/feedbackApi')
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     role: 'customer',
     content: '',

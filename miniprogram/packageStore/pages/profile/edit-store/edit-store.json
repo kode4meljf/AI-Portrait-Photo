@@ -2,5 +2,6 @@
   "navigationBarTitleText": "编辑门店",
   "usingComponents": {
     "privacy-popup": "/components/privacy-popup/privacy-popup"
-  }
+  },
+  "enableShareTimeline": true
 }

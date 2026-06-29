@@ -3,5 +3,6 @@
   "enablePullDownRefresh": true,
   "usingComponents": {
     "privacy-popup": "/components/privacy-popup/privacy-popup"
-  }
+  },
+  "enableShareTimeline": true
 }

@@ -80,7 +80,7 @@ async function fulfillPendingOrder(order, { transactionId, paidFen, productId })
   if (order.status === 'paid') {
     return { ok: true, duplicate: true, order };
   }
-  if (order.status !== 'pending') {
+  if (order.status !== 'pending' && order.status !== 'cancelled') {
     throw new Error('订单状态不可支付');
   }
   if (Number(order.amountFen) !== Number(paidFen)) {
@@ -98,7 +98,7 @@ async function fulfillPendingOrder(order, { transactionId, paidFen, productId })
     const row = snap.data;
     if (!row) throw new Error('充值订单不存在');
     if (row.status === 'paid') return;
-    if (row.status !== 'pending') throw new Error('订单状态不可支付');
+    if (row.status !== 'pending' && row.status !== 'cancelled') throw new Error('订单状态不可支付');
     if (Number(row.amountFen) !== Number(paidFen)) {
       throw new Error('支付金额与订单不一致');
     }
@@ -135,7 +135,15 @@ async function getPendingOrder(outTradeNo) {
 async function syncPaidFromXpay(openid, order, cfg) {
   if (!order || order.status === 'paid') return order;
   const remote = await queryXpayOrder({ openid, outTradeNo: order.outTradeNo, cfg });
-  if (!isXpayOrderPaid(remote)) return order;
+  if (!isXpayOrderPaid(remote)) {
+    if (remote) {
+      console.log('[payApi] syncPaidFromXpay 未支付', {
+        outTradeNo: order.outTradeNo,
+        status: remote.status
+      });
+    }
+    return order;
+  }
 
   const paidFen = Number(remote.paid_fee != null ? remote.paid_fee : remote.order_fee) || order.amountFen;
   const result = await fulfillPendingOrder(order, {
@@ -239,7 +247,11 @@ async function queryRechargeOrder(openid, storeId, outTradeNo, options = {}) {
       try {
         order = await syncPaidFromXpay(openid, order, cfg);
       } catch (err) {
-        console.warn('[payApi] syncPaidFromXpay', err.message || err);
+        console.warn('[payApi] syncPaidFromXpay 失败', err.message || err, {
+          outTradeNo: order.outTradeNo,
+          code: err.code,
+          xpayErrcode: err.xpayErrcode
+        });
       }
     }
   }
@@ -247,11 +259,62 @@ async function queryRechargeOrder(openid, storeId, outTradeNo, options = {}) {
   return toPublicOrder(order);
 }
 
+async function cancelRechargeOrder(openid, storeId, outTradeNo, options = {}) {
+  const no = String(outTradeNo || '').trim();
+  if (!no) throw new Error('缺少订单号');
+
+  const res = await db.collection(ORDERS).where({ outTradeNo: no, storeId }).limit(1).get();
+  if (!res.data.length) {
+    return { outTradeNo: no, status: 'cancelled', points: 0, times: 0, amountFen: 0, packageName: '', paidAt: null };
+  }
+
+  let order = res.data[0];
+  if (order.payerOpenId && order.payerOpenId !== openid) {
+    throw new Error('无权操作该订单');
+  }
+  if (order.status === 'paid' || order.status === 'cancelled') {
+    return toPublicOrder(order);
+  }
+  if (order.status !== 'pending') {
+    throw new Error('订单状态不可取消');
+  }
+
+  const cfg = getPayConfig(options);
+  if (!cfg.mock && isPayConfigured(options)) {
+    try {
+      order = await syncPaidFromXpay(openid, order, cfg);
+      if (order.status === 'paid') {
+        return toPublicOrder(order);
+      }
+    } catch (err) {
+      console.warn('[payApi] cancelRechargeOrder syncPaidFromXpay 失败', err.message || err, {
+        outTradeNo: no
+      });
+    }
+  }
+
+  await db.collection(ORDERS).doc(order._id).update({
+    data: {
+      status: 'cancelled',
+      updateTime: db.serverDate()
+    }
+  });
+
+  const fresh = await db.collection(ORDERS).doc(order._id).get();
+  return toPublicOrder(fresh.data);
+}
+
 async function handleXpayPush(rawBody) {
   const payload = normalizePushPayload(rawBody);
   if (!payload) {
     return xpayFailResponse('无效推送', 400);
   }
+  console.log('[payApi] xpay push payload', {
+    event: payload.event,
+    outTradeNo: payload.outTradeNo,
+    productId: payload.productId,
+    actualPriceFen: payload.actualPriceFen
+  });
   if (payload.event !== 'xpay_goods_deliver_notify') {
     return xpaySuccessResponse();
   }
@@ -289,5 +352,6 @@ module.exports = {
   listPackages,
   createRechargeOrder,
   queryRechargeOrder,
+  cancelRechargeOrder,
   handleXpayPush
 };

@@ -25,6 +25,7 @@ function initialFromName(name) {
 }
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     form: {
       nickName: '',

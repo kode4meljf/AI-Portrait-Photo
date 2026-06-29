@@ -2,6 +2,7 @@ const { getAppVersion, ABOUT_DESC } = require('../../../utils/helpCenter')
 const { fetchPlatformSupportPhone } = require('../../../utils/platformSettings')
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     version: '1.0.0',
     desc: ABOUT_DESC.store,

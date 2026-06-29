@@ -9,6 +9,7 @@ const { mapCustomerRow, calcListStats } = require('../../../../utils/customerLis
 const { callStoreMember, isValidStoreId } = require('../../../../utils/storeSession');
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     selectMode: false,
     forGallery: false,

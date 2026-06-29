@@ -32,6 +32,7 @@ const formatDate = (date, pattern = "yyyy-MM-dd") => {
 };
 
 Page({
+  behaviors: [require('../../behaviors/pageShare')],
   data: {
     tabs: [
       { status: "all", name: "全部", count: 0 },

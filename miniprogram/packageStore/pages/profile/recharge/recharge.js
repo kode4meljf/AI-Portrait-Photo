@@ -5,9 +5,12 @@ const {
   fetchRechargePackages,
   createRechargeOrder,
   requestVirtualPayment,
-  waitRechargePaid,
-  queryRechargeOrder
-} = require('../../../utils/payApi');
+  queryRechargeOrder,
+  cancelRechargeOrder,
+  savePendingRecharge,
+  removePendingRecharge,
+  isIosPlatform
+} = require('../../../../utils/payApi');
 const {
   splitPackages,
   pickDefaultPackage,
@@ -16,6 +19,7 @@ const {
 const { getPointsPriceList, formatBalanceDisplay } = require('../../../../utils/storePoints');
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     packages: [],
     casualPackages: [],
@@ -123,39 +127,39 @@ Page({
     }
 
     this.setData({ submitting: true });
-    wx.showLoading({ title: '调起支付...', mask: true });
+    let outTradeNo = '';
 
     try {
       const order = await createRechargeOrder(this.data.selectedPackage.id);
+      outTradeNo = order.outTradeNo;
       const points = order.points || order.times || this.data.selectedPackage.points;
 
       if (order.mockPaid) {
-        wx.hideLoading();
         await this.onRechargeSuccess(points);
         return;
       }
 
       await requestVirtualPayment(order.virtualPayment);
 
-      wx.showLoading({ title: '确认到账...', mask: true });
-      try {
-        await waitRechargePaid(order.outTradeNo);
-      } catch (pollErr) {
-        const latest = await queryRechargeOrder(order.outTradeNo).catch(() => null);
-        if (latest && latest.status === 'paid') {
-          await this.onRechargeSuccess(latest.points || latest.times);
-          return;
-        }
-        throw pollErr;
+      savePendingRecharge({ outTradeNo: order.outTradeNo, points });
+
+      const latest = await queryRechargeOrder(order.outTradeNo).catch(() => null);
+      if (latest && latest.status === 'paid') {
+        removePendingRecharge(order.outTradeNo);
+        await this.onRechargeSuccess(latest.points || latest.times || points);
+        return;
       }
 
-      wx.hideLoading();
-      await this.onRechargeSuccess(points);
+      await this.onRechargeSubmitted(points);
     } catch (err) {
       console.error('[recharge] 支付失败', err);
-      wx.hideLoading();
       const msg = (err && err.errMsg) || err.message || '支付失败';
       if (/cancel/i.test(msg)) {
+        if (outTradeNo) {
+          cancelRechargeOrder(outTradeNo).catch((e) => {
+            console.warn('[recharge] cancel order', e.message || e);
+          });
+        }
         wx.showToast({ title: '已取消支付', icon: 'none' });
       } else if (err.code === 'PAY_NOT_CONFIGURED') {
         wx.showToast({ title: '支付尚未配置', icon: 'none' });
@@ -164,6 +168,20 @@ Page({
       }
       this.setData({ submitting: false });
     }
+  },
+
+  async onRechargeSubmitted(points) {
+    this.setData({ submitting: false });
+    const iosHint = isIosPlatform();
+    safeNavigateBack({
+      success: () => {
+        wx.showToast({
+          title: iosHint ? '支付已提交，积分到账中' : '支付已提交，请稍候查看余额',
+          icon: 'none',
+          duration: 2800
+        });
+      }
+    });
   },
 
   async onRechargeSuccess(points) {

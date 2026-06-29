@@ -22,6 +22,7 @@ function initialFromName(name) {
 }
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     id: '',
     saving: false,

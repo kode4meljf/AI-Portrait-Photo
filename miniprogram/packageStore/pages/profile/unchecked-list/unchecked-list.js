@@ -19,6 +19,7 @@ const {
 } = require('../../../utils/checkinListPage')
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     date: '',
     mode: 'checked',

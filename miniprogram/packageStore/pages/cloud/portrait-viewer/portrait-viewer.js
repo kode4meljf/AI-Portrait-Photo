@@ -34,6 +34,7 @@ const GALLERY_LIST_ROUTE = 'pages/gallery/gallery';
 const GALLERY_TAB_URL = '/pages/gallery/gallery';
 
 Page({
+  behaviors: [require('../../../../behaviors/pageShare')],
   data: {
     mode: 'live',
     batchId: '',

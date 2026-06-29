@@ -1,24 +1,13 @@
 const cloud = require('wx-server-sdk')
 const { db, _, parsePage } = require('./db')
 const { deleteCloudFilesSafe, isCloudFileId } = require('./cloudFile')
+const { formatDateTime } = require('./formatDateTime')
 
 const BATCH_STATUS_LABEL = {
   pending: '待生成',
   generating: '生成中',
   completed: '已完成',
   partial: '部分失败'
-}
-
-function formatDateTime(value) {
-  if (!value) return ''
-  const d = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(d.getTime())) return ''
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${day} ${h}:${min}`
 }
 
 function deriveBatchStatus(photos) {
@@ -323,8 +312,43 @@ async function deleteGalleryBatch(payload) {
   }
 }
 
+async function batchDeleteGalleryBatches(payload) {
+  const storeId = requireStoreId(payload.storeId)
+  const items = Array.isArray(payload.items) ? payload.items : []
+  if (!items.length) throw new Error('请选择要删除的批次')
+
+  const results = []
+  for (const item of items) {
+    const batchId = String(item.batchId || item._id || item.id || '').trim()
+    if (!batchId) continue
+    try {
+      const res = await deleteGalleryBatch({ batchId, storeId })
+      results.push({ ...res, ok: true })
+    } catch (err) {
+      results.push({
+        batchId,
+        ok: false,
+        error: err.message || '删除失败'
+      })
+    }
+  }
+
+  const success = results.filter((r) => r.ok)
+  const failed = results.filter((r) => !r.ok)
+  if (!success.length && failed.length) {
+    throw new Error(failed[0].error || '删除失败')
+  }
+
+  return {
+    deletedCount: success.length,
+    failed,
+    results
+  }
+}
+
 module.exports = {
   listGalleryBatches,
   getGalleryBatch,
-  deleteGalleryBatch
+  deleteGalleryBatch,
+  batchDeleteGalleryBatches
 }
