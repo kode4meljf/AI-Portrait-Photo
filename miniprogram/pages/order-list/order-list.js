@@ -12,7 +12,7 @@ const { isValidStoreId, resolveSessionIfNeeded } = require('../../utils/storeSes
 
 const { buildOrderCardThumb } = require('../../utils/orderCardThumb');
 const { parseCloudDate } = require('../../utils/cloudDate');
-const { copyTextToClipboard } = require('../../packageStore/utils/clipboard');
+const { copyTextToClipboard } = require('../../utils/clipboard');
 
 const formatDate = (date, pattern = "yyyy-MM-dd") => {
   if (!date) return "";
