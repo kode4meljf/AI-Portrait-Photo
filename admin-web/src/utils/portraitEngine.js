@@ -5,6 +5,7 @@ export const DEFAULT_SEEDREAM_MODEL_ID = 'doubao-seedream-5-0-260128'
 export const JIMENG_PORTRAIT_REQ_KEY = 'i2i_portrait_photo'
 
 export const SEEDREAM_MODEL_OPTIONS = [
+  { label: 'doubao-seedream-4-5-251128', value: 'doubao-seedream-4-5-251128' },
   { label: 'doubao-seedream-5-0-260128', value: 'doubao-seedream-5-0-260128' }
 ]
 
@@ -18,7 +19,7 @@ export const PORTRAIT_ENGINE_OPTIONS = [
   {
     value: PORTRAIT_ENGINE_SEEDREAM,
     label: '智绘引擎',
-    description: '豆包 Seedream 5.0，新一代多模态生图'
+    description: '豆包 Seedream，多模态生图'
   }
 ]
 

@@ -2,6 +2,10 @@ const PORTRAIT_ENGINE_JIMENG = 'jimeng'
 const PORTRAIT_ENGINE_SEEDREAM = 'seedream'
 const DEFAULT_PORTRAIT_ENGINE = PORTRAIT_ENGINE_JIMENG
 const DEFAULT_SEEDREAM_MODEL_ID = 'doubao-seedream-5-0-260128'
+const SEEDREAM_MODEL_OPTIONS = [
+  'doubao-seedream-4-5-251128',
+  'doubao-seedream-5-0-260128'
+]
 const JIMENG_PORTRAIT_REQ_KEY = 'i2i_portrait_photo'
 
 const PORTRAIT_ENGINE_OPTIONS = [
@@ -14,7 +18,7 @@ const PORTRAIT_ENGINE_OPTIONS = [
   {
     value: PORTRAIT_ENGINE_SEEDREAM,
     label: '智绘引擎',
-    description: '豆包 Seedream 5.0，新一代多模态生图'
+    description: '豆包 Seedream，多模态生图'
   }
 ]
 
@@ -40,6 +44,7 @@ module.exports = {
   PORTRAIT_ENGINE_SEEDREAM,
   DEFAULT_PORTRAIT_ENGINE,
   DEFAULT_SEEDREAM_MODEL_ID,
+  SEEDREAM_MODEL_OPTIONS,
   JIMENG_PORTRAIT_REQ_KEY,
   PORTRAIT_ENGINE_OPTIONS,
   normalizePortraitEngine,

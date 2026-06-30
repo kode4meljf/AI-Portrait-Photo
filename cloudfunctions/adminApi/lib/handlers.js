@@ -853,7 +853,7 @@ async function fetchStyleSampleImage(payload) {
   return downloadCloudFileAsBase64(fileId)
 }
 
-const { generateSeedreamStyleSample } = require('./arkSeedreamSample')
+const { generateSeedreamStyleSample, generateSeedreamI2iSample, DEFAULT_I2I_IMAGE_URL } = require('./arkSeedreamSample')
 
 async function generateStyleSample(payload) {
   const prompt = String(payload.prompt || '').trim()
@@ -882,6 +882,40 @@ async function generateStyleSample(payload) {
     byteSize: buffer.length,
     reportedSize,
     promptPreview
+  }
+}
+
+async function generateI2iStyleSample(payload) {
+  const prompt = String(payload.prompt || '').trim()
+  if (!prompt) throw new Error('请先填写提示词')
+
+  const image = String(payload.image || DEFAULT_I2I_IMAGE_URL).trim()
+  if (image.startsWith('cloud://')) {
+    throw new Error('参考图须为可公网访问的 HTTPS 地址')
+  }
+
+  const settings = await readPlatformSettingsDoc()
+  const modelId = normalizeSeedreamModelId(settings.seedreamModelId)
+  const sizeTier = normalizeSeedreamSizeTier(
+    settings.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER
+  )
+  const orientation = normalizeSeedreamOrientation(
+    settings.seedreamOrientation || DEFAULT_SEEDREAM_ORIENTATION
+  )
+  const size = resolveSeedreamOutputSize(sizeTier, orientation)
+
+  const { buffer, reportedSize, promptPreview, resultUrl } = await generateSeedreamI2iSample(
+    prompt,
+    image,
+    { modelId, size: size || undefined }
+  )
+
+  return {
+    byteSize: buffer.length,
+    reportedSize,
+    promptPreview,
+    imageUrl: image,
+    resultUrlPreview: String(resultUrl || '').slice(0, 120)
   }
 }
 
@@ -1384,6 +1418,8 @@ async function dispatch(action, payload, query) {
       return fetchStyleSampleImage(payload)
     case 'styles.generateSample':
       return generateStyleSample(payload)
+    case 'styles.generateI2iSample':
+      return generateI2iStyleSample(payload)
     case 'styles.discardSamples':
       return discardStyleSamples(payload)
     case 'styles.seedDefaults':

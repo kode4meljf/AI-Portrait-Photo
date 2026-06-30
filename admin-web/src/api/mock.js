@@ -160,7 +160,7 @@ let mockPlatformSettings = {
   portraitEngineLabel: '经典引擎',
   portraitEngineOptions: [
     { value: 'jimeng', label: '经典引擎', engineId: 'i2i_portrait_photo', description: '即梦人像写真，稳定人像保真' },
-    { value: 'seedream', label: '智绘引擎', description: '豆包 Seedream 5.0，新一代多模态生图' }
+    { value: 'seedream', label: '智绘引擎', description: '豆包 Seedream，多模态生图' }
   ],
   arkApiKeyMasked: '',
   arkApiKeyConfigured: false,

@@ -43,6 +43,13 @@
       "runtime": "Nodejs18.15",
       "handler": "index.main",
       "timeout": 60
+    },
+    {
+      "name": "jimengPortraitAi",
+      "dir": "../cloudfunctions/jimengPortraitAi",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 30
     }
   ],
   "hosting": {

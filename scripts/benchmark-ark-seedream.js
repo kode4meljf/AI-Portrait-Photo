@@ -13,15 +13,16 @@
  *   --style-id M01       指定风格编号；默认取启用中第一条有 prompt 的模板
  *   --prompt <text>      直接指定提示词（与 --image 同时提供时可跳过 admin 登录）
  *   --image <url>        参考图 URL（默认用所选风格样图临时链）
- *   --model <id>         默认 doubao-seedream-5-0-260128
+ *   --model <id>         默认见 portraitEngineConfig，可选 4.5 / 5.0 模型 ID
  *   --delay-ms 500       每张间隔（默认 0，测纯 API 耗时）
  */
 const path = require('path')
 const { loadEnvFile } = require('./adminApiCredentials')
 const { resolveSeedreamOutputSize } = require('../cloudfunctions/lib/seedreamOutputSize')
+const { DEFAULT_SEEDREAM_MODEL_ID } = require('../cloudfunctions/lib/portraitEngineConfig')
 
 const ARK_IMAGES_URL = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
-const DEFAULT_MODEL = 'doubao-seedream-5-0-260128'
+const DEFAULT_MODEL = DEFAULT_SEEDREAM_MODEL_ID
 const GENERATION_TIMEOUT_MS = 120000
 
 const SIZE_2K_TIER = '2k'

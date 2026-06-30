@@ -62,7 +62,7 @@
           @change="onPortraitEngineChange"
         />
         <div class="form-tip segment-hint">
-          左：稳定人像保真 · 右：豆包 Seedream 5.0 多模态生图
+          左：稳定人像保真 · 右：豆包 Seedream 多模态生图
         </div>
       </el-form-item>
 
@@ -421,7 +421,8 @@ const engineStatusTitle = computed(() => {
   const f = form.value
   if (!f) return ''
   if (f.portraitEngine === PORTRAIT_ENGINE_SEEDREAM) {
-    return '当前全平台成片引擎：智绘引擎（Seedream 5.0）'
+    const model = (f.seedreamModelId || DEFAULT_SEEDREAM_MODEL_ID).trim()
+    return `当前全平台成片引擎：智绘引擎（${model}）`
   }
   return '当前全平台成片引擎：经典引擎（即梦）'
 })

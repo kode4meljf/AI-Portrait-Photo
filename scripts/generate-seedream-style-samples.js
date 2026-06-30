@@ -18,9 +18,10 @@ const { cropSampleToJpeg } = require('./lib/styleSampleLocal')
 const { uploadStyleSampleDirect } = require('./lib/styleSampleDirectUpload')
 const { ensureStyleAssetsDirs } = require('./styleAssetsDir')
 const { resolveSeedreamOutputSize } = require('../cloudfunctions/lib/seedreamOutputSize')
+const { DEFAULT_SEEDREAM_MODEL_ID } = require('../cloudfunctions/lib/portraitEngineConfig')
 
 const ARK_IMAGES_URL = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
-const DEFAULT_MODEL = 'doubao-seedream-5-0-260128'
+const DEFAULT_MODEL = DEFAULT_SEEDREAM_MODEL_ID
 const MANIFEST_NAME = 'seedream-manifest.json'
 const GENERATION_TIMEOUT_MS = 120000
 const DOWNLOAD_TIMEOUT_MS = 60000

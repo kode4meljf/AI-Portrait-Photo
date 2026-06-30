@@ -12,13 +12,15 @@
  *   --step <n>          递增步长（默认 5），与 --levels 二选一
  *   --levels 1,2,5,10   指定各档并发数
  *   --rounds <n>        每档重复轮数（默认 1）
- *   --model <id>        默认 doubao-seedream-5-0-260128
+ *   --model <id>        默认见 portraitEngineConfig，可选 4.5 / 5.0 模型 ID
  *   --size <WxH>        默认 1728x2304（2K 竖图，较快）
  *   --cooldown-ms <n>   每档之间冷却（默认 3000）
  *   --timeout-ms <n>    单请求超时（默认 120000）
  */
+const { DEFAULT_SEEDREAM_MODEL_ID } = require('../cloudfunctions/lib/portraitEngineConfig')
+
 const ARK_IMAGES_URL = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
-const DEFAULT_MODEL = 'doubao-seedream-5-0-260128'
+const DEFAULT_MODEL = DEFAULT_SEEDREAM_MODEL_ID
 const DEFAULT_IMAGE =
   'https://ark-project.tos-cn-beijing.volces.com/doc_image/seedream4_imageToimage.png'
 const DEFAULT_PROMPT =

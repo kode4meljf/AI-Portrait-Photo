@@ -1,5 +1,5 @@
 /**
- * 火山方舟 Seedream 5.0 图生图（同步 images/generations）
+ * 火山方舟 Seedream 图生图（同步 images/generations）
  */
 const axios = require('axios');
 const { withArkCredentials } = require('./arkCredentials');
@@ -78,7 +78,8 @@ function buildSeedreamPayload(imageUrl, prompt, options = {}) {
     sequential_image_generation: 'disabled',
     response_format: 'url',
     stream: false,
-    watermark: false
+    watermark: false,
+    logo_info: { add_logo: false }
   };
   if (size) payload.size = size;
   return { modelId, payload, size };
