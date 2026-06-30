@@ -215,13 +215,63 @@ async function updateOrderStatus(payload) {
   return res.data
 }
 
+async function getPortraitGenerateStats() {
+  const raw = await readPlatformSettingsDoc()
+  const portraitEngine = normalizePortraitEngine(raw.portraitEngine)
+  if (portraitEngine !== PORTRAIT_ENGINE_SEEDREAM) {
+    return { applicable: false, portraitEngine }
+  }
+
+  const sizeTier = normalizeSeedreamSizeTier(raw.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER)
+  const res = await db
+    .collection('ai_tasks')
+    .where({
+      status: 'completed',
+      engine: PORTRAIT_ENGINE_SEEDREAM,
+      seedreamSizeTier: sizeTier
+    })
+    .orderBy('updateTime', 'desc')
+    .limit(50)
+    .get()
+
+  const durations = (res.data || [])
+    .map((task) => Number(task.generateDurationMs))
+    .filter((ms) => Number.isFinite(ms) && ms > 0)
+
+  if (!durations.length) {
+    return {
+      applicable: true,
+      sizeTier,
+      sizeTierLabel: sizeTier.toUpperCase(),
+      sampleCount: 0,
+      insufficient: true
+    }
+  }
+
+  const avgGenerateMs = Math.round(
+    durations.reduce((sum, ms) => sum + ms, 0) / durations.length
+  )
+  return {
+    applicable: true,
+    sizeTier,
+    sizeTierLabel: sizeTier.toUpperCase(),
+    sampleCount: durations.length,
+    avgGenerateMs,
+    insufficient: false
+  }
+}
+
 async function getDashboard(payload) {
   const storeId = payload.storeId
   const startDate = payload.startDate || toDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const endDate = payload.endDate || toDateString(new Date())
 
   if (storeId) {
-    return getStoreDashboard(storeId, startDate, endDate)
+    const [storeDashboard, portraitGenerateStats] = await Promise.all([
+      getStoreDashboard(storeId, startDate, endDate),
+      getPortraitGenerateStats()
+    ])
+    return { ...storeDashboard, portraitGenerateStats }
   }
 
   const storesRes = await db.collection('stores').limit(500).get()
@@ -241,6 +291,8 @@ async function getDashboard(payload) {
     todayUnchecked += part.checkin.todayUnchecked || 0
   }
 
+  const portraitGenerateStats = await getPortraitGenerateStats()
+
   return {
     scope: 'all',
     startDate,
@@ -253,7 +305,8 @@ async function getDashboard(payload) {
       name: s.name,
       balance: s.balance,
       level: s.level
-    }))
+    })),
+    portraitGenerateStats
   }
 }
 

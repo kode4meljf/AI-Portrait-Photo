@@ -5,15 +5,13 @@ const { getCustomerDisplayName } = require('../../utils/customerDisplay');
 const { isValidStoreId } = require('../../utils/storeSession');
 const { redirectCustomerIfNeeded } = require('../../utils/storeGuard');
 const { syncStoreTabBar } = require('../../utils/storeTabBar');
-const { kickPortraitWorker } = require('../../utils/jimengPortraitAi');
 const { getProfileCollection } = require('../../utils/account');
 const { setBatchFavorite } = require('../../utils/batchFavorite');
 const { fetchPhotosByBatchIds, fetchPhotosByBatchId } = require('../../utils/batchPhotos');
 const GALLERY_STORE_SCOPE_ID = '__all_store__';
 
-const AUTO_REFRESH_INTERVAL_MS = 8000;
-/** 生成超过此时长后停止自动刷新（5 分钟） */
-const AUTO_REFRESH_MAX_DURATION_MS = 5 * 60 * 1000;
+/** 有生成中批次时，下拉刷新提示最长展示时间 */
+const GENERATING_HINT_DURATION_MS = 10000;
 
 const AVATAR_COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#34d399', '#3b6df6'];
 
@@ -135,7 +133,8 @@ Page({
     filterAvatarUrl: '',
     storeAvatarUrl: '',
     pickerVisible: false,
-    pickerSelectedId: GALLERY_STORE_SCOPE_ID
+    pickerSelectedId: GALLERY_STORE_SCOPE_ID,
+    generatingHintVisible: false
   },
 
   onLoad() {
@@ -147,7 +146,7 @@ Page({
     redirectCustomerIfNeeded().then(async (redirected) => {
       if (redirected) return;
       syncStoreTabBar(this);
-      this._autoRefreshStartedAt = null;
+      this._generatingHintEligible = true;
       await this.loadStoreInfo();
       this.syncFilterContext();
       const toast = app.globalData.pendingGalleryToast;
@@ -162,12 +161,12 @@ Page({
   },
 
   onHide() {
-    this._clearAutoRefresh();
-    this._autoRefreshStartedAt = null;
+    this._clearGeneratingHintTimer();
+    this.setData({ generatingHintVisible: false });
   },
 
   onUnload() {
-    this._clearAutoRefresh();
+    this._clearGeneratingHintTimer();
   },
 
   syncFilterContext() {
@@ -228,18 +227,16 @@ Page({
     }
   },
 
-  async loadBatches(isLoadMore = false, tab, silent = false) {
+  async loadBatches(isLoadMore = false, tab) {
     const currentTab = tab || this.data.activeTab;
     const loadingKey = currentTab === 'time' ? 'timeLoading' : 'favLoading';
     const groupsKey = currentTab === 'time' ? 'timeGroups' : 'favGroups';
     const hasMoreKey = currentTab === 'time' ? 'timeHasMore' : 'favHasMore';
     const pageKey = currentTab === 'time' ? 'timePage' : 'favPage';
 
-    if (this.data[loadingKey] && !silent) return;
+    if (this.data[loadingKey]) return;
 
-    if (!silent) {
-      this.setData({ [loadingKey]: true });
-    }
+    this.setData({ [loadingKey]: true });
 
     try {
       const db = wx.cloud.database();
@@ -270,9 +267,6 @@ Page({
 
       let batches = await this.formatBatches(res.data);
       batches = this.applyBatchCustomerPatch(batches);
-      if (silent) {
-        this._kickWorkerForGenerating(batches);
-      }
       const batchGroups = this.groupBatchesByMonth(batches);
 
       let mergedGroups;
@@ -290,11 +284,11 @@ Page({
         [`${currentTab}Refreshing`]: false
       });
 
-      this._updateAutoRefresh();
+      this._syncGeneratingHint();
     } catch (error) {
       console.error('加载批次失败:', error);
       this.setData({ [loadingKey]: false, [`${currentTab}Refreshing`]: false });
-      if (!silent) wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: '加载失败', icon: 'none' });
     }
   },
 
@@ -441,49 +435,30 @@ Page({
     return this._collectAllBatches().some((b) => b.status === 'generating');
   },
 
-  _kickWorkerForGenerating(batches) {
-    const now = Date.now();
-    if (this._lastGalleryKickAt && now - this._lastGalleryKickAt < 12000) return;
-    const hit = (batches || []).find((b) => b.status === 'generating');
-    if (!hit || !hit._id) return;
-    this._lastGalleryKickAt = now;
-    kickPortraitWorker({ batchId: hit._id });
-  },
-
-  _clearAutoRefresh() {
-    if (this._autoRefreshTimer) {
-      clearInterval(this._autoRefreshTimer);
-      this._autoRefreshTimer = null;
+  _clearGeneratingHintTimer() {
+    if (this._generatingHintTimer) {
+      clearTimeout(this._generatingHintTimer);
+      this._generatingHintTimer = null;
     }
   },
 
-  _updateAutoRefresh() {
-    this._clearAutoRefresh();
+  _syncGeneratingHint() {
     if (!this._hasGeneratingBatches()) {
-      this._autoRefreshStartedAt = null;
+      this._clearGeneratingHintTimer();
+      if (this.data.generatingHintVisible) {
+        this.setData({ generatingHintVisible: false });
+      }
       return;
     }
-    if (!this._autoRefreshStartedAt) {
-      this._autoRefreshStartedAt = Date.now();
-    }
-    const elapsed = Date.now() - this._autoRefreshStartedAt;
-    if (elapsed >= AUTO_REFRESH_MAX_DURATION_MS) {
-      return;
-    }
-    this._autoRefreshTimer = setInterval(() => {
-      const e = Date.now() - this._autoRefreshStartedAt;
-      if (e >= AUTO_REFRESH_MAX_DURATION_MS) {
-        this._clearAutoRefresh();
-        return;
-      }
-      if (!this._hasGeneratingBatches()) {
-        this._clearAutoRefresh();
-        this._autoRefreshStartedAt = null;
-        return;
-      }
-      const tab = this.data.activeTab;
-      this.loadBatches(false, tab, true);
-    }, AUTO_REFRESH_INTERVAL_MS);
+    if (!this._generatingHintEligible || this.data.generatingHintVisible) return;
+
+    this._generatingHintEligible = false;
+    this.setData({ generatingHintVisible: true });
+    this._clearGeneratingHintTimer();
+    this._generatingHintTimer = setTimeout(() => {
+      this._generatingHintTimer = null;
+      this.setData({ generatingHintVisible: false });
+    }, GENERATING_HINT_DURATION_MS);
   },
 
   switchTab(e) {
@@ -507,8 +482,6 @@ Page({
       this.loadBatches(false, 'time');
     } else if (tab === 'fav' && this.data.favGroups.length === 0) {
       this.loadBatches(false, 'fav');
-    } else {
-      this._updateAutoRefresh();
     }
   },
 
@@ -516,7 +489,6 @@ Page({
     const tab = this.data.activeTab;
     const key = tab === 'time' ? 'timeRefreshing' : 'favRefreshing';
     this.setData({ [key]: true });
-    this._autoRefreshStartedAt = null;
     const groupsKey = tab === 'time' ? 'timeGroups' : 'favGroups';
     const hasMoreKey = tab === 'time' ? 'timeHasMore' : 'favHasMore';
     const pageKey = tab === 'time' ? 'timePage' : 'favPage';

@@ -1,6 +1,6 @@
 const cloud = require('wx-server-sdk');
 const { submitJimengTask, pollJimengTask } = require('./lib/jimeng');
-const { generateSeedreamPortrait } = require('./lib/arkSeedream');
+const { requestSeedreamResultUrl } = require('./lib/arkSeedream');
 const { deleteReplacedCloudFile } = require('./lib/cloudFile');
 const { chargeStoreForPortrait } = require('./lib/balance');
 const { toUserFacingError, TIMEOUT_FAIL } = require('./lib/userFacingError');
@@ -32,6 +32,9 @@ const WORKER_BUDGET_MS = CLOUD_FUNCTION_TIMEOUT_MS - CLOUD_FUNCTION_TAIL_MS;
 const POLL_BUDGET_MS = 10000;
 /** 多任务并行时单次 poll 切片，避免占满整轮 budget */
 const POLL_SLICE_MS = 6000;
+const MATERIALIZER_FN = 'jimengPortraitMaterializer';
+/** generating 写库 invoke 后，短 grace 内不重复兜底 */
+const ORPHAN_MATERIALIZE_GRACE_MS = 5000;
 
 async function getImageUrl(photoFileID) {
   if (photoFileID && String(photoFileID).startsWith('cloud')) {
@@ -109,6 +112,27 @@ function buildTaskScopeWhere(base, priorityBatchId) {
   return { ...base, batchId };
 }
 
+/** kick 带 batchId 但批次内无 pending 时，回退全局队列（如重试任务 batchId 未带上） */
+async function resolveWorkerBatchScope(event) {
+  const requested = String(event.priorityBatchId || '').trim();
+  if (!requested || event.action !== 'run') return requested;
+
+  const pendingEngines = _.in([PORTRAIT_ENGINE_JIMENG, PORTRAIT_ENGINE_SEEDREAM]);
+  const batchRes = await db
+    .collection('ai_tasks')
+    .where(buildTaskScopeWhere({ status: 'pending', engine: pendingEngines }, requested))
+    .count();
+  if ((batchRes.total || 0) > 0) return requested;
+
+  const globalRes = await db
+    .collection('ai_tasks')
+    .where({ status: 'pending', engine: pendingEngines })
+    .count();
+  if ((globalRes.total || 0) === 0) return requested;
+
+  return '';
+}
+
 function pickByBatchFirst(list, priorityBatchId) {
   if (!list.length) return null;
   const batchId = String(priorityBatchId || '').trim();
@@ -164,12 +188,95 @@ function logHttpError(prefix, err) {
   }
 }
 
+function invokePortraitMaterializer(taskId) {
+  cloud
+    .callFunction({
+      name: MATERIALIZER_FN,
+      data: { taskId: String(taskId) }
+    })
+    .catch((err) => {
+      console.warn(
+        '[jimengPortraitWorker] materializer invoke failed',
+        taskId,
+        err.message || err
+      );
+    });
+}
+
+async function loadOrphanMaterializingTasks(priorityBatchId) {
+  const res = await db
+    .collection('ai_tasks')
+    .where(
+      buildTaskScopeWhere(
+        {
+          status: 'processing',
+          engine: PORTRAIT_ENGINE_SEEDREAM,
+          phase: 'materializing'
+        },
+        priorityBatchId
+      )
+    )
+    .orderBy('updateTime', 'asc')
+    .limit(10)
+    .get();
+  return (res.data || []).filter((t) => {
+    const url = String(t.seedreamResultUrl || '').trim();
+    if (!url) return false;
+    return Date.now() - taskTimestamp(t) >= ORPHAN_MATERIALIZE_GRACE_MS;
+  });
+}
+
+async function recoverOrphanMaterializingTasks(priorityBatchId) {
+  const orphans = await loadOrphanMaterializingTasks(priorityBatchId);
+  for (const task of orphans) {
+    invokePortraitMaterializer(task._id);
+  }
+  if (orphans.length) {
+    console.log('[jimengPortraitWorker] 兜底 invoke materializer', orphans.length);
+  }
+  return orphans.length;
+}
+
+/** generating 阶段已写 URL 但未切 phase 的脏数据修复 */
+async function recoverSeedreamUrlStuckInGenerating(priorityBatchId) {
+  const res = await db
+    .collection('ai_tasks')
+    .where(
+      buildTaskScopeWhere(
+        {
+          status: 'processing',
+          engine: PORTRAIT_ENGINE_SEEDREAM,
+          phase: 'generating'
+        },
+        priorityBatchId
+      )
+    )
+    .limit(10)
+    .get();
+  let fixed = 0;
+  for (const task of res.data || []) {
+    const url = String(task.seedreamResultUrl || '').trim();
+    if (!url) continue;
+    await db.collection('ai_tasks').doc(task._id).update({
+      data: { phase: 'materializing', materializeBusy: false, updateTime: new Date() }
+    });
+    invokePortraitMaterializer(task._id);
+    fixed += 1;
+  }
+  if (fixed) {
+    console.log('[jimengPortraitWorker] 修复 generating+URL 任务', fixed);
+  }
+  return fixed;
+}
+
 async function claimTaskForSubmit(task) {
   const jimengTaskId = (task.jimengTaskId || '').trim();
   if (jimengTaskId) return false;
+  if (task.phase === 'materializing') return false;
   if (task.phase === 'generating') {
     if (!isStuckSeedreamGenerating(task)) return false;
-    console.warn('[jimengPortraitWorker] 重新认领卡住的 Seedream 任务', task._id);
+    await markTaskFailed(task, TIMEOUT_FAIL, 'seedream generating timeout');
+    return false;
   }
 
   if (task.status === 'pending') {
@@ -231,6 +338,31 @@ async function handleSubmitFailure(task, err) {
     .catch(() => {});
 
   return { processed: 0, submitRetry: true, taskId: task._id };
+}
+
+/** 智绘 generating 失败：不重试 Seedream API */
+async function handleSeedreamGenerateFailure(task, err) {
+  logHttpError('[jimengPortraitWorker] Seedream 生图失败', err);
+  const freshTask = await getFreshTask(task);
+  await markTaskFailed(freshTask, err.message, err.message);
+  return { processed: 0, error: toUserFacingError(err) };
+}
+
+/** 仅允许从 submit → generating 一次，防并发重复调方舟 API */
+async function beginSeedreamGenerating(taskId) {
+  const res = await db
+    .collection('ai_tasks')
+    .where({ _id: taskId, phase: 'submit' })
+    .update({
+      data: {
+        phase: 'generating',
+        seedreamResultUrl: null,
+        materializeAttempts: 0,
+        materializeBusy: false,
+        updateTime: new Date()
+      }
+    });
+  return !!(res.stats && res.stats.updated);
 }
 
 /** poll 阶段临时失败：保留 jimengTaskId，下轮定时器续查 */
@@ -362,7 +494,11 @@ async function loadStuckSubmitTasks(priorityBatchId, engine) {
   let stuck = (procRes.data || []).filter((t) => {
     if ((t.jimengTaskId || '').trim()) return false;
     if (engine === PORTRAIT_ENGINE_SEEDREAM) {
-      return t.phase === 'generating' && isStuckSeedreamGenerating(t);
+      return (
+        t.phase === 'generating' &&
+        isStuckSeedreamGenerating(t) &&
+        !String(t.seedreamResultUrl || '').trim()
+      );
     }
     return t.phase !== 'generating';
   });
@@ -425,8 +561,11 @@ async function countInFlightByEngine() {
   for (const t of res.data || []) {
     const engine = normalizePortraitEngine(t.engine);
     if (engine === PORTRAIT_ENGINE_SEEDREAM) {
+      if (t.phase === 'materializing') continue;
       if (isStuckSeedreamGenerating(t)) continue;
-      seedream += 1;
+      if (t.phase === 'generating' || t.phase === 'submit' || !t.phase) {
+        seedream += 1;
+      }
       continue;
     }
     if ((t.jimengTaskId || '').trim() || t.phase === 'submit') {
@@ -436,22 +575,47 @@ async function countInFlightByEngine() {
   return { jimeng, seedream, total: jimeng + seedream };
 }
 
-async function runSeedreamSubmitPhase(task, photo) {
+async function runSeedreamGeneratePhase(task, photo) {
   const prompt = await resolvePrompt(task);
   const imageUrl = await getImageUrl(photo.originalUrl);
   const seedreamConfig = await getSeedreamConfig();
 
+  const reserved = await beginSeedreamGenerating(task._id);
+  if (!reserved) {
+    const freshTask = await getFreshTask(task);
+    const phase = freshTask.phase || '';
+    if (phase === 'generating' || phase === 'materializing' || freshTask.seedreamResultUrl) {
+      return { processed: 0, skipped: true, taskId: task._id };
+    }
+    console.warn(
+      '[jimengPortraitWorker] Seedream 生图槽位未抢到，跳过',
+      task._id,
+      phase || '(no phase)'
+    );
+    return { processed: 0, skipped: true, taskId: task._id };
+  }
+
+  const sizeLabel = seedreamConfig.outputSize || 'auto';
+  console.log('[jimengPortraitWorker] 提交 Seedream', task._id, task.styleId || '', sizeLabel);
+  const generateStartedAt = Date.now();
+  const resultUrl = await requestSeedreamResultUrl(imageUrl, prompt, seedreamConfig);
+  const generateDurationMs = Date.now() - generateStartedAt;
+
   await db.collection('ai_tasks').doc(task._id).update({
     data: {
-      phase: 'generating',
+      seedreamResultUrl: resultUrl,
+      generateDurationMs,
+      phase: 'materializing',
+      materializeAttempts: 0,
+      materializeBusy: false,
+      lastError: null,
       updateTime: new Date()
     }
   });
 
-  const sizeLabel = seedreamConfig.outputSize || 'auto';
-  console.log('[jimengPortraitWorker] 提交 Seedream', task._id, task.styleId || '', sizeLabel);
-  const resultBuffer = await generateSeedreamPortrait(imageUrl, prompt, seedreamConfig);
-  return completeTask(task, resultBuffer, photo.aiUrl || '');
+  invokePortraitMaterializer(task._id);
+  console.log('[jimengPortraitWorker] Seedream 已出图，转 materializer', task._id);
+  return { processed: 1, seedreamGenerated: true, taskId: task._id };
 }
 
 /** 阶段 A：扣费 → submit 即梦 → 写 jimengTaskId（同次调用不 poll） */
@@ -493,7 +657,7 @@ async function runSubmitPhase(task) {
     const imageUrl = await getImageUrl(photo.originalUrl);
 
     if (normalizePortraitEngine(task.engine) === PORTRAIT_ENGINE_SEEDREAM) {
-      return runSeedreamSubmitPhase(task, photo);
+      return runSeedreamGeneratePhase(task, photo);
     }
 
     console.log('[jimengPortraitWorker] 提交即梦', task._id, task.styleId || '');
@@ -517,6 +681,10 @@ async function runSubmitPhase(task) {
 
     return { processed: 1, submitted: true, taskId: task._id };
   } catch (err) {
+    const freshTask = await getFreshTask(task);
+    if (normalizePortraitEngine(freshTask.engine) === PORTRAIT_ENGINE_SEEDREAM) {
+      return handleSeedreamGenerateFailure(freshTask, err);
+    }
     return handleSubmitFailure(task, err);
   }
 }
@@ -599,24 +767,30 @@ async function logWorkerIdleReason(priorityBatchId, inFlight, limits) {
 function summarizeBatchResults(results) {
   let submitted = 0;
   let completed = 0;
+  let seedreamGenerated = 0;
   let lastResult = { processed: 0 };
   for (const result of results) {
     lastResult = result;
     if (result.submitted) submitted += 1;
     if (result.completed) completed += 1;
+    if (result.seedreamGenerated) seedreamGenerated += 1;
   }
-  return { submitted, completed, lastResult };
+  return { submitted, completed, seedreamGenerated, lastResult };
 }
 
 /**
  * Seedream：有空闲槽位时并行 submit；即梦：submit / poll 串行，分开 inFlight 上限。
  */
 async function workerLoop(event, deadline) {
-  const priorityBatchId = String(event.priorityBatchId || '').trim();
+  const priorityBatchId = await resolveWorkerBatchScope(event);
   const limits = await getPortraitConcurrencyLimits();
   let lastResult = { processed: 0, limits };
   let submittedCount = 0;
   let completedCount = 0;
+  let seedreamGeneratedCount = 0;
+
+  await recoverOrphanMaterializingTasks(priorityBatchId);
+  await recoverSeedreamUrlStuckInGenerating(priorityBatchId);
 
   while (Date.now() < deadline - 1500) {
     const remaining = deadline - Date.now();
@@ -633,6 +807,7 @@ async function workerLoop(event, deadline) {
         const batch = summarizeBatchResults(results);
         submittedCount += batch.submitted;
         completedCount += batch.completed;
+        seedreamGeneratedCount += batch.seedreamGenerated;
         lastResult = {
           ...batch.lastResult,
           limits,
@@ -683,7 +858,7 @@ async function workerLoop(event, deadline) {
     if (!didWork) break;
   }
 
-  const processed = submittedCount + completedCount;
+  const processed = submittedCount + completedCount + seedreamGeneratedCount;
   if (processed === 0 && submittedCount === 0 && completedCount === 0) {
     await logWorkerIdleReason(priorityBatchId, await countInFlightByEngine(), limits);
   }
@@ -692,6 +867,7 @@ async function workerLoop(event, deadline) {
     processed: processed > 0 ? processed : lastResult.processed || 0,
     submittedCount,
     completedCount,
+    seedreamGeneratedCount,
     limits
   };
 }

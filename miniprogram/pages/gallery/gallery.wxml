@@ -26,6 +26,8 @@
     </view>
   </view>
 
+  <view wx:if="{{generatingHintVisible}}" class="generating-hint">生成中，下拉刷新查看最新进度</view>
+
   <swiper class="content-swiper" current="{{activeTabIndex}}" bindchange="onSwiperChange" duration="300">
     <swiper-item>
       <scroll-view

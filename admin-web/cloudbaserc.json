@@ -22,6 +22,27 @@
           "config": "0 0 4 * * * *"
         }
       ]
+    },
+    {
+      "name": "jimengPortraitWorker",
+      "dir": "../cloudfunctions/jimengPortraitWorker",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 60,
+      "triggers": [
+        {
+          "name": "jimengPortraitWorkerTimer",
+          "type": "timer",
+          "config": "*/15 * * * * * *"
+        }
+      ]
+    },
+    {
+      "name": "jimengPortraitMaterializer",
+      "dir": "../cloudfunctions/jimengPortraitMaterializer",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 60
     }
   ],
   "hosting": {

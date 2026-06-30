@@ -1,0 +1,10 @@
+{
+  "name": "jimengPortraitMaterializer",
+  "version": "1.0.0",
+  "description": "智绘 Seedream 结果下载落库",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "wx-server-sdk": "~2.6.3"
+  }
+}

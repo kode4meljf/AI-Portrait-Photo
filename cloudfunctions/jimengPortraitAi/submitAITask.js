@@ -1,7 +1,7 @@
 const cloud = require('wx-server-sdk');
 const { resolveStoreIdFromOpenid } = require('./lib/resolveStoreMember');
 const { assertCanSubmitPortrait, INSUFFICIENT_BALANCE_MSG } = require('./lib/balance');
-const { getPortraitEngine, assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
+const { assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -25,15 +25,23 @@ async function main(event) {
     }
     const resolution = style.resolution || '1536:1152';
 
+    const photoRes = await db.collection('photos').doc(photoId).get();
+    if (!photoRes.data) {
+      return { success: false, error: '照片不存在' };
+    }
+    const photo = photoRes.data;
+    const batchId = String(photo.batchId || event.batchId || '').trim() || null;
+
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
     await assertCanSubmitPortrait(storeId);
-    await assertCurrentPortraitEngineReady();
-    const portraitEngine = await getPortraitEngine();
+    const portraitConfig = await assertCurrentPortraitEngineReady();
+    const portraitEngine = portraitConfig.portraitEngine;
 
     const task = {
       photoId,
       styleId,
       storeId,
+      batchId,
       status: 'pending',
       engine: portraitEngine,
       prompt,
@@ -46,6 +54,9 @@ async function main(event) {
       resultFileID: null,
       errorMsg: null
     };
+    if (portraitEngine === 'seedream') {
+      task.seedreamSizeTier = portraitConfig.seedreamSizeTier;
+    }
     const addRes = await db.collection('ai_tasks').add({ data: task });
 
     try {

@@ -5,7 +5,7 @@ const {
   chargeStoreForPortraitBatch,
   INSUFFICIENT_BALANCE_MSG
 } = require('./lib/balance');
-const { getPortraitEngine, assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
+const { assertCurrentPortraitEngineReady } = require('./lib/platformPortraitConfig');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -64,8 +64,8 @@ async function main(event) {
   try {
     const storeId = await resolveStoreIdFromOpenid(cloud.getWXContext().OPENID);
     await assertCanSubmitPortraitBatch(storeId, normalized.length);
-    await assertCurrentPortraitEngineReady();
-    const portraitEngine = await getPortraitEngine();
+    const portraitConfig = await assertCurrentPortraitEngineReady();
+    const portraitEngine = portraitConfig.portraitEngine;
 
     const styleMap = {};
     for (const row of normalized) {
@@ -78,25 +78,29 @@ async function main(event) {
 
     for (const row of normalized) {
       const style = styleMap[row.styleId];
+      const task = {
+        photoId: row.photoId,
+        styleId: row.styleId,
+        storeId,
+        batchId: batchId || null,
+        batchIndex: row.batchIndex,
+        status: 'pending',
+        engine: portraitEngine,
+        prompt: style.prompt,
+        resolution: style.resolution,
+        jimengTaskId: null,
+        charged: false,
+        chargeAmount: 0,
+        createTime: now,
+        updateTime: now,
+        resultFileID: null,
+        errorMsg: null
+      };
+      if (portraitEngine === 'seedream') {
+        task.seedreamSizeTier = portraitConfig.seedreamSizeTier;
+      }
       const addRes = await db.collection('ai_tasks').add({
-        data: {
-          photoId: row.photoId,
-          styleId: row.styleId,
-          storeId,
-          batchId: batchId || null,
-          batchIndex: row.batchIndex,
-          status: 'pending',
-          engine: portraitEngine,
-          prompt: style.prompt,
-          resolution: style.resolution,
-          jimengTaskId: null,
-          charged: false,
-          chargeAmount: 0,
-          createTime: now,
-          updateTime: now,
-          resultFileID: null,
-          errorMsg: null
-        }
+        data: task
       });
       createdTaskIds.push(addRes._id);
 

@@ -5,6 +5,14 @@ const {
   normalizePortraitEngine
 } = require('./portraitEngineConfig');
 
+const DEFAULT_SEEDREAM_SIZE_TIER = '2k';
+
+function normalizeSeedreamSizeTier(value) {
+  const s = String(value || '').trim().toLowerCase();
+  if (s === '4k') return '4k';
+  return '2k';
+}
+
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
@@ -24,6 +32,7 @@ async function readPortraitSettingsFromDatabase() {
   const data = res.data || {};
   return {
     portraitEngine: normalizePortraitEngine(data.portraitEngine || DEFAULT_PORTRAIT_ENGINE),
+    seedreamSizeTier: normalizeSeedreamSizeTier(data.seedreamSizeTier || DEFAULT_SEEDREAM_SIZE_TIER),
     arkApiKeyConfigured: !!String(data.arkApiKey || '').trim()
   };
 }

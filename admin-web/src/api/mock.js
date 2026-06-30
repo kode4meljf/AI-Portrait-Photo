@@ -352,7 +352,15 @@ export async function mockRequest(action, payload = {}, query = {}) {
         storeCount: mockStores.length,
         stats: { totalAmount: 3280, frameCount: 18, orderCount: 18, customerCount: 42 },
         checkin: { todayUnchecked: 5 },
-        stores: mockStores
+        stores: mockStores,
+        portraitGenerateStats: {
+          applicable: true,
+          sizeTier: '2k',
+          sizeTierLabel: '2K',
+          sampleCount: 12,
+          avgGenerateMs: 38200,
+          insufficient: false
+        }
       }
     case 'stores.list':
       return { list: mockStores, total: mockStores.length, page: 1, pageSize: 20 }

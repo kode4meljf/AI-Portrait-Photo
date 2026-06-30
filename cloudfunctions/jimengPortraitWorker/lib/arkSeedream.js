@@ -6,9 +6,10 @@ const { withArkCredentials } = require('./arkCredentials');
 const { DEFAULT_SEEDREAM_MODEL_ID } = require('./portraitEngineConfig');
 
 const ARK_IMAGES_URL = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
-/** 与 config.json timeout=60、WORKER_BUDGET(55s) 对齐：生图 + 下载须落在单轮预算内 */
-const GENERATION_TIMEOUT_MS = 45000;
-const DOWNLOAD_TIMEOUT_MS = 10000;
+/** 智绘 generating 单轮：只等 API，与 WORKER_BUDGET(55s) 对齐 */
+const GENERATION_TIMEOUT_MS = 52000;
+/** Materializer 下载方舟临时 URL */
+const DOWNLOAD_TIMEOUT_MS = 30000;
 
 function formatSeedreamSize(width, height) {
   const w = Math.floor(Number(width));
@@ -17,7 +18,7 @@ function formatSeedreamSize(width, height) {
   return '';
 }
 
-async function downloadImageBuffer(url) {
+async function downloadSeedreamImage(url) {
   const response = await axios({
     method: 'GET',
     url,
@@ -53,7 +54,7 @@ function toArkSeedreamError(err) {
   return err;
 }
 
-async function generateSeedreamPortrait(imageUrl, prompt, options = {}) {
+function buildSeedreamPayload(imageUrl, prompt, options = {}) {
   const modelId = options.modelId || DEFAULT_SEEDREAM_MODEL_ID;
   const promptText = String(prompt || '').trim();
   if (!promptText) throw new Error('缺少提示词');
@@ -80,6 +81,12 @@ async function generateSeedreamPortrait(imageUrl, prompt, options = {}) {
     watermark: false
   };
   if (size) payload.size = size;
+  return { modelId, payload, size };
+}
+
+/** 仅请求方舟生图，返回临时下载 URL（由 Materializer 落库） */
+async function requestSeedreamResultUrl(imageUrl, prompt, options = {}) {
+  const { modelId, payload, size } = buildSeedreamPayload(imageUrl, prompt, options);
 
   return withArkCredentials(async ({ apiKey }) => {
     console.log('[arkSeedream] 提交图生图', modelId, size || '(auto)');
@@ -113,12 +120,21 @@ async function generateSeedreamPortrait(imageUrl, prompt, options = {}) {
     if (!imageResultUrl) {
       throw new Error('Seedream 未返回图片 URL');
     }
-
-    return downloadImageBuffer(imageResultUrl);
+    return imageResultUrl;
   });
+}
+
+/** 兼容旧调用：生图 + 下载一体 */
+async function generateSeedreamPortrait(imageUrl, prompt, options = {}) {
+  const imageResultUrl = await requestSeedreamResultUrl(imageUrl, prompt, options);
+  return downloadSeedreamImage(imageResultUrl);
 }
 
 module.exports = {
   formatSeedreamSize,
-  generateSeedreamPortrait
+  requestSeedreamResultUrl,
+  downloadSeedreamImage,
+  generateSeedreamPortrait,
+  GENERATION_TIMEOUT_MS,
+  DOWNLOAD_TIMEOUT_MS
 };

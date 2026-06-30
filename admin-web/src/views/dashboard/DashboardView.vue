@@ -42,6 +42,21 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-card
+      v-if="portraitGenerateStats.applicable"
+      shadow="never"
+      class="generate-stats-card"
+    >
+      <template #header>生图耗时（全平台）</template>
+      <div v-if="portraitGenerateStats.insufficient" class="generate-stats-empty">样本不足</div>
+      <div v-else class="generate-stats-body">
+        <div class="generate-stats-value">{{ formatGenerateDuration(portraitGenerateStats.avgGenerateMs) }}</div>
+        <div class="generate-stats-meta">
+          {{ portraitGenerateStats.sizeTierLabel }} · 纯 API 耗时 · 近 {{ portraitGenerateStats.sampleCount }} 张平均
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -56,6 +71,7 @@ const loading = ref(false)
 const stats = ref({})
 const checkin = ref({})
 const storePreview = ref([])
+const portraitGenerateStats = ref({ applicable: false })
 
 const dateRange = ref([
   dayjs().startOf('month').format('YYYY-MM-DD'),
@@ -75,6 +91,14 @@ const statCards = computed(() => {
   return base
 })
 
+function formatGenerateDuration(ms) {
+  const n = Number(ms)
+  if (!Number.isFinite(n) || n <= 0) return '-'
+  if (n < 1000) return `${n}ms`
+  const seconds = n / 1000
+  return seconds >= 10 ? `${Math.round(seconds)}s` : `${seconds.toFixed(1)}s`
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -85,6 +109,7 @@ async function loadData() {
     stats.value = { ...data.stats, storeCount: data.storeCount }
     checkin.value = data.checkin || {}
     storePreview.value = data.stores || (data.store ? [data.store] : [])
+    portraitGenerateStats.value = data.portraitGenerateStats || { applicable: false }
   } finally {
     loading.value = false
   }
@@ -93,3 +118,27 @@ async function loadData() {
 watch(() => appStore.currentStoreId, loadData)
 onMounted(loadData)
 </script>
+
+<style scoped>
+.generate-stats-card {
+  margin-top: 16px;
+}
+
+.generate-stats-empty {
+  color: #909399;
+  font-size: 15px;
+}
+
+.generate-stats-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.generate-stats-meta {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #909399;
+}
+</style>
